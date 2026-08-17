@@ -1,6 +1,8 @@
 // CulvertCAD.Web/Controllers/SurveyController.cs
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using CulvertCAD.Core.Entities;
 using CulvertCAD.Core.DTOs;
 using CulvertCAD.Core.Enums;
@@ -153,7 +155,6 @@ public class SurveyController : Controller
 // ============================================================
 // CulvertCAD.Web/Controllers/DrawingsController.cs
 // ============================================================
-namespace CulvertCAD.Web.Controllers;
 
 [Authorize]
 public class DrawingsController : Controller
@@ -302,7 +303,6 @@ public class DrawingsController : Controller
 // ============================================================
 // CulvertCAD.Web/Controllers/BOQController.cs
 // ============================================================
-namespace CulvertCAD.Web.Controllers;
 
 [Authorize]
 public class BOQController : Controller
@@ -333,13 +333,11 @@ public class BOQController : Controller
 // ============================================================
 // CulvertCAD.Web/Controllers/HomeController.cs
 // ============================================================
-namespace CulvertCAD.Web.Controllers;
 
 [Authorize]
 public class HomeController : Controller
 {
     private readonly AppDbContext _db;
-    private readonly UserManager<Microsoft.AspNetCore.Identity.IdentityUser<int>> _umBase;
     private readonly Microsoft.AspNetCore.Identity.UserManager<ApplicationUser> _um;
 
     public HomeController(AppDbContext db, Microsoft.AspNetCore.Identity.UserManager<ApplicationUser> um)

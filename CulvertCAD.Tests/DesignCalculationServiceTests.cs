@@ -1,3 +1,5 @@
+using System;
+using System.Threading.Tasks;
 // CulvertCAD.Tests/DesignCalculationServiceTests.cs
 using Microsoft.EntityFrameworkCore;
 using Xunit;

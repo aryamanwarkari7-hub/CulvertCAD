@@ -109,7 +109,7 @@ public class DesignsController : Controller
         };
 
         var revisions = new List<RevisionDto>();
-        foreach (var r in d.Revisions?.OrderBy(r => r.RevisionCode) ?? new())
+        foreach (var r in d.Revisions?.OrderBy(r => r.RevisionCode) ?? System.Linq.Enumerable.Empty<DesignRevision>())
         {
             var calc = await _calcRepo.GetByRevisionAsync(r.Id);
             revisions.Add(MapRevisionToDto(r, calc));
@@ -154,7 +154,6 @@ public class DesignsController : Controller
 // ============================================================
 // CulvertCAD.Web/Controllers/RevisionsController.cs
 // ============================================================
-namespace CulvertCAD.Web.Controllers;
 
 [Authorize]
 public class RevisionsController : Controller

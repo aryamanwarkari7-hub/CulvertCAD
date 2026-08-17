@@ -3,6 +3,7 @@ using netDxf;
 using netDxf.Entities;
 using netDxf.Tables;
 using netDxf.Header;
+using netDxf.Units;
 using CulvertCAD.Core.DTOs;
 using CulvertCAD.Core.Entities;
 
@@ -20,14 +21,14 @@ public class DxfDrawingEngine : IDxfDrawingEngine
     private static Layer CreateLayer(string name, AciColor color, Lineweight lw = Lineweight.Default)
         => new(name) { Color = color, Lineweight = lw };
 
-    private static readonly Layer LayerOutline    = CreateLayer("CULVERT-OUTLINE", AciColor.White,  Lineweight.W050);
-    private static readonly Layer LayerCentreline = CreateLayer("CL",              AciColor.Red,    Lineweight.W018);
-    private static readonly Layer LayerDimension  = CreateLayer("DIMENSION",       AciColor.Yellow, Lineweight.W018);
-    private static readonly Layer LayerHatch      = CreateLayer("BEDDING-HATCH",   AciColor.Cyan,   Lineweight.W013);
-    private static readonly Layer LayerRoad       = CreateLayer("ROAD-FILL",       AciColor.Gray,   Lineweight.W035);
-    private static readonly Layer LayerText       = CreateLayer("TEXT-ANNOTATION", AciColor.Green,  Lineweight.W018);
-    private static readonly Layer LayerTitleBlock = CreateLayer("TITLE-BLOCK",     AciColor.White,  Lineweight.W070);
-    private static readonly Layer LayerDimLine    = CreateLayer("DIMENSION-LINE",  AciColor.Yellow, Lineweight.W013);
+    private static readonly Layer LayerOutline    = CreateLayer("CULVERT-OUTLINE", AciColor.LightGray,  Lineweight.W50);
+    private static readonly Layer LayerCentreline = CreateLayer("CL",              AciColor.Red,    Lineweight.W18);
+    private static readonly Layer LayerDimension  = CreateLayer("DIMENSION",       AciColor.Yellow, Lineweight.W18);
+    private static readonly Layer LayerHatch      = CreateLayer("BEDDING-HATCH",   AciColor.Cyan,   Lineweight.W13);
+    private static readonly Layer LayerRoad       = CreateLayer("ROAD-FILL",       AciColor.DarkGray,   Lineweight.W35);
+    private static readonly Layer LayerText       = CreateLayer("TEXT-ANNOTATION", AciColor.Green,  Lineweight.W18);
+    private static readonly Layer LayerTitleBlock = CreateLayer("TITLE-BLOCK",     AciColor.LightGray,  Lineweight.W70);
+    private static readonly Layer LayerDimLine    = CreateLayer("DIMENSION-LINE",  AciColor.Yellow, Lineweight.W13);
 
     public byte[] GenerateCrossSection(CrossSectionDataDto data, TitleBlockData title)
     {
@@ -66,7 +67,7 @@ public class DxfDrawingEngine : IDxfDrawingEngine
         }) { IsClosed = true, Layer = LayerRoad };
         doc.Entities.Add(roadPoly);
 
-        doc.Entities.Add(new Line(new Vector3(-roadHalfW, roadTop, 0), new Vector3(roadHalfW, roadTop, 0)) { Layer = LayerOutline, Lineweight = Lineweight.W070 });
+        doc.Entities.Add(new Line(new Vector3(-roadHalfW, roadTop, 0), new Vector3(roadHalfW, roadTop, 0)) { Layer = LayerOutline, Lineweight = Lineweight.W70 });
 
         AddDimension(doc, $"Ø{D:0}mm", new Vector2(-D/2, pipeY + extRad + 200), new Vector2(D/2, pipeY + extRad + 200));
         AddDimension(doc, $"Bd={Bd:0}mm", new Vector2(trenchL, trenchB - 300), new Vector2(trenchR, trenchB - 300));
@@ -90,11 +91,11 @@ public class DxfDrawingEngine : IDxfDrawingEngine
         double pipeLen = data.TotalLengthM * 1000, D = data.PipeDiameterMm;
         double invStart = data.InvertRLStart * 1000, invEnd = data.InvertRLEnd * 1000;
 
-        doc.Entities.Add(new Line(new Vector3(0, data.RoadRLStart*1000, 0), new Vector3(pipeLen, data.RoadRLEnd*1000, 0)) { Layer = LayerRoad, Lineweight = Lineweight.W070 });
+        doc.Entities.Add(new Line(new Vector3(0, data.RoadRLStart*1000, 0), new Vector3(pipeLen, data.RoadRLEnd*1000, 0)) { Layer = LayerRoad, Lineweight = Lineweight.W70 });
         doc.Entities.Add(new Line(new Vector3(0, invStart, 0), new Vector3(pipeLen, invEnd, 0)) { Layer = LayerOutline });
         doc.Entities.Add(new Line(new Vector3(0, invStart+D, 0), new Vector3(pipeLen, invEnd+D, 0)) { Layer = LayerOutline });
-        doc.Entities.Add(new Line(new Vector3(0, invStart-200, 0), new Vector3(0, invStart+D+200, 0)) { Layer = LayerOutline, Lineweight = Lineweight.W070 });
-        doc.Entities.Add(new Line(new Vector3(pipeLen, invEnd-200, 0), new Vector3(pipeLen, invEnd+D+200, 0)) { Layer = LayerOutline, Lineweight = Lineweight.W070 });
+        doc.Entities.Add(new Line(new Vector3(0, invStart-200, 0), new Vector3(0, invStart+D+200, 0)) { Layer = LayerOutline, Lineweight = Lineweight.W70 });
+        doc.Entities.Add(new Line(new Vector3(pipeLen, invEnd-200, 0), new Vector3(pipeLen, invEnd+D+200, 0)) { Layer = LayerOutline, Lineweight = Lineweight.W70 });
         doc.Entities.Add(new Line(new Vector3(0, invStart+D/2, 0), new Vector3(pipeLen, invEnd+D/2, 0)) { Layer = LayerCentreline });
         doc.Entities.Add(new Line(new Vector3(0, invStart-150, 0), new Vector3(pipeLen, invEnd-150, 0)) { Layer = LayerHatch });
 
