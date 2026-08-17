@@ -1,0 +1,40 @@
+@* Views/Account/Register.cshtml *@
+@model CulvertCAD.Core.DTOs.RegisterDto
+@{ ViewData["Title"] = "Add New User"; }
+
+<div class="page">
+    <div class="page-header"><h1 class="page-title">Add New User</h1></div>
+
+    <form asp-action="Register" method="post" class="card" style="padding:1.5rem;max-width:600px">
+        @Html.AntiForgeryToken()
+        <div asp-validation-summary="All" class="alert-error"></div>
+
+        <div class="form-row-2">
+            <div class="fg"><label>Full Name *</label><input asp-for="FullName" class="fi" placeholder="Rajesh Kumar" /></div>
+            <div class="fg"><label>Email *</label><input asp-for="Email" type="email" class="fi" placeholder="rajesh@org.in" /></div>
+        </div>
+        <div class="form-row-2">
+            <div class="fg"><label>Employee Code</label><input asp-for="EmployeeCode" class="fi" placeholder="EMP005" /></div>
+            <div class="fg"><label>Designation</label><input asp-for="Designation" class="fi" placeholder="Design Engineer" /></div>
+        </div>
+        <div class="form-row-2">
+            <div class="fg"><label>Department</label><input asp-for="Department" class="fi" placeholder="Design" /></div>
+            <div class="fg"><label>Password *</label><input asp-for="Password" type="password" class="fi" placeholder="Min 8 chars" /></div>
+        </div>
+        <div class="fg">
+            <label>System Role</label>
+            <select name="role" class="fi">
+                <option value="SuperAdmin">Super Admin</option>
+                <option value="Admin">Admin</option>
+                <option value="DesignEngineer" selected>Design Engineer</option>
+                <option value="CheckingEngineer">Checking Engineer</option>
+                <option value="Viewer">Viewer (Read-only)</option>
+            </select>
+        </div>
+
+        <div class="modal-actions" style="margin-top:1rem">
+            <a asp-action="Users" class="btn-ghost">Cancel</a>
+            <button type="submit" class="btn-primary">Create User</button>
+        </div>
+    </form>
+</div>

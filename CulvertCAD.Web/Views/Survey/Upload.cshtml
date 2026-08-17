@@ -1,0 +1,33 @@
+@* Views/Survey/Upload.cshtml *@
+@{ ViewData["Title"] = "Upload Survey Data"; }
+
+<div class="page">
+    <div class="page-header">
+        <div>
+            <div class="breadcrumb"><a asp-controller="Projects" asp-action="Details" asp-route-id="@ViewBag.ProjectId">@ViewBag.ProjectName</a> / Survey Upload</div>
+            <h1 class="page-title">Upload Survey Data</h1>
+            <p class="page-sub">CSV format: PointNo, Northing, Easting, RL, Code</p>
+        </div>
+    </div>
+
+    <div class="card" style="padding:1.5rem;max-width:600px">
+        @if (!ViewData.ModelState.IsValid)
+        {
+            <div class="alert-error" asp-validation-summary="All"></div>
+        }
+        <form asp-action="Upload" asp-route-projectId="@ViewBag.ProjectId" method="post" enctype="multipart/form-data">
+            @Html.AntiForgeryToken()
+            <div class="fg">
+                <label>Survey CSV File *</label>
+                <input type="file" name="csvFile" accept=".csv" class="fi" required />
+            </div>
+            <div class="info-pill" style="margin-top:1rem">
+                ℹ️ Supported feature codes: C (centreline), L/R (edges), ex cd (existing culverts), TBM, Bridge, Str, FN, Tr, JR
+            </div>
+            <div class="modal-actions" style="margin-top:1.5rem">
+                <a asp-controller="Projects" asp-action="Details" asp-route-id="@ViewBag.ProjectId" class="btn-ghost">Cancel</a>
+                <button type="submit" class="btn-primary">Upload &amp; Process</button>
+            </div>
+        </form>
+    </div>
+</div>

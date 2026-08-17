@@ -1,0 +1,47 @@
+@* Views/Account/Login.cshtml *@
+@model CulvertCAD.Core.DTOs.LoginDto
+@{ Layout = null; }
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Sign In — CulvertCAD</title>
+    <link rel="stylesheet" href="~/css/site.css" />
+</head>
+<body>
+<div class="login-page">
+    <div class="login-bg"><div class="bg-grid"></div><div class="bg-orb orb-1"></div><div class="bg-orb orb-2"></div></div>
+    <div class="login-card">
+        <div class="login-brand">
+            <div class="brand-glyph">◈</div>
+            <h1>CulvertCAD</h1>
+            <p class="brand-sub">Pipe Culvert Design System</p>
+            <div class="is-chips"><span>IS 783</span><span>IS 458</span><span>IRC 89</span><span>IRC SP 13</span></div>
+        </div>
+
+        <form asp-controller="Account" asp-action="Login" asp-route-returnUrl="@ViewData["ReturnUrl"]" method="post" class="login-form">
+            @Html.AntiForgeryToken()
+            <div asp-validation-summary="ModelOnly" class="alert-error"></div>
+
+            <div class="field-group">
+                <label>Email Address</label>
+                <input asp-for="Email" type="email" class="field-input" placeholder="engineer@organisation.in" autocomplete="email" />
+            </div>
+            <div class="field-group">
+                <label>Password</label>
+                <input asp-for="Password" type="password" class="field-input" placeholder="••••••••" autocomplete="current-password" />
+            </div>
+            <div class="field-checkbox">
+                <input asp-for="RememberMe" type="checkbox" id="rememberMe" />
+                <label for="rememberMe">Remember me</label>
+            </div>
+
+            <button type="submit" class="btn-signin">Sign In →</button>
+        </form>
+
+        <p class="login-hint">Default: admin@culvertcad.in / Admin@123</p>
+        <footer class="login-footer">IS 783:1985 · IS 458:2003 · IRC 89:1997 · IRC SP 13:2004</footer>
+    </div>
+</div>
+</body>
+</html>

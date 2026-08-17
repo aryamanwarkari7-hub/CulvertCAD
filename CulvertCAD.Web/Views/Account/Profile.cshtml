@@ -1,0 +1,19 @@
+@* Views/Account/Profile.cshtml *@
+@model CulvertCAD.Core.DTOs.UserProfileDto
+@{ ViewData["Title"] = "My Profile"; }
+
+<div class="page">
+    <div class="page-header"><h1 class="page-title">My Profile</h1></div>
+
+    <div class="card" style="padding:1.5rem;max-width:600px">
+        <div class="param-list">
+            <div class="pr"><span class="pr-l">Full Name</span><span class="pr-v">@Model.FullName</span></div>
+            <div class="pr"><span class="pr-l">Email</span><span class="pr-v">@Model.Email</span></div>
+            <div class="pr"><span class="pr-l">Employee Code</span><span class="pr-v">@(Model.EmployeeCode ?? "—")</span></div>
+            <div class="pr"><span class="pr-l">Designation</span><span class="pr-v">@(Model.Designation ?? "—")</span></div>
+            <div class="pr"><span class="pr-l">Department</span><span class="pr-v">@(Model.Department ?? "—")</span></div>
+            <div class="pr"><span class="pr-l">Roles</span><span class="pr-v">@string.Join(", ", Model.Roles)</span></div>
+            <div class="pr"><span class="pr-l">Last Login</span><span class="pr-v">@(Model.LastLoginAt?.ToString("dd MMM yyyy HH:mm") ?? "—")</span></div>
+        </div>
+    </div>
+</div>

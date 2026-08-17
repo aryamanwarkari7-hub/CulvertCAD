@@ -1,0 +1,76 @@
+@* Views/Designs/Create.cshtml *@
+@model CulvertCAD.Core.DTOs.CreateDesignDto
+@{ ViewData["Title"] = "New Design"; }
+
+<div class="page">
+    <div class="page-header">
+        <div>
+            <div class="breadcrumb"><a asp-controller="Projects" asp-action="Index">Projects</a> / <a asp-controller="Projects" asp-action="Details" asp-route-id="@ViewBag.ProjectId">@ViewBag.ProjectName</a> / New Design</div>
+            <h1 class="page-title">New Culvert Design</h1>
+        </div>
+    </div>
+
+    <form asp-action="Create" asp-route-projectId="@ViewBag.ProjectId" method="post" class="card" style="padding:1.5rem">
+        @Html.AntiForgeryToken()
+        <div asp-validation-summary="All" class="alert-error"></div>
+
+        <h3 class="wz-h">General Information</h3>
+        <div class="form-row-2">
+            <div class="fg"><label>Design Name *</label><input asp-for="DesignName" class="fi" placeholder="Culvert at Ch. 89+450" /></div>
+            <div class="fg"><label>Design Code</label><input asp-for="DesignCode" class="fi" placeholder="NH48-CUL-001" /></div>
+        </div>
+        <div class="form-row-2">
+            <div class="fg"><label>Location</label><input asp-for="CulvertLocation" class="fi" /></div>
+            <div class="fg"><label>Chainage</label><input asp-for="Chainage" class="fi" placeholder="89+450" /></div>
+        </div>
+        <div class="fg"><label>Culvert Type</label>
+            <select asp-for="CulvertType" class="fi">
+                <option value="SinglePipe">Single Pipe</option><option value="MultiplePipe">Multiple Pipe</option>
+                <option value="Box">Box Culvert</option><option value="Arch">Arch Culvert</option>
+            </select>
+        </div>
+
+        <h3 class="wz-h" style="margin-top:1.5rem">Hydrological Design</h3>
+        <div class="info-pill">ℹ️ Rational Method: Q = C·I·A / 360 (IS SP 13 Cl.4)</div>
+        <div class="form-row-2">
+            <div class="fg"><label>Catchment Area (ha)</label><input asp-for="CatchmentAreaHa" type="number" step="0.01" class="fi" /></div>
+            <div class="fg"><label>Rainfall Intensity (mm/hr)</label><input asp-for="RainfallIntensityMmHr" type="number" step="0.1" class="fi" placeholder="80" /></div>
+        </div>
+        <div class="form-row-2">
+            <div class="fg"><label>Runoff Coefficient C</label><input asp-for="RunoffCoefficient" type="number" step="0.01" class="fi" placeholder="0.55" /></div>
+            <div class="fg"><label>Design Discharge Q (override)</label><input asp-for="DesignDischargeQ" type="number" step="0.001" class="fi" placeholder="auto-calculated if blank" /></div>
+        </div>
+
+        <h3 class="wz-h" style="margin-top:1.5rem">Structural Parameters</h3>
+        <div class="info-pill">ℹ️ Earth load: Marston's Formula (IS 783 Cl.5.1) · Live load: IS 783 Table 1</div>
+        <div class="form-row-2">
+            <div class="fg"><label>Fill Height H (m)</label><input asp-for="FillHeightM" type="number" step="0.1" class="fi" /></div>
+            <div class="fg"><label>Roadway Width (m)</label><input asp-for="RoadwayWidthM" type="number" step="0.5" class="fi" value="7.5" /></div>
+        </div>
+        <div class="form-row-2">
+            <div class="fg"><label>Bed Slope (%)</label><input asp-for="SlopePercent" type="number" step="0.1" class="fi" value="0.5" /></div>
+            <div class="fg"><label>Soil Unit Weight (kN/m³)</label><input asp-for="SoilUnitWeightKNm3" type="number" step="0.5" class="fi" value="18.5" /></div>
+        </div>
+        <div class="fg"><label>Soil Type</label><input asp-for="SoilType" class="fi" placeholder="Medium Clay" /></div>
+
+        <h3 class="wz-h" style="margin-top:1.5rem">Design Standards</h3>
+        <div class="fg"><label>Design Standard</label>
+            <select asp-for="DesignStandard" class="fi">
+                <option value="IRC 89:1997">IRC 89:1997 — Road Culverts</option>
+                <option value="IRC SP 13:2004">IRC SP 13:2004 — Small Bridges</option>
+            </select>
+        </div>
+        <div class="fg"><label>Loading Class</label>
+            <select asp-for="LoadClass" class="fi">
+                <option value="IRC_ClassA">IRC Class A</option><option value="IRC_ClassAA">IRC Class AA</option>
+                <option value="IRC_70R">IRC 70R</option><option value="IRC_ClassB">IRC Class B</option>
+            </select>
+        </div>
+        <div class="fg"><label>Change Description</label><input asp-for="ChangeDescription" class="fi" value="Initial Design (R0)" /></div>
+
+        <div class="modal-actions" style="margin-top:1.5rem">
+            <a asp-controller="Projects" asp-action="Details" asp-route-id="@ViewBag.ProjectId" class="btn-ghost">Cancel</a>
+            <button type="submit" class="btn-success">✓ Create Design &amp; Calculate</button>
+        </div>
+    </form>
+</div>

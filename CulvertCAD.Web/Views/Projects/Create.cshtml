@@ -1,0 +1,35 @@
+@* Views/Projects/Create.cshtml *@
+@model CulvertCAD.Core.DTOs.CreateProjectDto
+@{ ViewData["Title"] = "New Project"; }
+
+<div class="page">
+    <div class="page-header"><h1 class="page-title">Create New Project</h1></div>
+
+    <form asp-action="Create" method="post" class="card" style="padding:1.5rem;max-width:700px">
+        @Html.AntiForgeryToken()
+        <div asp-validation-summary="All" class="alert-error"></div>
+
+        <div class="form-row-2">
+            <div class="fg"><label>Project Name *</label><input asp-for="ProjectName" class="fi" placeholder="NH-48 Widening Phase II" /></div>
+            <div class="fg"><label>Project Code *</label><input asp-for="ProjectCode" class="fi" placeholder="NH48-PH2-2024" /></div>
+        </div>
+        <div class="form-row-2">
+            <div class="fg"><label>Client Name</label><input asp-for="ClientName" class="fi" placeholder="NHAI" /></div>
+            <div class="fg"><label>Consultant</label><input asp-for="ConsultantName" class="fi" placeholder="STUP Consultants" /></div>
+        </div>
+        <div class="form-row-2">
+            <div class="fg"><label>State</label><input asp-for="State" class="fi" placeholder="Maharashtra" /></div>
+            <div class="fg"><label>District</label><input asp-for="District" class="fi" placeholder="Pune" /></div>
+        </div>
+        <div class="fg"><label>Road Name</label><input asp-for="RoadName" class="fi" placeholder="NH-48 Pune–Bangalore" /></div>
+        <div class="form-row-2">
+            <div class="fg"><label>Chainage From</label><input asp-for="ChainageFrom" class="fi" placeholder="78+200" /></div>
+            <div class="fg"><label>Chainage To</label><input asp-for="ChainageTo" class="fi" placeholder="145+600" /></div>
+        </div>
+
+        <div class="modal-actions" style="margin-top:1rem">
+            <a asp-action="Index" class="btn-ghost">Cancel</a>
+            <button type="submit" class="btn-primary">Create Project</button>
+        </div>
+    </form>
+</div>

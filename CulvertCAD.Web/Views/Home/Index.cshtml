@@ -1,0 +1,72 @@
+@* Views/Home/Index.cshtml *@
+@model CulvertCAD.Core.DTOs.DashboardDto
+@{ ViewData["Title"] = "Dashboard"; }
+
+<div class="page">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Dashboard</h1>
+            <p class="page-sub">Welcome back, @User.FindFirst("FullName")?.Value</p>
+        </div>
+        <a asp-controller="Projects" asp-action="Create" class="btn-primary">＋ New Project</a>
+    </div>
+
+    <div class="stat-grid">
+        <div class="stat-card"><div class="stat-icon" style="background:#f0883e22;color:#f0883e">📁</div><div class="stat-body"><div class="stat-val">@Model.TotalProjects</div><div class="stat-lbl">Total Projects</div></div></div>
+        <div class="stat-card"><div class="stat-icon" style="background:#3fb95022;color:#3fb950">✅</div><div class="stat-body"><div class="stat-val">@Model.ActiveProjects</div><div class="stat-lbl">Active Projects</div></div></div>
+        <div class="stat-card"><div class="stat-icon" style="background:#58a6ff22;color:#58a6ff">📐</div><div class="stat-body"><div class="stat-val">@Model.TotalDesigns</div><div class="stat-lbl">Total Designs</div></div></div>
+        <div class="stat-card"><div class="stat-icon" style="background:#d2992222;color:#d29922">⏳</div><div class="stat-body"><div class="stat-val">@Model.PendingReviews</div><div class="stat-lbl">Pending Reviews</div></div></div>
+        <div class="stat-card"><div class="stat-icon" style="background:#bc8cff22;color:#bc8cff">🏆</div><div class="stat-body"><div class="stat-val">@Model.ApprovedDesigns</div><div class="stat-lbl">Approved Designs</div></div></div>
+    </div>
+
+    <div class="dash-cols">
+        <div class="card">
+            <div class="card-hd"><h3>Recent Activity</h3></div>
+            <div class="activity-feed">
+                @if (!Model.RecentActivity.Any())
+                {
+                    <div class="empty-feed">No recent activity</div>
+                }
+                else
+                {
+                    @foreach (var a in Model.RecentActivity)
+                    {
+                        <div class="act-row">
+                            <div class="act-dot" style="background:@StatusColor(a.Type)"></div>
+                            <div class="act-body">
+                                <span class="act-desc">@a.Description</span>
+                                <span class="act-meta">@a.UserName · @a.Timestamp.ToString("dd MMM yyyy")</span>
+                            </div>
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-hd"><h3>My Projects</h3></div>
+            <div class="quick-actions">
+                @foreach (var p in Model.MyProjects)
+                {
+                    <a asp-controller="Projects" asp-action="Details" asp-route-id="@p.Id" class="qa-btn">
+                        <span>📁 @p.ProjectCode — @p.ProjectName (@p.DesignCount designs)</span>
+                    </a>
+                }
+            </div>
+            <div class="is-codes-panel">
+                <h4>Design Standards</h4>
+                <div class="is-code-item"><span class="is-dot"></span><span>IS 783:1985 — Laying of Concrete Pipes</span></div>
+                <div class="is-code-item"><span class="is-dot"></span><span>IS 458:2003 — Precast Concrete Pipes</span></div>
+                <div class="is-code-item"><span class="is-dot"></span><span>IRC 89:1997 — Road Culverts</span></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@functions {
+    string StatusColor(string s) => s switch
+    {
+        "Approved" => "#3fb950", "Submitted" => "#d29922",
+        "UnderReview" => "#58a6ff", "RevisionRequired" => "#f85149", _ => "#6b7280"
+    };
+}

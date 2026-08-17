@@ -1,0 +1,41 @@
+@* Views/Account/Users.cshtml *@
+@model List<CulvertCAD.Core.DTOs.UserProfileDto>
+@{ ViewData["Title"] = "Users"; }
+
+<div class="page">
+    <div class="page-header">
+        <div><h1 class="page-title">Users</h1><p class="page-sub">@Model.Count registered user@(Model.Count != 1 ? "s" : "")</p></div>
+        <a asp-action="Register" class="btn-primary">＋ Add User</a>
+    </div>
+
+    <table class="dt">
+        <thead><tr><th>Name</th><th>Email</th><th>Employee</th><th>Designation</th><th>Roles</th><th>Status</th><th>Last Login</th></tr></thead>
+        <tbody>
+        @foreach (var u in Model)
+        {
+            <tr>
+                <td><strong>@u.FullName</strong></td>
+                <td>@u.Email</td>
+                <td><code>@(u.EmployeeCode ?? "—")</code></td>
+                <td>@(u.Designation ?? "—")</td>
+                <td>
+                    @foreach (var r in u.Roles)
+                    {
+                        <span class="badge @RoleBadge(r)">@r</span>
+                    }
+                </td>
+                <td><span class="badge @(u.IsActive ? "badge-green" : "badge-red")">@(u.IsActive ? "Active" : "Inactive")</span></td>
+                <td>@(u.LastLoginAt?.ToString("dd MMM yyyy") ?? "Never")</td>
+            </tr>
+        }
+        </tbody>
+    </table>
+</div>
+
+@functions {
+    string RoleBadge(string r) => r switch
+    {
+        "SuperAdmin" => "badge-red", "Admin" => "badge-blue",
+        "DesignEngineer" => "badge-green", "CheckingEngineer" => "badge-yellow", _ => "badge-gray"
+    };
+}

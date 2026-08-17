@@ -1,0 +1,34 @@
+@* Views/BOQ/Generate.cshtml *@
+@model CulvertCAD.Core.DTOs.BOQReportDto
+@{ ViewData["Title"] = "Bill of Quantities"; }
+
+<div class="page">
+    <div class="page-header">
+        <div><h1 class="page-title">Bill of Quantities</h1><p class="page-sub">@Model.ProjectName — @Model.ProjectCode</p></div>
+        <button onclick="window.print()" class="btn-primary">🖨 Print / Export PDF</button>
+    </div>
+
+    <div class="card">
+        <table class="dt">
+            <thead><tr><th>Item No.</th><th>Description</th><th>Unit</th><th>Qty</th><th>Rate (₹)</th><th>Amount (₹)</th></tr></thead>
+            <tbody>
+            @foreach (var item in Model.Items)
+            {
+                <tr>
+                    <td>@item.ItemNo</td>
+                    <td>@item.Description</td>
+                    <td>@item.Unit</td>
+                    <td>@item.Quantity.ToString("0.00")</td>
+                    <td>@item.RateRs.ToString("N2")</td>
+                    <td>@item.AmountRs.ToString("N2")</td>
+                </tr>
+            }
+            <tr style="font-weight:700;background:#1c2128">
+                <td colspan="5" style="text-align:right">TOTAL</td>
+                <td>₹ @Model.TotalAmountRs.ToString("N2")</td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+    <p class="table-note">Generated @Model.GeneratedAt.ToString("dd MMM yyyy HH:mm") · Rates indicative per Maharashtra PWD SoR · Update with current SoR before tender</p>
+</div>

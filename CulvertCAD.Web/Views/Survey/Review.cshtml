@@ -1,0 +1,87 @@
+@* Views/Survey/Review.cshtml *@
+@using CulvertCAD.Core.DTOs
+@using CulvertCAD.Core.Entities
+@model SurveyDocument
+@{
+    ViewData["Title"] = "Survey Analysis";
+    var summary = ViewBag.Summary as SurveySummaryDto;
+    var locations = ViewBag.Locations as List<DetectedCulvertLocation> ?? new();
+    var tbms = ViewBag.TBMs as List<TBMPoint> ?? new();
+}
+
+<div class="page">
+    <div class="page-header">
+        <div>
+            <div class="breadcrumb"><a asp-controller="Projects" asp-action="Details" asp-route-id="@ViewBag.ProjectId">@ViewBag.ProjectName</a> / Survey Analysis</div>
+            <h1 class="page-title">Survey Analysis — @Model.FileName</h1>
+            <p class="page-sub">Uploaded @Model.UploadedAt.ToString("dd MMM yyyy HH:mm")</p>
+        </div>
+    </div>
+
+    <div class="stat-grid">
+        <div class="stat-card"><div class="stat-icon" style="background:#58a6ff22;color:#58a6ff">📍</div><div class="stat-body"><div class="stat-val">@summary?.TotalPoints</div><div class="stat-lbl">Total Points</div></div></div>
+        <div class="stat-card"><div class="stat-icon" style="background:#f0883e22;color:#f0883e">📏</div><div class="stat-body"><div class="stat-val">@((summary?.AlignmentLengthM/1000)?.ToString("0.00"))km</div><div class="stat-lbl">Alignment Length</div></div></div>
+        <div class="stat-card"><div class="stat-icon" style="background:#3fb95022;color:#3fb950">🚰</div><div class="stat-body"><div class="stat-val">@summary?.DetectedCulverts</div><div class="stat-lbl">Detected Culverts</div></div></div>
+        <div class="stat-card"><div class="stat-icon" style="background:#d2992222;color:#d29922">📐</div><div class="stat-body"><div class="stat-val">@summary?.TBMCount</div><div class="stat-lbl">TBMs</div></div></div>
+        <div class="stat-card"><div class="stat-icon" style="background:#bc8cff22;color:#bc8cff">🌉</div><div class="stat-body"><div class="stat-val">@summary?.BridgePoints</div><div class="stat-lbl">Bridge Points</div></div></div>
+    </div>
+
+    <div class="card">
+        <div class="card-hd"><h3>Detected Culvert Locations</h3><span class="badge badge-gray">@locations.Count locations</span></div>
+        <table class="dt">
+            <thead><tr><th>#</th><th>Chainage</th><th>Invert RL</th><th>Road RL</th><th>Fill H</th><th>Bed Slope</th><th>Survey Pts</th><th>Status</th><th></th></tr></thead>
+            <tbody>
+            @foreach (var loc in locations)
+            {
+                int chKm = (int)(loc.Chainage / 1000); int chM = (int)(loc.Chainage % 1000);
+                <tr>
+                    <td>@loc.LocationIndex</td>
+                    <td><code>@chKm+@chM.ToString("D3")</code></td>
+                    <td>@loc.InvertRL.ToString("0.000")</td>
+                    <td>@loc.RoadRL.ToString("0.000")</td>
+                    <td>@loc.FillHeightM.ToString("0.000")</td>
+                    <td>@loc.BedSlopePct.ToString("0.000")%
+                        @if (loc.BedSlopePct < 0.2) { <span class="badge badge-yellow badge-xs">flat</span> }
+                    </td>
+                    <td>@loc.SurveyPointCount</td>
+                    <td>
+                        @if (loc.DesignId.HasValue)
+                        { <span class="badge badge-green">Design Created</span> }
+                        else if (loc.IsConfirmed)
+                        { <span class="badge badge-blue">Confirmed</span> }
+                        else
+                        { <span class="badge badge-gray">Pending</span> }
+                    </td>
+                    <td>
+                        @if (!loc.DesignId.HasValue)
+                        {
+                            <form asp-action="CreateDesignFromLocation" asp-route-projectId="@ViewBag.ProjectId" asp-route-locationIndex="@loc.LocationIndex" method="post" style="display:inline">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="btn-xs">＋ Create Design</button>
+                            </form>
+                        }
+                        else
+                        {
+                            <a asp-controller="Designs" asp-action="Details" asp-route-id="@loc.DesignId" class="btn-xs">View →</a>
+                        }
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+
+    <div class="card mt-6">
+        <div class="card-hd"><h3>Temporary Benchmarks (TBM)</h3></div>
+        <table class="dt">
+            <thead><tr><th>Name</th><th>RL (m)</th><th>Chainage</th></tr></thead>
+            <tbody>
+            @foreach (var t in tbms)
+            {
+                int chKm = (int)((t.Chainage ?? 0) / 1000); int chM = (int)((t.Chainage ?? 0) % 1000);
+                <tr><td>@t.Name</td><td>@t.RL.ToString("0.000")</td><td><code>@chKm+@chM.ToString("D3")</code></td></tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>

@@ -1,0 +1,70 @@
+@* Views/Shared/_Layout.cshtml *@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] — CulvertCAD</title>
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="icon" href="data:,">
+</head>
+<body>
+    @if (User.Identity?.IsAuthenticated == true)
+    {
+        <div class="app-shell">
+            <aside class="sidebar">
+                <div class="sidebar-header">
+                    <a asp-controller="Home" asp-action="Index" class="logo">
+                        <span class="logo-glyph">◈</span>
+                        <span class="logo-text">CulvertCAD</span>
+                    </a>
+                </div>
+                <nav class="sidebar-nav">
+                    <a asp-controller="Home" asp-action="Index" class="nav-item">
+                        <span class="nav-icon">⬡</span><span>Dashboard</span>
+                    </a>
+                    <a asp-controller="Projects" asp-action="Index" class="nav-item">
+                        <span class="nav-icon">📁</span><span>Projects</span>
+                    </a>
+                    @if (User.IsInRole("SuperAdmin") || User.IsInRole("Admin"))
+                    {
+                        <a asp-controller="Account" asp-action="Users" class="nav-item">
+                            <span class="nav-icon">👥</span><span>Users</span>
+                        </a>
+                    }
+                </nav>
+                <div class="sidebar-footer">
+                    <div class="user-chip">
+                        <div class="avatar">@(User.Identity?.Name?.FirstOrDefault().ToString() ?? "?")</div>
+                        <div class="user-meta">
+                            <span class="user-name">@User.FindFirst("FullName")?.Value</span>
+                        </div>
+                    </div>
+                    <form asp-controller="Account" asp-action="Logout" method="post" style="display:inline">
+                        <button type="submit" class="logout-btn" title="Sign out">⏻</button>
+                    </form>
+                </div>
+            </aside>
+            <main class="main-area">
+                @if (TempData["Success"] != null)
+                {
+                    <div class="alert alert-success">@TempData["Success"]</div>
+                }
+                @if (TempData["Error"] != null)
+                {
+                    <div class="alert alert-error">@TempData["Error"]</div>
+                }
+                @RenderBody()
+            </main>
+        </div>
+    }
+    else
+    {
+        @RenderBody()
+    }
+
+    <script src="~/lib/jquery/jquery.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>
