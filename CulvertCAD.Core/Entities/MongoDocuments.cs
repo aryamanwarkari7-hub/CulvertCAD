@@ -139,6 +139,20 @@ public class CalculationResultDocument
     public Dictionary<string, object> InputSnapshot { get; set; } = new();
 }
 
+public class RevisionInputDocument
+{
+    [BsonId]
+    [BsonRepresentation(BsonType.ObjectId)]
+    public string Id { get; set; } = string.Empty;
+
+    public int DesignId { get; set; }
+    public int RevisionId { get; set; }
+
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    public RevisionEngineeringInput Input { get; set; } = new();
+}
+
 public class CalcStep
 {
     public string Label   { get; set; } = string.Empty;

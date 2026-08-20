@@ -56,6 +56,7 @@ builder.Services.ConfigureApplicationCookie(opt =>
 // ── Repositories ──────────────────────────────────────────────────────────────
 builder.Services.AddScoped<ISurveyRepository, SurveyRepository>();
 builder.Services.AddScoped<ICalcResultRepository, CalcResultRepository>();
+builder.Services.AddScoped<IRevisionInputRepository, RevisionInputRepository>();
 builder.Services.AddScoped<IDrawingRepository, DrawingRepository>();
 builder.Services.AddScoped<IAlignmentRepository, AlignmentRepository>();
 builder.Services.AddScoped<IBatchRunRepository, BatchRunRepository>();

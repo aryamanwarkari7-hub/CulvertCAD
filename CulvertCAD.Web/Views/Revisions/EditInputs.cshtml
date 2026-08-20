@@ -1,0 +1,175 @@
+﻿@model CulvertCAD.Core.Entities.RevisionEngineeringInput
+
+@{
+    ViewData["Title"] = $"Edit Revision {ViewBag.RevisionNumber}";
+}
+
+<div class="page">
+    <div class="page-header">
+        <div>
+            <div class="breadcrumb">
+                <a asp-controller="Revisions"
+                   asp-action="Details"
+                   asp-route-id="@ViewBag.RevisionId">
+                    Revision @ViewBag.RevisionNumber
+                </a>
+                / Edit Inputs
+            </div>
+
+            <h1 class="page-title">
+                Edit Revision @ViewBag.RevisionNumber
+            </h1>
+
+            <p class="page-sub">
+                Modify the engineering inputs for this draft revision.
+            </p>
+        </div>
+    </div>
+
+    <form asp-controller="Revisions"
+          asp-action="EditInputs"
+          asp-route-id="@ViewBag.RevisionId"
+          method="post">
+
+        @Html.AntiForgeryToken()
+
+        <div class="card">
+            <div class="card-hd">
+                <h3>Design Context</h3>
+            </div>
+
+            <div class="form-grid">
+                <div class="fg">
+                    <label asp-for="CulvertType">Culvert Type</label>
+                    <input asp-for="CulvertType" class="fi" />
+                </div>
+
+                <div class="fg">
+                    <label asp-for="CulvertLocation">Culvert Location</label>
+                    <input asp-for="CulvertLocation" class="fi" />
+                </div>
+
+                <div class="fg">
+                    <label asp-for="Chainage">Chainage</label>
+                    <input asp-for="Chainage" class="fi" />
+                </div>
+
+                <div class="fg">
+                    <label asp-for="DesignStandard">Design Standard</label>
+                    <input asp-for="DesignStandard" class="fi" />
+                </div>
+            </div>
+        </div>
+
+        <div class="card mt-6">
+            <div class="card-hd">
+                <h3>Hydrology</h3>
+            </div>
+
+            <div class="form-grid">
+                <div class="fg">
+                    <label asp-for="CatchmentAreaHa">Catchment Area (ha)</label>
+                    <input asp-for="CatchmentAreaHa" class="fi" />
+                </div>
+
+                <div class="fg">
+                    <label asp-for="RainfallIntensityMmHr">Rainfall Intensity (mm/hr)</label>
+                    <input asp-for="RainfallIntensityMmHr" class="fi" />
+                </div>
+
+                <div class="fg">
+                    <label asp-for="RunoffCoefficient">Runoff Coefficient</label>
+                    <input asp-for="RunoffCoefficient" class="fi" />
+                </div>
+
+                <div class="fg">
+                    <label asp-for="DesignDischargeQ">Design Discharge Q (m³/s)</label>
+                    <input asp-for="DesignDischargeQ" class="fi" />
+                </div>
+
+                <div class="fg">
+                    <label asp-for="ReturnPeriodYrs">Return Period (years)</label>
+                    <input asp-for="ReturnPeriodYrs" class="fi" />
+                </div>
+
+                <div class="fg">
+                    <label asp-for="HydroMethod">Hydrological Method</label>
+                    <input asp-for="HydroMethod" class="fi" />
+                </div>
+            </div>
+        </div>
+
+        <div class="card mt-6">
+            <div class="card-hd">
+                <h3>Hydraulic / Geometry</h3>
+            </div>
+
+            <div class="form-grid">
+                <div class="fg">
+                    <label asp-for="FillHeightM">Fill Height (m)</label>
+                    <input asp-for="FillHeightM" class="fi" />
+                </div>
+
+                <div class="fg">
+                    <label asp-for="RoadwayWidthM">Roadway Width (m)</label>
+                    <input asp-for="RoadwayWidthM" class="fi" />
+                </div>
+
+                <div class="fg">
+                    <label asp-for="SlopePercent">Slope (%)</label>
+                    <input asp-for="SlopePercent" class="fi" />
+                </div>
+
+                <div class="fg">
+                    <label asp-for="SkewAngleDeg">Skew Angle (°)</label>
+                    <input asp-for="SkewAngleDeg" class="fi" />
+                </div>
+            </div>
+        </div>
+
+        <div class="card mt-6">
+            <div class="card-hd">
+                <h3>Structural / Geotechnical</h3>
+            </div>
+
+            <div class="form-grid">
+                <div class="fg">
+                    <label asp-for="SoilType">Soil Type</label>
+                    <input asp-for="SoilType" class="fi" />
+                </div>
+
+                <div class="fg">
+                    <label asp-for="SoilUnitWeightKNm3">
+                        Soil Unit Weight (kN/m³)
+                    </label>
+                    <input asp-for="SoilUnitWeightKNm3" class="fi" />
+                </div>
+
+                <div class="fg">
+                    <label asp-for="BearingCapacityKNm2">
+                        Bearing Capacity (kN/m²)
+                    </label>
+                    <input asp-for="BearingCapacityKNm2" class="fi" />
+                </div>
+
+                <div class="fg">
+                    <label asp-for="LoadClass">Load Class</label>
+                    <input asp-for="LoadClass" class="fi" />
+                </div>
+            </div>
+        </div>
+
+        <div class="action-row mt-6">
+            <a asp-controller="Revisions"
+               asp-action="Details"
+               asp-route-id="@ViewBag.RevisionId"
+               class="btn-ghost">
+                Cancel
+            </a>
+
+            <button type="submit" class="btn-primary">
+                Save & Recalculate
+            </button>
+        </div>
+    </form>
+</div>

@@ -10,27 +10,77 @@
             <p class="page-sub">@Model.RevisionPurpose · @Model.RevisionDate.ToString("dd MMM yyyy")</p>
         </div>
         <div class="action-row">
-            @if (Model.Status == "Draft")
+
+            @if (Model.Status == "RevisionRequired" && !Model.IsLocked)
             {
-                <button onclick="openAction('Submit','Submit for Review')" class="btn-primary">↑ Submit for Review</button>
+                <button onclick="openAction('StartRevision','Start Revision')"
+                        class="btn-primary">
+                    ✎ Start Revision
+                </button>
             }
-            @if (Model.Status == "Submitted" && (User.IsInRole("SuperAdmin") || User.IsInRole("Admin") || User.IsInRole("CheckingEngineer")))
+
+            @if (Model.Status == "Draft" && !Model.IsLocked)
             {
-                <button onclick="openAction('StartReview','Start Review')" class="btn-primary">🔍 Start Review</button>
+                <a asp-controller="Revisions"
+                   asp-action="EditInputs"
+                   asp-route-id="@Model.Id"
+                   class="btn-ghost">
+                    ✎ Edit Inputs
+                </a>
+
+                <button onclick="openAction('Submit','Submit for Review')"
+                        class="btn-primary">
+                    ↑ Submit for Review
+                </button>
             }
+
+            @if (Model.Status == "Submitted" &&
+                (User.IsInRole("SuperAdmin") ||
+                 User.IsInRole("Admin") ||
+                 User.IsInRole("CheckingEngineer")))
+            {
+                <button onclick="openAction('StartReview','Start Review')"
+                        class="btn-primary">
+                    🔍 Start Review
+                </button>
+            }
+
             @if (Model.Status == "UnderReview")
             {
-                @if (User.IsInRole("SuperAdmin") || User.IsInRole("Admin") || User.IsInRole("CheckingEngineer"))
+                @if (User.IsInRole("SuperAdmin") ||
+                     User.IsInRole("Admin") ||
+                     User.IsInRole("CheckingEngineer"))
                 {
-                    <button onclick="openAction('RequestChanges','Request Changes')" class="btn-warn">↩ Request Changes</button>
+                    <button onclick="openAction('RequestChanges','Request Changes')"
+                            class="btn-warn">
+                        ↩ Request Changes
+                    </button>
                 }
-                @if (User.IsInRole("SuperAdmin") || User.IsInRole("Admin"))
+
+                @if (User.IsInRole("SuperAdmin") ||
+                     User.IsInRole("Admin"))
                 {
-                    <button onclick="openAction('Approve','Approve Revision')" class="btn-success">✓ Approve</button>
+                    <button onclick="openAction('Approve','Approve Revision')"
+                            class="btn-success">
+                        ✓ Approve
+                    </button>
                 }
             }
-            <a asp-controller="Drawings" asp-action="Viewer" asp-route-revisionId="@Model.Id" class="btn-ghost">🎨 3D Viewer</a>
-            <a asp-controller="BOQ" asp-action="Generate" asp-route-revisionId="@Model.Id" class="btn-ghost">📋 BOQ</a>
+
+            <a asp-controller="Drawings"
+               asp-action="Viewer"
+               asp-route-revisionId="@Model.Id"
+               class="btn-ghost">
+                🎨 3D Viewer
+            </a>
+
+            <a asp-controller="BOQ"
+               asp-action="Generate"
+               asp-route-revisionId="@Model.Id"
+               class="btn-ghost">
+                📋 BOQ
+            </a>
+
         </div>
     </div>
 

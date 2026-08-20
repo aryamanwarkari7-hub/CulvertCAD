@@ -9,6 +9,9 @@ namespace CulvertCAD.Application.Services;
 public interface IDesignCalculationService
 {
     Task<CalculationResultDocument> CalculateAsync(CulvertDesign design);
+
+    Task<CalculationResultDocument> CalculateAsync(
+        RevisionEngineeringInput input);
     HydraulicResult CalculateHydraulic(double Q, double slopePct, int nPipes = 1);
     StructuralResult CalculateStructural(double H, int diaMm, string loadClass, double gammaSoil = 18.5);
 }
@@ -22,55 +25,132 @@ public class DesignCalculationService : IDesignCalculationService
 
     public async Task<CalculationResultDocument> CalculateAsync(CulvertDesign design)
     {
-        double Q = design.DesignDischargeQ.HasValue
-            ? (double)design.DesignDischargeQ.Value
-            : CalculateRationalQ((double)(design.RunoffCoefficient ?? 0.55m),
-                                  (double)(design.RainfallIntensityMmHr ?? 80m),
-                                  (double)(design.CatchmentAreaHa ?? 10m));
+        var input = new RevisionEngineeringInput
+        {
+            DesignId = design.Id,
 
-        double slope  = (double)(design.SlopePercent ?? 0.5m);
-        double H      = (double)(design.FillHeightM ?? 0.5m);
-        double gamma  = (double)design.SoilUnitWeightKNm3;
-        string lc     = design.LoadClass.ToString();
+            CulvertType = design.CulvertType,
+            CulvertLocation = design.CulvertLocation,
+            Chainage = design.Chainage,
+
+            CatchmentAreaHa = design.CatchmentAreaHa,
+            RainfallIntensityMmHr = design.RainfallIntensityMmHr,
+            RunoffCoefficient = design.RunoffCoefficient,
+            DesignDischargeQ = design.DesignDischargeQ,
+            ReturnPeriodYrs = design.ReturnPeriodYrs,
+            HydroMethod = design.HydroMethod,
+
+            FillHeightM = design.FillHeightM,
+            RoadwayWidthM = design.RoadwayWidthM,
+            SlopePercent = design.SlopePercent,
+            SkewAngleDeg = design.SkewAngleDeg,
+
+            SoilType = design.SoilType,
+            SoilUnitWeightKNm3 = design.SoilUnitWeightKNm3,
+            BearingCapacityKNm2 = design.BearingCapacityKNm2,
+            LoadClass = design.LoadClass,
+
+            DesignStandard = design.DesignStandard
+        };
+
+        return await CalculateAsync(input);
+    }
+
+
+    public async Task<CalculationResultDocument> CalculateAsync(
+        RevisionEngineeringInput input)
+    {
+        double Q = input.DesignDischargeQ.HasValue
+            ? (double)input.DesignDischargeQ.Value
+            : CalculateRationalQ(
+                (double)(input.RunoffCoefficient ?? 0.55m),
+                (double)(input.RainfallIntensityMmHr ?? 80m),
+                (double)(input.CatchmentAreaHa ?? 10m));
+
+        double slope = (double)(input.SlopePercent ?? 0.5m);
+        double H = (double)(input.FillHeightM ?? 0.5m);
+        double gamma = (double)(input.SoilUnitWeightKNm3 ?? 18.5m);
+        string lc = input.LoadClass.ToString();
 
         var hyd = CalculateHydraulic(Q, slope);
-        var str = CalculateStructural(H, hyd.DiameterMm, lc, gamma);
-        var pipe = await SelectPipeAsync(str.RequiredCrushKNm, hyd.DiameterMm);
+
+        var str = CalculateStructural(
+            H,
+            hyd.DiameterMm,
+            lc,
+            gamma);
+
+        var pipe = await SelectPipeAsync(
+            str.RequiredCrushKNm,
+            hyd.DiameterMm);
 
         double fos = pipe != null
-            ? (double)pipe.UltimateCrushingLoadKNperM * str.BeddingFactor / str.TotalLoad
+            ? (double)pipe.UltimateCrushingLoadKNperM
+                * str.BeddingFactor
+                / str.TotalLoad
             : 0;
 
         return new CalculationResultDocument
         {
-            DesignId              = design.Id,
-            CalculatedAt          = DateTime.UtcNow,
-            CatchmentAreaHa       = (double)(design.CatchmentAreaHa ?? 0),
-            RainfallIntensityMmHr = (double)(design.RainfallIntensityMmHr ?? 80),
-            RunoffCoefficient     = (double)(design.RunoffCoefficient ?? 0.55m),
-            DesignDischargeQ      = Q,
-            SelectedDiameterMm   = hyd.DiameterMm,
-            NumberOfPipes        = hyd.NPipes,
-            QfullM3s             = hyd.Qfull,
-            QdesignM3s           = hyd.Qdesign,
-            VelocityFullFlowMs   = hyd.VelocityFull,
-            VelocityDesignMs     = hyd.VelocityDesign,
-            HeadwaterDepthM      = hyd.HeadwaterDepth,
-            HydraulicAdequate    = hyd.IsAdequate,
-            EarthLoadWeKNm       = str.EarthLoad,
-            LiveLoadWlKNm        = str.LiveLoad,
-            TotalLoadWtKNm       = str.TotalLoad,
-            BeddingClass         = str.BeddingClass,
-            BeddingFactor        = str.BeddingFactor,
-            RequiredCrushKNm     = str.RequiredCrushKNm,
-            SelectedPipeClass    = pipe != null ? $"IS 458 {pipe.PipeClassCode} Ø{pipe.DiameterMm}mm" : "Not found",
-            SelectedPipeDiaMm    = pipe?.DiameterMm ?? hyd.DiameterMm,
-            PipeCrushCapKNm      = pipe != null ? (double)pipe.UltimateCrushingLoadKNperM : 0,
-            FactorOfSafety       = Math.Round(fos, 3),
-            StructuralAdequate   = fos >= 1.5,
-            IsDesignSatisfactory = hyd.IsAdequate && fos >= 1.5,
-            HydraulicSteps       = hyd.Steps,
-            StructuralSteps      = str.Steps,
+            DesignId = input.DesignId,
+
+            CalculatedAt = DateTime.UtcNow,
+
+            CatchmentAreaHa =
+                (double)(input.CatchmentAreaHa ?? 0),
+
+            RainfallIntensityMmHr =
+                (double)(input.RainfallIntensityMmHr ?? 80),
+
+            RunoffCoefficient =
+                (double)(input.RunoffCoefficient ?? 0.55m),
+
+            DesignDischargeQ = Q,
+
+            SelectedDiameterMm = hyd.DiameterMm,
+            NumberOfPipes = hyd.NPipes,
+
+            QfullM3s = hyd.Qfull,
+            QdesignM3s = hyd.Qdesign,
+
+            VelocityFullFlowMs = hyd.VelocityFull,
+            VelocityDesignMs = hyd.VelocityDesign,
+
+            HeadwaterDepthM = hyd.HeadwaterDepth,
+
+            HydraulicAdequate = hyd.IsAdequate,
+
+            EarthLoadWeKNm = str.EarthLoad,
+            LiveLoadWlKNm = str.LiveLoad,
+            TotalLoadWtKNm = str.TotalLoad,
+
+            BeddingClass = str.BeddingClass,
+            BeddingFactor = str.BeddingFactor,
+
+            RequiredCrushKNm = str.RequiredCrushKNm,
+
+            SelectedPipeClass =
+                pipe != null
+                    ? $"IS 458 {pipe.PipeClassCode} Ø{pipe.DiameterMm}mm"
+                    : "Not found",
+
+            SelectedPipeDiaMm =
+                pipe?.DiameterMm ?? hyd.DiameterMm,
+
+            PipeCrushCapKNm =
+                pipe != null
+                    ? (double)pipe.UltimateCrushingLoadKNperM
+                    : 0,
+
+            FactorOfSafety = Math.Round(fos, 3),
+
+            StructuralAdequate = fos >= 1.5,
+
+            IsDesignSatisfactory =
+                hyd.IsAdequate && fos >= 1.5,
+
+            HydraulicSteps = hyd.Steps,
+            StructuralSteps = str.Steps
         };
     }
 

@@ -21,6 +21,13 @@ public interface ICalcResultRepository
     Task UpdateAsync(CalculationResultDocument doc);
 }
 
+public interface IRevisionInputRepository
+{
+    Task<string> InsertAsync(RevisionInputDocument document);
+    Task<RevisionInputDocument?> GetByIdAsync(string id);
+    Task UpdateAsync(RevisionInputDocument document);
+}
+
 public interface IDrawingRepository
 {
     Task<DrawingDocument?> GetByRevisionAsync(int revisionId);
@@ -52,6 +59,7 @@ public class MongoDbContext
 
     public IMongoCollection<SurveyDocument>            Surveys     => _db.GetCollection<SurveyDocument>("surveys");
     public IMongoCollection<CalculationResultDocument> CalcResults => _db.GetCollection<CalculationResultDocument>("calc_results");
+    public IMongoCollection<RevisionInputDocument> RevisionInputs => _db.GetCollection<RevisionInputDocument>("revision_inputs");
     public IMongoCollection<DrawingDocument>           Drawings    => _db.GetCollection<DrawingDocument>("drawings");
     public IMongoCollection<AlignmentDocument>         Alignments  => _db.GetCollection<AlignmentDocument>("alignments");
     public IMongoCollection<BatchDesignRunDocument>    BatchRuns   => _db.GetCollection<BatchDesignRunDocument>("batch_runs");
@@ -87,6 +95,28 @@ public class CalcResultRepository : ICalcResultRepository
     { await _ctx.CalcResults.InsertOneAsync(doc); return doc.Id; }
     public async Task UpdateAsync(CalculationResultDocument doc)
         => await _ctx.CalcResults.ReplaceOneAsync(r => r.Id == doc.Id, doc);
+}
+
+public class RevisionInputRepository : IRevisionInputRepository
+{
+    private readonly MongoDbContext _ctx;
+
+    public RevisionInputRepository(MongoDbContext ctx) => _ctx = ctx;
+
+    public async Task<string> InsertAsync(RevisionInputDocument document)
+    {
+        await _ctx.RevisionInputs.InsertOneAsync(document);
+        return document.Id;
+    }
+
+    public async Task<RevisionInputDocument?> GetByIdAsync(string id)
+        => await _ctx.RevisionInputs
+            .Find(r => r.Id == id)
+            .FirstOrDefaultAsync();
+
+    public async Task UpdateAsync(RevisionInputDocument document)
+        => await _ctx.RevisionInputs
+            .ReplaceOneAsync(r => r.Id == document.Id, document);
 }
 
 public class DrawingRepository : IDrawingRepository

@@ -161,10 +161,19 @@ public class RevisionsController : Controller
     private readonly AppDbContext _db;
     private readonly IRevisionService _revSvc;
     private readonly ICalcResultRepository _calcRepo;
+    private readonly IRevisionInputRepository _revisionInputRepo;
 
-    public RevisionsController(AppDbContext db, IRevisionService revSvc, ICalcResultRepository calcRepo)
-    { _db = db; _revSvc = revSvc; _calcRepo = calcRepo; }
-
+    public RevisionsController(
+    AppDbContext db,
+    IRevisionService revSvc,
+    ICalcResultRepository calcRepo,
+    IRevisionInputRepository revisionInputRepo)
+    {
+        _db = db;
+        _revSvc = revSvc;
+        _calcRepo = calcRepo;
+        _revisionInputRepo = revisionInputRepo;
+    }
     private int CurrentUserId => int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
     public async Task<IActionResult> Details(int id)
@@ -234,6 +243,162 @@ public class RevisionsController : Controller
         return View(dto);
     }
 
+
+    #region Edit Inputs
+    [HttpGet]
+    public async Task<IActionResult> EditInputs(int id)
+    {
+        var revision = await _db.DesignRevisions
+            .FirstOrDefaultAsync(r => r.Id == id);
+
+        if (revision == null)
+            return NotFound();
+
+        if (revision.IsLocked)
+            return BadRequest("Approved revision cannot be edited.");
+
+        if (revision.Status != RevisionStatus.Draft)
+            return BadRequest("Only a Draft revision can be edited.");
+
+        /*
+         * Existing revisions created before the input-snapshot
+         * mechanism was added may not have an InputSnapshotId.
+         *
+         * Repair the missing snapshot from the current design.
+         */
+        if (string.IsNullOrWhiteSpace(revision.InputSnapshotId))
+        {
+            var design = await _db.CulvertDesigns
+                .FirstOrDefaultAsync(d => d.Id == revision.DesignId);
+
+            if (design == null)
+                return NotFound("Design not found.");
+
+            var input = new RevisionEngineeringInput
+            {
+                DesignId = design.Id,
+
+                CulvertType = design.CulvertType,
+                CulvertLocation = design.CulvertLocation,
+                Chainage = design.Chainage,
+
+                CatchmentAreaHa = design.CatchmentAreaHa,
+                RainfallIntensityMmHr = design.RainfallIntensityMmHr,
+                RunoffCoefficient = design.RunoffCoefficient,
+                DesignDischargeQ = design.DesignDischargeQ,
+                ReturnPeriodYrs = design.ReturnPeriodYrs,
+                HydroMethod = design.HydroMethod,
+
+                FillHeightM = design.FillHeightM,
+                RoadwayWidthM = design.RoadwayWidthM,
+                SlopePercent = design.SlopePercent,
+                SkewAngleDeg = design.SkewAngleDeg,
+
+                SoilType = design.SoilType,
+                SoilUnitWeightKNm3 = design.SoilUnitWeightKNm3,
+                BearingCapacityKNm2 = design.BearingCapacityKNm2,
+                LoadClass = design.LoadClass,
+
+                DesignStandard = design.DesignStandard
+            };
+
+            var document = new RevisionInputDocument
+            {
+                DesignId = design.Id,
+                RevisionId = revision.Id,
+                CreatedAt = DateTime.UtcNow,
+                Input = input
+            };
+
+            var snapshotId = await _revisionInputRepo
+                .InsertAsync(document);
+
+            revision.InputSnapshotId = snapshotId;
+
+            await _db.SaveChangesAsync();
+
+            ViewBag.RevisionId = revision.Id;
+            ViewBag.RevisionNumber = revision.RevisionNumber;
+
+            return View(input);
+        }
+
+        /*
+         * Normal path for revisions that already have
+         * an input snapshot.
+         */
+        var existingDocument = await _revisionInputRepo
+            .GetByIdAsync(revision.InputSnapshotId);
+
+        if (existingDocument == null)
+            return NotFound("Revision input snapshot not found.");
+
+        ViewBag.RevisionId = revision.Id;
+        ViewBag.RevisionNumber = revision.RevisionNumber;
+
+        return View(existingDocument.Input);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> EditInputs(int id,RevisionEngineeringInput input)
+    {
+        if (!ModelState.IsValid)
+        {
+            ViewBag.RevisionId = id;
+
+            var revision = await _db.DesignRevisions
+                .FirstOrDefaultAsync(r => r.Id == id);
+
+            if (revision == null)
+                return NotFound();
+
+            ViewBag.RevisionNumber = revision.RevisionNumber;
+
+            return View(input);
+        }
+
+        try
+        {
+            input.DesignId = await _db.DesignRevisions
+                .Where(r => r.Id == id)
+                .Select(r => r.DesignId)
+                .FirstAsync();
+
+            await _revSvc.UpdateRevisionInputsAsync(
+                id,
+                input,
+                CurrentUserId);
+
+            TempData["Success"] =
+                $"Revision {id} inputs saved and recalculated.";
+
+            return RedirectToAction(
+                "Details",
+                new { id });
+        }
+        catch (InvalidOperationException ex)
+        {
+            ModelState.AddModelError(string.Empty, ex.Message);
+
+            ViewBag.RevisionId = id;
+
+            var revision = await _db.DesignRevisions
+                .FirstOrDefaultAsync(r => r.Id == id);
+
+            if (revision == null)
+                return NotFound();
+
+            ViewBag.RevisionNumber = revision.RevisionNumber;
+
+            return View(input);
+        }
+    }
+
+    #endregion
+
+
+
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Submit(int id, string remarks)
@@ -270,6 +435,23 @@ public class RevisionsController : Controller
     {
         await _revSvc.TransitionAsync(id, RevisionStatus.RevisionRequired, CurrentUserId, remarks);
         TempData["Success"] = "Revision returned for changes.";
+        return RedirectToAction("Details", new { id });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> StartRevision(int id, string remarks)
+    {
+        await _revSvc.TransitionAsync(
+            id,
+            RevisionStatus.Draft,
+            CurrentUserId,
+            string.IsNullOrWhiteSpace(remarks)
+                ? "Revision returned to draft for further changes."
+                : remarks);
+
+        TempData["Success"] = "Revision returned to Draft for editing.";
+
         return RedirectToAction("Details", new { id });
     }
 
