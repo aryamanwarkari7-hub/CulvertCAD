@@ -1,109 +1,567 @@
 @* Views/Designs/Details.cshtml *@
 @model CulvertCAD.Core.DTOs.CulvertDesignDto
-@{ ViewData["Title"] = Model.DesignName; var revisions = ViewBag.Revisions as List<CulvertCAD.Core.DTOs.RevisionDto> ?? new(); var latest = ViewBag.LatestRevision as CulvertCAD.Core.DTOs.RevisionDto; }
+
+@{
+    ViewData["Title"] = Model.DesignName;
+
+    var revisions =
+        ViewBag.Revisions as List<CulvertCAD.Core.DTOs.RevisionDto>
+        ?? new();
+
+    var latest =
+        ViewBag.LatestRevision as CulvertCAD.Core.DTOs.RevisionDto;
+}
 
 <div class="page">
+
+    <!-- =====================================================
+         Page Header
+         ===================================================== -->
+
     <div class="page-header">
+
         <div>
-            <div class="breadcrumb"><a asp-controller="Projects" asp-action="Index">Projects</a> / <a asp-controller="Projects" asp-action="Details" asp-route-id="@Model.ProjectId">@Model.ProjectName</a> / @Model.DesignName</div>
-            <h1 class="page-title">@Model.DesignName</h1>
-            <p class="page-sub">@Model.CulvertLocation @(string.IsNullOrEmpty(Model.Chainage) ? "" : $"· Ch. {Model.Chainage}")</p>
+
+            <div class="breadcrumb">
+
+                <a asp-controller="Projects"
+                   asp-action="Index">
+                    @* <i class="bi bi-folder2-open" aria-hidden="true"></i> *@
+                    Projects
+                </a>
+
+                <span>/</span>
+
+                <a asp-controller="Projects"
+                   asp-action="Details"
+                   asp-route-id="@Model.ProjectId">
+                    @Model.ProjectName
+                </a>
+
+                <span>/</span>
+
+                @Model.DesignName
+
+            </div>
+
+            <h1 class="page-title">
+                @Model.DesignName
+            </h1>
+
+            <p class="page-sub">
+
+                @Model.CulvertLocation
+
+                @if (!string.IsNullOrEmpty(Model.Chainage))
+                {
+                    <span>· Ch. @Model.Chainage</span>
+                }
+
+            </p>
+
         </div>
+
+
         @if (latest != null && !latest.IsLocked)
         {
-            <button onclick="document.getElementById('newRevModal').style.display='flex'" class="btn-primary">＋ New Revision</button>
+            <button type="button"
+                    class="btn-primary"
+                    onclick="openNewRevisionModal()">
+
+                <i class="bi bi-plus-lg"
+                   aria-hidden="true"></i>
+
+                <span>New Revision</span>
+
+            </button>
         }
+
     </div>
 
+
+    <!-- =====================================================
+         Design Information
+         ===================================================== -->
+
     <div class="dd-grid">
+
+        <!-- =================================================
+             Design Parameters
+             ================================================= -->
+
         <div class="card">
-            <div class="card-hd"><h3>Design Parameters</h3></div>
-            <div class="param-list">
-                <div class="pr"><span class="pr-l">Culvert Type</span><span class="pr-v">@Model.CulvertType</span></div>
-                <div class="pr"><span class="pr-l">Design Standard</span><span class="pr-v">@Model.DesignStandard</span></div>
-                <div class="pr"><span class="pr-l">Load Class</span><span class="pr-v">@Model.LoadClass</span></div>
-                @if (Model.CatchmentAreaHa.HasValue) { <div class="pr"><span class="pr-l">Catchment Area</span><span class="pr-v">@Model.CatchmentAreaHa ha</span></div> }
-                @if (Model.DesignDischargeQ.HasValue) { <div class="pr"><span class="pr-l">Design Discharge</span><span class="pr-v">@Model.DesignDischargeQ?.ToString("0.0000") m³/s</span></div> }
-                @if (Model.FillHeightM.HasValue) { <div class="pr"><span class="pr-l">Fill Height</span><span class="pr-v">@Model.FillHeightM m</span></div> }
-                @if (Model.SlopePercent.HasValue) { <div class="pr"><span class="pr-l">Bed Slope</span><span class="pr-v">@Model.SlopePercent %</span></div> }
-                <div class="pr"><span class="pr-l">Soil Unit Weight</span><span class="pr-v">@Model.SoilUnitWeightKNm3 kN/m³</span></div>
+
+            <div class="card-hd">
+                <h3>Design Parameters</h3>
             </div>
+
+            <div class="param-list">
+
+                <div class="pr">
+                    <span class="pr-l">Culvert Type</span>
+                    <span class="pr-v">@Model.CulvertType</span>
+                </div>
+
+                <div class="pr">
+                    <span class="pr-l">Design Standard</span>
+                    <span class="pr-v">@Model.DesignStandard</span>
+                </div>
+
+                <div class="pr">
+                    <span class="pr-l">Load Class</span>
+                    <span class="pr-v">@Model.LoadClass</span>
+                </div>
+
+                @if (Model.CatchmentAreaHa.HasValue)
+{
+    <div class="pr">
+        <span class="pr-l">Catchment Area</span>
+        <span class="pr-v">
+            @Model.CatchmentAreaHa.Value.ToString("0.00") ha
+        </span>
+    </div>
+}
+
+@if (Model.DesignDischargeQ.HasValue)
+{
+    <div class="pr">
+        <span class="pr-l">Design Discharge</span>
+        <span class="pr-v">
+            @Model.DesignDischargeQ.Value.ToString("0.000") m³/s
+        </span>
+    </div>
+}
+
+@if (Model.FillHeightM.HasValue)
+{
+    <div class="pr">
+        <span class="pr-l">Fill Height</span>
+        <span class="pr-v">
+            @Model.FillHeightM.Value.ToString("0.00") m
+        </span>
+    </div>
+}
+
+@if (Model.SlopePercent.HasValue)
+{
+    <div class="pr">
+        <span class="pr-l">Bed Slope</span>
+        <span class="pr-v">
+            @Model.SlopePercent.Value.ToString("0.00") %
+        </span>
+    </div>
+}
+
+<div class="pr">
+    <span class="pr-l">Soil Unit Weight</span>
+    <span class="pr-v">
+        @Model.SoilUnitWeightKNm3.ToString("0.00") kN/m³
+    </span>
+</div>
+
+            </div>
+
         </div>
 
+
+        <!-- =================================================
+             Latest Design Results
+             ================================================= -->
         @if (latest?.Result != null)
         {
             <div class="card">
-                <div class="card-hd"><h3>Latest Design Results — @latest.RevisionNumber</h3>
-                    <span class="badge @RevBadge(latest.Status)">@latest.Status</span></div>
+
+                <div class="card-hd">
+
+                    <h3>
+                        Latest Design Results — @latest.RevisionNumber
+                    </h3>
+
+                    <span class="badge @RevBadge(latest.Status)">
+                        @latest.Status
+                    </span>
+
+                </div>
+
+
                 <div class="rb">
+
                     <div class="check-pills">
-                        <div class="cp @(latest.Result.HydraulicAdequate ? "cp-ok" : "cp-fail")">@(latest.Result.HydraulicAdequate ? "✓" : "✗") Hydraulic</div>
-                        <div class="cp @(latest.Result.StructuralAdequate ? "cp-ok" : "cp-fail")">@(latest.Result.StructuralAdequate ? "✓" : "✗") Structural</div>
+
+                        <div class="cp @(latest.Result.HydraulicAdequate ? "cp-ok" : "cp-fail")">
+
+                            <i class="bi @(latest.Result.HydraulicAdequate
+                                                            ? "bi-check-circle"
+                                                            : "bi-x-circle")"
+                               aria-hidden="true"></i>
+
+                            <span>Hydraulic</span>
+
+                        </div>
+
+
+                        <div class="cp @(latest.Result.StructuralAdequate ? "cp-ok" : "cp-fail")">
+
+                            <i class="bi @(latest.Result.StructuralAdequate
+                                                            ? "bi-check-circle"
+                                                            : "bi-x-circle")"
+                               aria-hidden="true"></i>
+
+                            <span>Structural</span>
+
+                        </div>
+
                     </div>
+
+
                     <div class="rb-cols">
+
+                        <!-- Hydraulic -->
+
                         <div>
-                            <div class="rb-sect-hd">Hydraulic</div>
-                            <div class="rr"><span>Pipe Diameter</span><strong>Ø@(latest.Result.SelectedDiameterMm)mm</strong></div>
-                            <div class="rr"><span>No. of Pipes</span><strong>@latest.Result.NumberOfPipes</strong></div>
-                            <div class="rr"><span>Velocity</span><strong>@latest.Result.VelocityFullFlowMs.ToString("0.000") m/s</strong></div>
+
+                            <div class="rb-sect-hd">
+                                Hydraulic
+                            </div>
+
+                            <div class="rr">
+                                <span>Pipe Diameter</span>
+                                <strong>
+                                    Ø@(latest.Result.SelectedDiameterMm.ToString("0")) mm
+                                </strong>
+                            </div>
+
+                            <div class="rr">
+                                <span>No. of Pipes</span>
+                                <strong>
+                                    @latest.Result.NumberOfPipes
+                                </strong>
+                            </div>
+
+                            <div class="rr">
+                                <span>Velocity</span>
+                                <strong>
+                                    @latest.Result.VelocityFullFlowMs.ToString("0.000") m/s
+                                </strong>
+                            </div>
+
                         </div>
+
+
+                        <!-- Structural -->
+
                         <div>
-                            <div class="rb-sect-hd">Structural</div>
-                            <div class="rr"><span>Selected Pipe</span><strong>@latest.Result.SelectedPipeClass</strong></div>
-                            <div class="rr"><span>Total Load</span><strong>@latest.Result.TotalLoadKNm.ToString("0.000") kN/m</strong></div>
-                            <div class="rr @(latest.Result.FactorOfSafety >= 1.5 ? "rr-ok" : "rr-fail")"><span>Safety Factor</span><strong>@latest.Result.FactorOfSafety.ToString("0.000")</strong></div>
+
+                            <div class="rb-sect-hd">
+                                Structural
+                            </div>
+
+                            <div class="rr">
+                                <span>Selected Pipe</span>
+                                <strong>
+                                    @latest.Result.SelectedPipeClass
+                                </strong>
+                            </div>
+
+                            <div class="rr">
+                                <span>Total Load</span>
+                                <strong>
+                                    @latest.Result.TotalLoadKNm.ToString("0.000") kN/m
+                                </strong>
+                            </div>
+
+                            <div class="rr @(latest.Result.FactorOfSafety >= 1.5 ? "rr-ok" : "rr-fail")">
+
+                                <span>Safety Factor</span>
+
+                                <strong>
+                                    @latest.Result.FactorOfSafety.ToString("0.000")
+                                </strong>
+
+                            </div>
+
                         </div>
+
                     </div>
+
                 </div>
-                <div style="padding:0 1.1rem 1rem;display:flex;gap:.5rem">
-                    <a asp-controller="Revisions" asp-action="Details" asp-route-id="@latest.Id" class="btn-sm">View Full Calc Sheet →</a>
-                    <a asp-controller="Drawings" asp-action="Viewer" asp-route-revisionId="@latest.Id" class="btn-sm">🎨 3D Drawing Viewer →</a>
-                    <a asp-controller="BOQ" asp-action="Generate" asp-route-revisionId="@latest.Id" class="btn-sm">📋 BOQ →</a>
+
+
+                <!-- Result Actions -->
+
+                <div class="result-actions">
+
+                    <a asp-controller="Revisions"
+                       asp-action="Details"
+                       asp-route-id="@latest.Id"
+                       class="action-btn">
+
+                        <i class="bi bi-calculator" aria-hidden="true"></i>
+                        <span>Calculation Sheet</span>
+
+                    </a>
+
+                    <a asp-controller="Drawings"
+                       asp-action="Viewer"
+                       asp-route-revisionId="@latest.Id"
+                       class="action-btn">
+
+                        <i class="bi bi-box" aria-hidden="true"></i>
+                        <span>3D Drawing</span>
+
+                    </a>
+
+                    <a asp-controller="BOQ"
+                       asp-action="Generate"
+                       asp-route-revisionId="@latest.Id"
+                       class="action-btn">
+
+                        <i class="bi bi-list-check" aria-hidden="true"></i>
+                        <span>BOQ</span>
+
+                    </a>
+
                 </div>
+
             </div>
         }
+
     </div>
 
-    <div class="card mt-6">
-        <div class="card-hd"><h3>Revision History</h3><span class="badge badge-gray">@revisions.Count revisions</span></div>
-        <div class="rev-timeline">
-            @foreach (var r in revisions)
+
+    <!-- =====================================================
+         Revision History
+         ===================================================== -->
+    <!-- =====================================================
+     Revision History
+     ===================================================== -->
+
+    <div class="card mt-6 revision-history">
+
+        <div class="card-hd revision-history-header">
+
+            <h3>Revision History</h3>
+
+            <span class="badge badge-gray">
+                @revisions.Count revisions
+            </span>
+
+        </div>
+
+
+        <div class="rev-list">
+
+            @if (!revisions.Any())
             {
-                <div class="rt-item @(r.IsLatest ? "rt-latest" : "")">
-                    <div class="rt-dot" style="background:@RevColor(r.Status)"></div>
-                    <div class="rt-body">
-                        <div class="rt-hd">
-                            <strong>@r.RevisionNumber</strong>
-                            <span class="badge" style="background:@RevColor(r.Status)22;color:@RevColor(r.Status)">@r.Status</span>
-                            @if (r.IsLatest) { <span class="badge badge-blue">Latest</span> }
-                            @if (r.IsApproved) { <span class="badge badge-green">✓ Approved</span> }
-                        </div>
-                        <p class="rt-desc">@r.ChangeDescription</p>
-                        <div class="rt-meta"><span>By @r.CreatedByName</span><span>@r.CreatedAt.ToString("dd MMM yyyy")</span></div>
-                        <a asp-controller="Revisions" asp-action="Details" asp-route-id="@r.Id" class="btn-xs">View Details →</a>
-                    </div>
+                <div class="empty-feed">
+                    No revisions available.
                 </div>
             }
+            else
+            {
+                @foreach (var revision in revisions)
+                {
+                    <div class="revision-row @(revision.IsLatest ? "revision-row-latest" : "")">
+
+                        <div class="revision-status-dot @RevStatusClass(revision.Status)">
+                        </div>
+
+
+                        <div class="revision-content">
+
+                            <div class="revision-top">
+
+                                <div class="revision-title">
+
+                                    <strong>
+                                        @revision.RevisionNumber
+                                    </strong>
+
+                                    <span class="badge @RevBadge(revision.Status)">
+                                        @revision.Status
+                                    </span>
+
+                                    @if (revision.IsLatest)
+                                    {
+                                        <span class="badge badge-blue">
+                                            Latest
+                                        </span>
+                                    }
+
+                                </div>
+
+
+                                <a asp-controller="Revisions"
+                                   asp-action="Details"
+                                   asp-route-id="@revision.Id"
+                                   class="revision-view-btn"
+                                   title="View Revision"
+                                   aria-label="View Revision">
+
+                                    <i class="bi bi-eye" aria-hidden="true"></i>
+
+                                </a>
+
+                            </div>
+
+
+                            <p class="revision-description">
+                                @revision.ChangeDescription
+                            </p>
+
+
+                            <div class="revision-meta">
+
+                                <span>
+                                    <i class="bi bi-person" aria-hidden="true"></i>
+                                    By @revision.CreatedByName
+                                </span>
+
+                                <span>
+                                    <i class="bi bi-calendar3" aria-hidden="true"></i>
+                                    @revision.CreatedAt.ToString("dd MMM yyyy")
+                                </span>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+                }
+            }
+
         </div>
+
     </div>
+
 </div>
 
-<div id="newRevModal" class="modal-bg" style="display:none">
+
+<!-- =========================================================
+     New Revision Modal
+     ========================================================= -->
+
+<div id="newRevModal"
+     class="modal-bg modal-hidden">
+
     <div class="modal modal-sm">
-        <div class="modal-hd"><h3>Create New Revision</h3><button onclick="document.getElementById('newRevModal').style.display='none'">✕</button></div>
-        <form asp-controller="Revisions" asp-action="CreateNewRevision" method="post" class="modal-body">
+
+        <div class="modal-hd">
+
+            <h3>Create New Revision</h3>
+
+            <button type="button"
+                    class="modal-close"
+                    onclick="closeNewRevisionModal()"
+                    title="Close"
+                    aria-label="Close">
+
+                <i class="bi bi-x-lg"
+                   aria-hidden="true"></i>
+
+            </button>
+
+        </div>
+
+
+        <form asp-controller="Revisions"
+              asp-action="CreateNewRevision"
+              method="post"
+              class="modal-body">
+
             @Html.AntiForgeryToken()
-            <input type="hidden" name="designId" value="@Model.Id" />
-            <div class="fg"><label>Change Description *</label><textarea name="changeDescription" class="fi ta" rows="3" placeholder="Describe what changed..."></textarea></div>
-            <div class="modal-actions">
-                <button type="button" class="btn-ghost" onclick="document.getElementById('newRevModal').style.display='none'">Cancel</button>
-                <button type="submit" class="btn-primary">Create Revision</button>
+
+            <input type="hidden"
+                   name="designId"
+                   value="@Model.Id" />
+
+
+            <div class="fg">
+
+                <label for="changeDescription">
+                    Change Description
+                    <span class="required-mark">*</span>
+                </label>
+
+                <textarea id="changeDescription"
+                          name="changeDescription"
+                          class="fi ta"
+                          rows="3"
+                          placeholder="Describe what changed..."></textarea>
+
             </div>
+
+
+            <div class="modal-actions">
+
+                <button type="button"
+                        class="btn-ghost"
+                        onclick="closeNewRevisionModal()">
+
+                    <i class="bi bi-x-lg"
+                       aria-hidden="true"></i>
+
+                    <span>Cancel</span>
+
+                </button>
+
+
+                <button type="submit"
+                        class="btn-primary">
+
+                    <i class="bi bi-arrow-repeat"
+                       aria-hidden="true"></i>
+
+                    <span>Create Revision</span>
+
+                </button>
+
+            </div>
+
         </form>
+
     </div>
+
 </div>
+
+
+@section Scripts {
+
+    <script>
+        function openNewRevisionModal() {
+            document
+                .getElementById('newRevModal')
+                .classList.remove('modal-hidden');
+        }
+
+        function closeNewRevisionModal() {
+            document
+                .getElementById('newRevModal')
+                .classList.add('modal-hidden');
+        }
+    </script>
+}
+
 
 @functions {
-    string RevBadge(string s) => s switch { "Approved"=>"badge-green","Submitted"=>"badge-yellow","UnderReview"=>"badge-blue","RevisionRequired"=>"badge-red",_=>"badge-gray" };
-    string RevColor(string s) => s switch { "Approved"=>"#3fb950","Submitted"=>"#d29922","UnderReview"=>"#58a6ff","RevisionRequired"=>"#f85149",_=>"#6b7280" };
+
+    string RevBadge(string? status) => status switch
+    {
+        "Approved" => "badge-green",
+        "Submitted" => "badge-yellow",
+        "UnderReview" => "badge-blue",
+        "RevisionRequired" => "badge-red",
+        _ => "badge-gray"
+    };
+
+
+    string RevStatusClass(string? status) => status switch
+    {
+        "Approved" => "status-approved",
+        "Submitted" => "status-submitted",
+        "UnderReview" => "status-under-review",
+        "RevisionRequired" => "status-revision-required",
+        _ => "status-default"
+    };
+
 }

@@ -1,0 +1,193 @@
+/* =========================================================
+   DATA TABLES
+   ========================================================= */
+
+/* Responsive wrapper
+   --------------------------------------------------------- */
+
+.table-responsive {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+
+/* Base table
+   --------------------------------------------------------- */
+
+.dt {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    background: var(--bg-card);
+    border: 1px solid var(--bdr);
+    border-radius: var(--r-lg);
+    overflow: hidden;
+}
+
+
+    /* Table header
+   --------------------------------------------------------- */
+
+    .dt th {
+        background: var(--bg-up);
+        padding: .65rem .9rem;
+        text-align: left;
+        font-size: .7rem;
+        font-weight: 600;
+        color: var(--tx-2);
+        text-transform: uppercase;
+        letter-spacing: .07em;
+        border-right: 1px solid var(--bdr);
+        border-bottom: 1px solid var(--bdr);
+        white-space: nowrap;
+    }
+
+        .dt th:last-child {
+            border-right: none;
+        }
+
+
+    /* Table body cells
+   --------------------------------------------------------- */
+
+    .dt td {
+        padding: .7rem .9rem;
+        font-size: .84rem;
+        color: var(--tx);
+        vertical-align: middle;
+        border-right: 1px solid var(--bdr);
+        border-bottom: 1px solid var(--bdr);
+    }
+
+        .dt td:last-child {
+            border-right: none;
+        }
+
+
+    /* Table rows
+   --------------------------------------------------------- */
+
+    .dt tbody tr {
+        transition: background-color .15s ease;
+    }
+
+        .dt tbody tr:hover {
+            background: var(--bg-hov);
+        }
+
+
+        /* Remove bottom border from final row
+   --------------------------------------------------------- */
+
+        .dt tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+
+    /* Table typography
+   --------------------------------------------------------- */
+
+    .dt td strong {
+        color: var(--tx);
+        font-weight: 600;
+    }
+
+    .dt td small {
+        color: var(--tx-2);
+        font-size: .75rem;
+    }
+
+    .dt td code {
+        font-family: var(--mono);
+        font-size: .78rem;
+        color: var(--blue);
+    }
+
+
+/* Table action column
+   --------------------------------------------------------- */
+
+.table-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-2);
+}
+
+
+/* Small action buttons
+   --------------------------------------------------------- */
+
+.dt .btn-xs {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .35rem;
+    min-width: 32px;
+    min-height: 30px;
+}
+
+
+/* Table note
+   --------------------------------------------------------- */
+
+.tbl-note,
+.table-note {
+    font-size: .73rem;
+    color: var(--tx-2);
+    margin-top: .65rem;
+    font-style: italic;
+}
+
+
+/* Empty table state
+   --------------------------------------------------------- */
+
+.dt-empty {
+    padding: 2rem 1rem;
+    text-align: center;
+    color: var(--tx-2);
+    font-size: .84rem;
+}
+
+
+/* ---------------------------------------------------------
+   Responsive table
+   --------------------------------------------------------- */
+
+@media (max-width: 768px) {
+
+    .table-responsive {
+        margin-left: 0;
+        margin-right: 0;
+    }
+
+    .dt {
+        min-width: 760px;
+    }
+
+        .dt th,
+        .dt td {
+            padding: .6rem .7rem;
+        }
+}
+
+
+/* ---------------------------------------------------------
+   Compact table on very small screens
+   --------------------------------------------------------- */
+
+@media (max-width: 480px) {
+
+    .dt {
+        min-width: 700px;
+    }
+
+        .dt th {
+            font-size: .65rem;
+        }
+
+        .dt td {
+            font-size: .78rem;
+        }
+}

@@ -4,58 +4,114 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
     <title>@ViewData["Title"] — CulvertCAD</title>
+
+    <link rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+
+
     <link rel="icon" href="data:,">
 </head>
+
 <body>
     @if (User.Identity?.IsAuthenticated == true)
     {
         <div class="app-shell">
+
             <aside class="sidebar">
+
                 <div class="sidebar-header">
-                    <a asp-controller="Home" asp-action="Index" class="logo">
+                    <a asp-controller="Home"
+                       asp-action="Index"
+                       class="logo">
                         <span class="logo-glyph">◈</span>
                         <span class="logo-text">CulvertCAD</span>
                     </a>
                 </div>
+
                 <nav class="sidebar-nav">
-                    <a asp-controller="Home" asp-action="Index" class="nav-item">
-                        <span class="nav-icon">⬡</span><span>Dashboard</span>
+
+                    <a asp-controller="Home"
+                       asp-action="Index"
+                       class="nav-item">
+                        <i class="bi bi-grid-1x2 nav-icon" aria-hidden="true"></i>
+                        <span>Dashboard</span>
                     </a>
-                    <a asp-controller="Projects" asp-action="Index" class="nav-item">
-                        <span class="nav-icon">📁</span><span>Projects</span>
+
+                    <a asp-controller="Projects"
+                       asp-action="Index"
+                       class="nav-item">
+                        <i class="bi bi-folder2-open nav-icon" aria-hidden="true"></i>
+                        <span>Projects</span>
                     </a>
+
                     @if (User.IsInRole("SuperAdmin") || User.IsInRole("Admin"))
                     {
-                        <a asp-controller="Account" asp-action="Users" class="nav-item">
-                            <span class="nav-icon">👥</span><span>Users</span>
+                        <a asp-controller="Account"
+                           asp-action="Users"
+                           class="nav-item">
+                            <i class="bi bi-people nav-icon" aria-hidden="true"></i>
+                            <span>Users</span>
                         </a>
                     }
+
                 </nav>
+
                 <div class="sidebar-footer">
+
                     <div class="user-chip">
-                        <div class="avatar">@(User.Identity?.Name?.FirstOrDefault().ToString() ?? "?")</div>
+                        <div class="avatar">
+                            @(User.Identity?.Name?.FirstOrDefault().ToString() ?? "?")
+                        </div>
+
                         <div class="user-meta">
-                            <span class="user-name">@User.FindFirst("FullName")?.Value</span>
+                            <span class="user-name">
+                                @User.FindFirst("FullName")?.Value
+                            </span>
                         </div>
                     </div>
-                    <form asp-controller="Account" asp-action="Logout" method="post" style="display:inline">
-                        <button type="submit" class="logout-btn" title="Sign out">⏻</button>
+
+                    <form asp-controller="Account"
+                          asp-action="Logout"
+                          method="post">
+
+                        <button type="submit"
+                                class="logout-btn"
+                                title="Sign out"
+                                aria-label="Sign out">
+                                Signout
+                            <i class="bi bi-box-arrow-right" aria-hidden="true"></i>
+                        </button>
+
                     </form>
+
                 </div>
+
             </aside>
+
             <main class="main-area">
+
                 @if (TempData["Success"] != null)
                 {
-                    <div class="alert alert-success">@TempData["Success"]</div>
+                    <div class="alert alert-success" role="alert">
+                        @TempData["Success"]
+                    </div>
                 }
+
                 @if (TempData["Error"] != null)
                 {
-                    <div class="alert alert-error">@TempData["Error"]</div>
+                    <div class="alert alert-error" role="alert">
+                        @TempData["Error"]
+                    </div>
                 }
+
                 @RenderBody()
+
             </main>
+
         </div>
     }
     else
@@ -65,6 +121,7 @@
 
     <script src="~/lib/jquery/jquery.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
+
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

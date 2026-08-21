@@ -1,46 +1,147 @@
 @* Views/Projects/Index.cshtml *@
 @model List<CulvertCAD.Core.DTOs.ProjectDto>
-@{ ViewData["Title"] = "Projects"; }
+
+@{
+    ViewData["Title"] = "Projects";
+}
 
 <div class="page">
+
     <div class="page-header">
-        <div><h1 class="page-title">Projects</h1><p class="page-sub">@Model.Count project@(Model.Count != 1 ? "s" : "")</p></div>
-        <a asp-action="Create" class="btn-primary">＋ New Project</a>
+        <div>
+            <h1 class="page-title">Projects</h1>
+
+            <p class="page-sub">
+                @Model.Count project@(Model.Count != 1 ? "s" : "")
+            </p>
+        </div>
+
+        <a asp-action="Create"
+           class="btn-primary">
+            <i class="bi bi-plus-lg" aria-hidden="true"></i>
+            <span>New Project</span>
+        </a>
     </div>
+
 
     @if (!Model.Any())
     {
         <div class="empty-state">
-            <div class="es-icon">📁</div>
+
+            <i class="bi bi-folder2-open es-icon"
+               aria-hidden="true"></i>
+
             <p>No projects yet. Create your first project.</p>
-            <a asp-action="Create" class="btn-primary">＋ New Project</a>
+
+            <a asp-action="Create"
+               class="btn-primary">
+                <i class="bi bi-plus-lg" aria-hidden="true"></i>
+                <span>New Project</span>
+            </a>
+
         </div>
     }
     else
     {
         <div class="proj-grid">
-            @foreach (var p in Model)
+
+            @foreach (var project in Model)
             {
-                <a asp-action="Details" asp-route-id="@p.Id" class="proj-card">
+                <a asp-action="Details"
+                   asp-route-id="@project.Id"
+                   class="proj-card">
+
                     <div class="pc-top">
-                        <span class="pc-code">@p.ProjectCode</span>
-                        <span class="badge @StatusBadge(p.Status)">@p.Status</span>
+
+                        <span class="pc-code">
+                            @project.ProjectCode
+                        </span>
+
+                        <span class="badge @StatusBadge(project.Status)">
+                            @project.Status
+                        </span>
+
                     </div>
-                    <h3 class="pc-name">@p.ProjectName</h3>
-                    @if (!string.IsNullOrEmpty(p.ClientName)) { <p class="pc-meta">Client: @p.ClientName</p> }
-                    @if (!string.IsNullOrEmpty(p.RoadName)) { <p class="pc-meta">🛣 @p.RoadName</p> }
-                    @if (!string.IsNullOrEmpty(p.ChainageFrom)) { <p class="pc-meta">Ch. @p.ChainageFrom – @p.ChainageTo</p> }
+
+
+                    <h3 class="pc-name">
+                        @project.ProjectName
+                    </h3>
+
+
+                    @if (!string.IsNullOrEmpty(project.ClientName))
+                    {
+                        <p class="pc-meta">
+                            <i class="bi bi-building"
+                               aria-hidden="true"></i>
+                            <span>Client: @project.ClientName</span>
+                        </p>
+                    }
+
+
+                    @if (!string.IsNullOrEmpty(project.RoadName))
+                    {
+                        <p class="pc-meta">
+                            <i class="bi bi-signpost-2"
+                               aria-hidden="true"></i>
+                            <span>@project.RoadName</span>
+                        </p>
+                    }
+
+
+                    @if (!string.IsNullOrEmpty(project.ChainageFrom))
+                    {
+                        <p class="pc-meta">
+                            <i class="bi bi-signpost"
+                               aria-hidden="true"></i>
+                            <span>
+                                Ch. @project.ChainageFrom – @project.ChainageTo
+                            </span>
+                        </p>
+                    }
+
+
                     <div class="pc-footer">
-                        <span>📐 @p.DesignCount designs</span>
-                        <span>👥 @p.Members.Count members</span>
-                        @if (p.HasSurveyData) { <span class="badge badge-blue badge-xs">Survey ✓</span> }
+
+                        <span>
+                            <i class="bi bi-rulers"
+                               aria-hidden="true"></i>
+                            @project.DesignCount designs
+                        </span>
+
+                        <span>
+                            <i class="bi bi-people"
+                               aria-hidden="true"></i>
+                            @project.Members.Count members
+                        </span>
+
+                        @if (project.HasSurveyData)
+                        {
+                            <span class="badge badge-blue badge-xs">
+                                <i class="bi bi-check-circle"
+                                   aria-hidden="true"></i>
+                                Survey
+                            </span>
+                        }
+
                     </div>
+
                 </a>
             }
+
         </div>
     }
+
 </div>
 
-@functions {
-    string StatusBadge(string s) => s switch { "Active"=>"badge-green","Completed"=>"badge-blue","OnHold"=>"badge-yellow",_=>"badge-gray" };
+
+@functions
+{
+    string StatusBadge(string status) => status switch
+    {
+        "Active" => "badge-green",
+        "Completed" => "badge-blue",
+        "OnHold" => "badge-yellow",
+        _ => "badge-gray"
+    };
 }

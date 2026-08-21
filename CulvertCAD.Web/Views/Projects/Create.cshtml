@@ -1,35 +1,295 @@
 @* Views/Projects/Create.cshtml *@
 @model CulvertCAD.Core.DTOs.CreateProjectDto
-@{ ViewData["Title"] = "New Project"; }
+
+@{
+    ViewData["Title"] = "New Project";
+}
 
 <div class="page">
-    <div class="page-header"><h1 class="page-title">Create New Project</h1></div>
 
-    <form asp-action="Create" method="post" class="card" style="padding:1.5rem;max-width:700px">
+    <div class="page-header">
+        <div>
+            <div class="breadcrumb">
+                <a asp-action="Index">
+                    <i class="bi bi-folder2-open" aria-hidden="true"></i>
+                    Projects
+                </a>
+                <span>/</span>
+                New Project
+            </div>
+
+            <h1 class="page-title">Create New Project</h1>
+
+            <p class="page-sub">
+                Enter the project information to create a new project.
+            </p>
+        </div>
+    </div>
+
+
+    <form asp-action="Create"
+          method="post"
+          class="card project-form">
+
         @Html.AntiForgeryToken()
-        <div asp-validation-summary="All" class="alert-error"></div>
 
-        <div class="form-row-2">
-            <div class="fg"><label>Project Name *</label><input asp-for="ProjectName" class="fi" placeholder="NH-48 Widening Phase II" /></div>
-            <div class="fg"><label>Project Code *</label><input asp-for="ProjectCode" class="fi" placeholder="NH48-PH2-2024" /></div>
-        </div>
-        <div class="form-row-2">
-            <div class="fg"><label>Client Name</label><input asp-for="ClientName" class="fi" placeholder="NHAI" /></div>
-            <div class="fg"><label>Consultant</label><input asp-for="ConsultantName" class="fi" placeholder="STUP Consultants" /></div>
-        </div>
-        <div class="form-row-2">
-            <div class="fg"><label>State</label><input asp-for="State" class="fi" placeholder="Maharashtra" /></div>
-            <div class="fg"><label>District</label><input asp-for="District" class="fi" placeholder="Pune" /></div>
-        </div>
-        <div class="fg"><label>Road Name</label><input asp-for="RoadName" class="fi" placeholder="NH-48 Pune–Bangalore" /></div>
-        <div class="form-row-2">
-            <div class="fg"><label>Chainage From</label><input asp-for="ChainageFrom" class="fi" placeholder="78+200" /></div>
-            <div class="fg"><label>Chainage To</label><input asp-for="ChainageTo" class="fi" placeholder="145+600" /></div>
+
+        <!-- =================================================
+     Validation
+     ================================================= -->
+
+        <partial name="_ValidationSummary" />
+
+
+        <!-- =================================================
+             Project Identification
+             ================================================= -->
+
+        <div class="form-section">
+
+            <div class="form-section-header">
+                <i class="bi bi-folder-plus" aria-hidden="true"></i>
+
+                <div>
+                    <h3>Project Identification</h3>
+                    <p>Basic project information.</p>
+                </div>
+            </div>
+
+
+            <div class="form-row-2">
+
+                <div class="fg">
+                    <label asp-for="ProjectName">
+                        Project Name
+                        <span class="required-mark">*</span>
+                    </label>
+
+                    <input asp-for="ProjectName"
+                           class="fi"
+                           placeholder="NH-48 Widening Phase II" />
+
+                    <span asp-validation-for="ProjectName"
+                          class="field-validation">
+                    </span>
+                </div>
+
+
+                <div class="fg">
+                    <label asp-for="ProjectCode">
+                        Project Code
+                        <span class="required-mark">*</span>
+                    </label>
+
+                    <input asp-for="ProjectCode"
+                           class="fi"
+                           placeholder="NH48-PH2-2024" />
+
+                    <span asp-validation-for="ProjectCode"
+                          class="field-validation">
+                    </span>
+                </div>
+
+            </div>
+
         </div>
 
-        <div class="modal-actions" style="margin-top:1rem">
-            <a asp-action="Index" class="btn-ghost">Cancel</a>
-            <button type="submit" class="btn-primary">Create Project</button>
+
+        <!-- =================================================
+             Client Information
+             ================================================= -->
+
+        <div class="form-section">
+
+            <div class="form-section-header">
+                <i class="bi bi-building" aria-hidden="true"></i>
+
+                <div>
+                    <h3>Client Information</h3>
+                    <p>Client and consultant details.</p>
+                </div>
+            </div>
+
+
+            <div class="form-row-2">
+
+                <div class="fg">
+                    <label asp-for="ClientName">
+                        Client Name
+                    </label>
+
+                    <input asp-for="ClientName"
+                           class="fi"
+                           placeholder="NHAI" />
+
+                    <span asp-validation-for="ClientName"
+                          class="field-validation">
+                    </span>
+                </div>
+
+
+                <div class="fg">
+                    <label asp-for="ConsultantName">
+                        Consultant
+                    </label>
+
+                    <input asp-for="ConsultantName"
+                           class="fi"
+                           placeholder="STUP Consultants" />
+
+                    <span asp-validation-for="ConsultantName"
+                          class="field-validation">
+                    </span>
+                </div>
+
+            </div>
+
         </div>
+
+
+        <!-- =================================================
+             Location
+             ================================================= -->
+
+        <div class="form-section">
+
+            <div class="form-section-header">
+                <i class="bi bi-geo-alt" aria-hidden="true"></i>
+
+                <div>
+                    <h3>Location</h3>
+                    <p>Project geographical information.</p>
+                </div>
+            </div>
+
+
+            <div class="form-row-2">
+
+                <div class="fg">
+                    <label asp-for="State">
+                        State
+                    </label>
+
+                    <input asp-for="State"
+                           class="fi"
+                           placeholder="Maharashtra" />
+
+                    <span asp-validation-for="State"
+                          class="field-validation">
+                    </span>
+                </div>
+
+
+                <div class="fg">
+                    <label asp-for="District">
+                        District
+                    </label>
+
+                    <input asp-for="District"
+                           class="fi"
+                           placeholder="Pune" />
+
+                    <span asp-validation-for="District"
+                          class="field-validation">
+                    </span>
+                </div>
+
+            </div>
+
+
+            <div class="fg">
+                <label asp-for="RoadName">
+                    Road Name
+                </label>
+
+                <input asp-for="RoadName"
+                       class="fi"
+                       placeholder="NH-48 Pune–Bangalore" />
+
+                <span asp-validation-for="RoadName"
+                      class="field-validation">
+                </span>
+            </div>
+
+        </div>
+
+
+        <!-- =================================================
+             Chainage
+             ================================================= -->
+
+        <div class="form-section">
+
+            <div class="form-section-header">
+                <i class="bi bi-signpost-2" aria-hidden="true"></i>
+
+                <div>
+                    <h3>Chainage</h3>
+                    <p>Define the project chainage range.</p>
+                </div>
+            </div>
+
+
+            <div class="form-row-2">
+
+                <div class="fg">
+                    <label asp-for="ChainageFrom">
+                        Chainage From
+                    </label>
+
+                    <input asp-for="ChainageFrom"
+                           class="fi"
+                           placeholder="78+200" />
+
+                    <span asp-validation-for="ChainageFrom"
+                          class="field-validation">
+                    </span>
+                </div>
+
+
+                <div class="fg">
+                    <label asp-for="ChainageTo">
+                        Chainage To
+                    </label>
+
+                    <input asp-for="ChainageTo"
+                           class="fi"
+                           placeholder="145+600" />
+
+                    <span asp-validation-for="ChainageTo"
+                          class="field-validation">
+                    </span>
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- =================================================
+             Form Actions
+             ================================================= -->
+
+        <div class="form-actions">
+
+            <a asp-action="Index"
+               class="btn-ghost">
+
+                <i class="bi bi-x-lg" aria-hidden="true"></i>
+                <span>Cancel</span>
+
+            </a>
+
+            <button type="submit"
+                    class="btn-primary">
+
+                <i class="bi bi-check-lg" aria-hidden="true"></i>
+                <span>Create Project</span>
+
+            </button>
+
+        </div>
+
     </form>
+
 </div>

@@ -1,40 +1,308 @@
 @* Views/Account/Register.cshtml *@
 @model CulvertCAD.Core.DTOs.RegisterDto
-@{ ViewData["Title"] = "Add New User"; }
+
+@{
+    ViewData["Title"] = "Add New User";
+}
 
 <div class="page">
-    <div class="page-header"><h1 class="page-title">Add New User</h1></div>
 
-    <form asp-action="Register" method="post" class="card" style="padding:1.5rem;max-width:600px">
+    <!-- =================================================
+         PAGE HEADER
+         ================================================= -->
+
+    <div class="page-header">
+
+        <div>
+
+            <div class="breadcrumb">
+
+                <a asp-action="Users">
+
+                    <i class="bi bi-people"
+                       aria-hidden="true"></i>
+
+                    Users
+
+                </a>
+
+                <span>/</span>
+
+                <span class="breadcrumb-current">
+                    Add New User
+                </span>
+
+            </div>
+
+
+            <h1 class="page-title">
+                Add New User
+            </h1>
+
+            <p class="page-sub">
+                Create a new CulvertCAD user account.
+            </p>
+
+        </div>
+
+    </div>
+
+
+    <!-- =================================================
+         FORM
+         ================================================= -->
+
+    <form asp-action="Register"
+          method="post"
+          class="card project-form">
+
         @Html.AntiForgeryToken()
-        <div asp-validation-summary="All" class="alert-error"></div>
 
-        <div class="form-row-2">
-            <div class="fg"><label>Full Name *</label><input asp-for="FullName" class="fi" placeholder="Rajesh Kumar" /></div>
-            <div class="fg"><label>Email *</label><input asp-for="Email" type="email" class="fi" placeholder="rajesh@org.in" /></div>
-        </div>
-        <div class="form-row-2">
-            <div class="fg"><label>Employee Code</label><input asp-for="EmployeeCode" class="fi" placeholder="EMP005" /></div>
-            <div class="fg"><label>Designation</label><input asp-for="Designation" class="fi" placeholder="Design Engineer" /></div>
-        </div>
-        <div class="form-row-2">
-            <div class="fg"><label>Department</label><input asp-for="Department" class="fi" placeholder="Design" /></div>
-            <div class="fg"><label>Password *</label><input asp-for="Password" type="password" class="fi" placeholder="Min 8 chars" /></div>
-        </div>
-        <div class="fg">
-            <label>System Role</label>
-            <select name="role" class="fi">
-                <option value="SuperAdmin">Super Admin</option>
-                <option value="Admin">Admin</option>
-                <option value="DesignEngineer" selected>Design Engineer</option>
-                <option value="CheckingEngineer">Checking Engineer</option>
-                <option value="Viewer">Viewer (Read-only)</option>
-            </select>
+
+        <!-- =================================================
+             VALIDATION
+             ================================================= -->
+
+        <partial name="_ValidationSummary" />
+
+
+        <!-- =================================================
+             PERSONAL INFORMATION
+             ================================================= -->
+
+        <div class="form-section">
+
+            <div class="form-section-header">
+
+                <i class="bi bi-person-plus"
+                   aria-hidden="true"></i>
+
+                <div>
+
+                    <h3>
+                        Personal Information
+                    </h3>
+
+                    <p>
+                        Basic employee and account information.
+                    </p>
+
+                </div>
+
+            </div>
+
+
+            <div class="form-row-2">
+
+                <div class="fg">
+
+                    <label asp-for="FullName">
+                        Full Name
+                        <span class="required-mark">*</span>
+                    </label>
+
+                    <input asp-for="FullName"
+                           class="fi"
+                           placeholder="Rajesh Kumar" />
+
+                    <span asp-validation-for="FullName"
+                          class="field-validation">
+                    </span>
+
+                </div>
+
+
+                <div class="fg">
+
+                    <label asp-for="Email">
+                        Email
+                        <span class="required-mark">*</span>
+                    </label>
+
+                    <input asp-for="Email"
+                           type="email"
+                           class="fi"
+                           placeholder="rajesh@org.in" />
+
+                    <span asp-validation-for="Email"
+                          class="field-validation">
+                    </span>
+
+                </div>
+
+
+                <div class="fg">
+
+                    <label asp-for="EmployeeCode">
+                        Employee Code
+                    </label>
+
+                    <input asp-for="EmployeeCode"
+                           class="fi"
+                           placeholder="EMP005" />
+
+                    <span asp-validation-for="EmployeeCode"
+                          class="field-validation">
+                    </span>
+
+                </div>
+
+
+                <div class="fg">
+
+                    <label asp-for="Designation">
+                        Designation
+                    </label>
+
+                    <input asp-for="Designation"
+                           class="fi"
+                           placeholder="Design Engineer" />
+
+                    <span asp-validation-for="Designation"
+                          class="field-validation">
+                    </span>
+
+                </div>
+
+
+                <div class="fg">
+
+                    <label asp-for="Department">
+                        Department
+                    </label>
+
+                    <input asp-for="Department"
+                           class="fi"
+                           placeholder="Design" />
+
+                    <span asp-validation-for="Department"
+                          class="field-validation">
+                    </span>
+
+                </div>
+
+            </div>
+
         </div>
 
-        <div class="modal-actions" style="margin-top:1rem">
-            <a asp-action="Users" class="btn-ghost">Cancel</a>
-            <button type="submit" class="btn-primary">Create User</button>
+
+        <!-- =================================================
+             ACCOUNT ACCESS
+             ================================================= -->
+
+        <div class="form-section">
+
+            <div class="form-section-header">
+
+                <i class="bi bi-shield-lock"
+                   aria-hidden="true"></i>
+
+                <div>
+
+                    <h3>
+                        Account Access
+                    </h3>
+
+                    <p>
+                        Set the initial password and system role.
+                    </p>
+
+                </div>
+
+            </div>
+
+
+            <div class="form-row-2">
+
+                <div class="fg">
+
+                    <label asp-for="Password">
+                        Password
+                        <span class="required-mark">*</span>
+                    </label>
+
+                    <input asp-for="Password"
+                           type="password"
+                           class="fi"
+                           placeholder="Min 8 chars"
+                           autocomplete="new-password" />
+
+                    <span asp-validation-for="Password"
+                          class="field-validation">
+                    </span>
+
+                </div>
+
+
+                <div class="fg">
+
+                    <label for="role">
+                        System Role
+                    </label>
+
+                    <select name="role"
+                            id="role"
+                            class="fi">
+
+                        <option value="SuperAdmin">
+                            Super Admin
+                        </option>
+
+                        <option value="Admin">
+                            Admin
+                        </option>
+
+                        <option value="DesignEngineer"
+                                selected>
+                            Design Engineer
+                        </option>
+
+                        <option value="CheckingEngineer">
+                            Checking Engineer
+                        </option>
+
+                        <option value="Viewer">
+                            Viewer (Read-only)
+                        </option>
+
+                    </select>
+
+                </div>
+
+            </div>
+
         </div>
+
+
+        <!-- =================================================
+             FORM ACTIONS
+             ================================================= -->
+
+        <div class="form-actions">
+
+            <a asp-action="Users"
+               class="btn-ghost">
+
+                <i class="bi bi-x-lg"
+                   aria-hidden="true"></i>
+
+                <span>Cancel</span>
+
+            </a>
+
+
+            <button type="submit"
+                    class="btn-primary">
+
+                <i class="bi bi-person-plus"
+                   aria-hidden="true"></i>
+
+                <span>Create User</span>
+
+            </button>
+
+        </div>
+
     </form>
+
 </div>

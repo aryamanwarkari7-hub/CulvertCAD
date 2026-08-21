@@ -1,0 +1,181 @@
+/* =========================================================
+   CulvertCAD — Buttons
+   ========================================================= */
+
+/* ---------------------------------------------------------
+   Base Button
+   --------------------------------------------------------- */
+
+.btn-primary,
+.btn-success,
+.btn-warn,
+.btn-ghost,
+.btn-xs,
+.btn-signin {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--sp-2);
+    min-height: var(--button-height);
+    border-radius: var(--r);
+    font-family: var(--font);
+    font-weight: var(--fw-semibold);
+    line-height: 1.2;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background-color var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast), opacity var(--transition-fast);
+}
+
+    .btn-primary:hover,
+    .btn-success:hover,
+    .btn-warn:hover,
+    .btn-ghost:hover,
+    .btn-xs:hover,
+    .btn-signin:hover {
+        text-decoration: none;
+    }
+
+
+/* ---------------------------------------------------------
+   Primary
+   --------------------------------------------------------- */
+
+.btn-primary {
+    background: var(--acc);
+    color: #fff;
+    border: 1px solid var(--acc);
+    padding: 0 var(--sp-8);
+    font-size: var(--fs-base);
+}
+
+    .btn-primary:hover {
+        background: var(--acc-dk);
+        border-color: var(--acc-dk);
+    }
+
+
+/* ---------------------------------------------------------
+   Success
+   --------------------------------------------------------- */
+
+.btn-success {
+    background: var(--green);
+    color: #fff;
+    border: 1px solid var(--green);
+    padding: 0 var(--sp-8);
+    font-size: var(--fs-base);
+}
+
+    .btn-success:hover {
+        filter: brightness(.92);
+    }
+
+
+/* ---------------------------------------------------------
+   Warning / Destructive
+   --------------------------------------------------------- */
+
+.btn-warn {
+    background: var(--red-bg);
+    color: var(--red);
+    border: 1px solid rgba(248, 81, 73, .3);
+    padding: 0 var(--sp-8);
+    font-size: var(--fs-base);
+}
+
+    .btn-warn:hover {
+        background: var(--red-bg-strong);
+        border-color: var(--red);
+    }
+
+
+/* ---------------------------------------------------------
+   Ghost
+   --------------------------------------------------------- */
+
+.btn-ghost {
+    background: transparent;
+    color: var(--tx-2);
+    border: 1px solid var(--bdr);
+    padding: 0 var(--sp-8);
+    font-size: var(--fs-base);
+}
+
+    .btn-ghost:hover {
+        background: var(--bg-hov);
+        color: var(--tx);
+        border-color: var(--tx-m);
+    }
+
+
+/* ---------------------------------------------------------
+   Extra Small
+   --------------------------------------------------------- */
+
+.btn-xs {
+    min-height: 28px;
+    background: transparent;
+    color: var(--blue);
+    border: 1px solid var(--bdr);
+    padding: 0 var(--sp-3);
+    border-radius: var(--r-sm);
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-medium);
+}
+
+    .btn-xs:hover {
+        background: var(--bg-hov);
+        border-color: var(--blue);
+    }
+
+
+/* ---------------------------------------------------------
+   Sign In
+   --------------------------------------------------------- */
+
+.btn-signin {
+    width: 100%;
+    min-height: 42px;
+    background: var(--acc);
+    color: #fff;
+    border: 1px solid var(--acc);
+    padding: 0 var(--sp-7);
+    border-radius: var(--r);
+    font-size: var(--fs-lg);
+    font-weight: var(--fw-bold);
+}
+
+    .btn-signin:hover {
+        background: var(--acc-dk);
+        border-color: var(--acc-dk);
+    }
+
+
+/* ---------------------------------------------------------
+   Action Row
+   --------------------------------------------------------- */
+
+.action-row {
+    display: flex;
+    gap: var(--sp-3);
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+
+/* ---------------------------------------------------------
+   Mobile
+   --------------------------------------------------------- */
+
+@media (max-width: 600px) {
+    .action-row {
+        width: 100%;
+    }
+
+        .action-row .btn-primary,
+        .action-row .btn-success,
+        .action-row .btn-warn,
+        .action-row .btn-ghost {
+            flex: 1 1 auto;
+        }
+}

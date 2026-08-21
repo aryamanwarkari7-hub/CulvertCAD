@@ -1,0 +1,9 @@
+﻿@* Views/Shared/_ValidationSummary.cshtml *@
+
+@if (!ViewData.ModelState.IsValid)
+{
+    <div asp-validation-summary="All"
+         class="validation-summary"
+         role="alert">
+    </div>
+}

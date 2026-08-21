@@ -1,84 +1,362 @@
 @* Views/Drawings/Viewer.cshtml *@
+
 @{
     ViewData["Title"] = "3D Drawing Viewer";
+
     var xs = ViewBag.XsData as CulvertCAD.Core.DTOs.CrossSectionDataDto;
     var ls = ViewBag.LsData as CulvertCAD.Core.DTOs.LongitudinalDataDto;
 }
 
-<div class="page" style="max-width:100%">
+<div class="page drawing-viewer-page">
+
+    <!-- =================================================
+         PAGE HEADER
+         ================================================= -->
+
     <div class="page-header">
+
         <div>
-            <div class="breadcrumb"><a asp-controller="Designs" asp-action="Details" asp-route-id="@ViewBag.DesignId">@ViewBag.DesignName</a> / 3D Viewer</div>
-            <h1 class="page-title">3D Drawing Viewer</h1>
-            <p class="page-sub">@ViewBag.ProjectName — @ViewBag.DesignName</p>
+
+            <div class="breadcrumb">
+
+                <a asp-controller="Designs"
+                   asp-action="Details"
+                   asp-route-id="@ViewBag.DesignId">
+
+                    @* <i class="bi bi-pencil-square" aria-hidden="true"></i> *@
+                    @ViewBag.DesignName
+
+                </a>
+
+                <span>/</span>
+
+                <span class="breadcrumb-current">
+                    3D Viewer
+                </span>
+
+            </div>
+
+
+            <h1 class="page-title">
+                3D Drawing Viewer
+            </h1>
+
+
+            <p class="page-sub">
+                @ViewBag.ProjectName — @ViewBag.DesignName
+            </p>
+
         </div>
+
+
+        <!-- =================================================
+             DRAWING DOWNLOAD ACTIONS
+             ================================================= -->
+
         <div class="action-row">
-            <form asp-controller="Drawings" asp-action="GenerateDxf" asp-route-revisionId="@ViewBag.RevisionId" method="post" style="display:inline">
+
+            <form asp-controller="Drawings"
+                  asp-action="GenerateDxf"
+                  asp-route-revisionId="@ViewBag.RevisionId"
+                  method="post">
+
                 @Html.AntiForgeryToken()
-                <input type="hidden" name="drawingType" value="CrossSection" />
-                <button type="submit" class="btn-ghost">⬇ Download Cross-Section DXF</button>
+
+                <input type="hidden"
+                       name="drawingType"
+                       value="CrossSection" />
+
+                <button type="submit"
+                        class="btn-ghost">
+
+                    <i class="bi bi-download" aria-hidden="true"></i>
+                    <span>Cross-Section DXF</span>
+
+                </button>
+
             </form>
-            <form asp-controller="Drawings" asp-action="GenerateDxf" asp-route-revisionId="@ViewBag.RevisionId" method="post" style="display:inline">
+
+
+            <form asp-controller="Drawings"
+                  asp-action="GenerateDxf"
+                  asp-route-revisionId="@ViewBag.RevisionId"
+                  method="post">
+
                 @Html.AntiForgeryToken()
-                <input type="hidden" name="drawingType" value="LongitudinalSection" />
-                <button type="submit" class="btn-ghost">⬇ Download L-Section DXF</button>
+
+                <input type="hidden"
+                       name="drawingType"
+                       value="LongitudinalSection" />
+
+                <button type="submit"
+                        class="btn-ghost">
+
+                    <i class="bi bi-download" aria-hidden="true"></i>
+                    <span>L-Section DXF</span>
+
+                </button>
+
             </form>
+
         </div>
+
     </div>
+
+
+    <!-- =================================================
+         VIEWER TABS
+         ================================================= -->
 
     <div class="viewer-tab-bar">
-        <button class="viewer-tab active" data-view="cross-section">⊙ Cross-Section</button>
-        <button class="viewer-tab" data-view="longitudinal">⟶ Longitudinal Section</button>
-        <button class="viewer-tab" data-view="full-3d">▣ Full 3D Model</button>
-        <button class="viewer-tab" data-view="alignment-map">⛰ Alignment Map</button>
+
+        <button type="button"
+                class="viewer-tab active"
+                data-view="cross-section">
+
+            <i class="bi bi-distribute-vertical" aria-hidden="true"></i>
+            <span>Cross-Section</span>
+
+        </button>
+
+
+        <button type="button"
+                class="viewer-tab"
+                data-view="longitudinal">
+
+            <i class="bi bi-arrow-left-right" aria-hidden="true"></i>
+            <span>Longitudinal Section</span>
+
+        </button>
+
+
+        <button type="button"
+                class="viewer-tab"
+                data-view="full-3d">
+
+            <i class="bi bi-box" aria-hidden="true"></i>
+            <span>Full 3D Model</span>
+
+        </button>
+
+
+        <button type="button"
+                class="viewer-tab"
+                data-view="alignment-map">
+
+            <i class="bi bi-map" aria-hidden="true"></i>
+            <span>Alignment Map</span>
+
+        </button>
+
     </div>
+
+
+    <!-- =================================================
+         3D VIEWER
+         ================================================= -->
 
     <div class="viewer-container">
+
         <div id="threejs-canvas-wrap">
+
             <canvas id="threejs-canvas"></canvas>
+
+
+            <!-- =============================================
+                 VIEWER CONTROLS
+                 ============================================= -->
+
             <div class="viewer-controls">
-                <button id="btn-reset-view" class="vc-btn" title="Reset View">⟲</button>
-                <button id="btn-wireframe" class="vc-btn" title="Toggle Wireframe">▦</button>
-                <button id="btn-zoom-in" class="vc-btn" title="Zoom In">＋</button>
-                <button id="btn-zoom-out" class="vc-btn" title="Zoom Out">－</button>
+
+                <button type="button"
+                        id="btn-reset-view"
+                        class="vc-btn"
+                        title="Reset View"
+                        aria-label="Reset View">
+
+                    <i class="bi bi-arrow-counterclockwise"
+                       aria-hidden="true"></i>
+
+                </button>
+
+
+                <button type="button"
+                        id="btn-wireframe"
+                        class="vc-btn"
+                        title="Toggle Wireframe"
+                        aria-label="Toggle Wireframe">
+
+                    <i class="bi bi-grid-3x3-gap"
+                       aria-hidden="true"></i>
+
+                </button>
+
+
+                <button type="button"
+                        id="btn-zoom-in"
+                        class="vc-btn"
+                        title="Zoom In"
+                        aria-label="Zoom In">
+
+                    <i class="bi bi-zoom-in"
+                       aria-hidden="true"></i>
+
+                </button>
+
+
+                <button type="button"
+                        id="btn-zoom-out"
+                        class="vc-btn"
+                        title="Zoom Out"
+                        aria-label="Zoom Out">
+
+                    <i class="bi bi-zoom-out"
+                       aria-hidden="true"></i>
+
+                </button>
+
             </div>
+
+
+            <!-- =============================================
+                 VIEWER INFORMATION PANEL
+                 ============================================= -->
+
             <div class="viewer-info-panel">
-                <div class="vi-row"><span>Pipe Diameter</span><strong id="info-dia">@(xs?.DiameterMm)mm</strong></div>
-                <div class="vi-row"><span>No. of Pipes</span><strong id="info-pipes">@(xs?.NumberOfPipes)</strong></div>
-                <div class="vi-row"><span>Bedding Class</span><strong id="info-bedding">IS 783 @(xs?.BeddingClass)</strong></div>
-                <div class="vi-row"><span>Fill Height</span><strong id="info-fill">@((xs?.FillHeightMm/1000)?.ToString("0.000"))m</strong></div>
+
+                <div class="vi-row">
+
+                    <span>
+                        Pipe Diameter
+                    </span>
+
+                    <strong id="info-dia">
+                        @(xs?.DiameterMm)mm
+                    </strong>
+
+                </div>
+
+
+                <div class="vi-row">
+
+                    <span>
+                        No. of Pipes
+                    </span>
+
+                    <strong id="info-pipes">
+                        @(xs?.NumberOfPipes)
+                    </strong>
+
+                </div>
+
+
+                <div class="vi-row">
+
+                    <span>
+                        Bedding Class
+                    </span>
+
+                    <strong id="info-bedding">
+                        IS 783 @(xs?.BeddingClass)
+                    </strong>
+
+                </div>
+
+
+                <div class="vi-row">
+
+                    <span>
+                        Fill Height
+                    </span>
+
+                    <strong id="info-fill">
+                        @((xs?.FillHeightMm / 1000)?.ToString("0.000"))m
+                    </strong>
+
+                </div>
+
             </div>
+
         </div>
+
     </div>
+
 </div>
 
+
 @section Scripts {
+
     <script src="~/lib/three/three.min.js"></script>
+
     <script src="~/lib/three/OrbitControls.js"></script>
+
+
     <script>
+
         window.CULVERT_DATA = {
+
             crossSection: {
-                diameterMm:      @(xs?.DiameterMm ?? 600),
-                wallThicknessMm: @(xs?.WallThicknessMm ?? 52),
-                trenchWidthMm:   @(xs?.TrenchWidthMm ?? 1200),
-                trenchDepthMm:   @(xs?.TrenchDepthMm ?? 900),
-                beddingDepthMm:  @(xs?.BeddingDepthMm ?? 150),
-                fillHeightMm:    @(xs?.FillHeightMm ?? 500),
-                beddingClass:    "@(xs?.BeddingClass ?? "ClassB")",
-                numberOfPipes:   @(xs?.NumberOfPipes ?? 1),
-                pipeSpacingMm:   @(xs?.PipeSpacingMm ?? 100)
-            },
+
+                diameterMm:
+                            @(xs?.DiameterMm ?? 600),
+
+                wallThicknessMm:
+                            @(xs?.WallThicknessMm ?? 52),
+
+                trenchWidthMm:
+                            @(xs?.TrenchWidthMm ?? 1200),
+
+                trenchDepthMm:
+                            @(xs?.TrenchDepthMm ?? 900),
+
+                beddingDepthMm:
+                            @(xs?.BeddingDepthMm ?? 150),
+
+                fillHeightMm:
+                            @(xs?.FillHeightMm ?? 500),
+
+                beddingClass:
+                    "@(xs?.BeddingClass ?? "ClassB")",
+
+                numberOfPipes:
+                            @(xs?.NumberOfPipes ?? 1),
+
+                pipeSpacingMm:
+                            @(xs?.PipeSpacingMm ?? 100)
+                    },
+
+
             longitudinal: {
-                totalLengthM:    @(ls?.TotalLengthM ?? 8.5),
-                invertRLStart:   @(ls?.InvertRLStart ?? 100.0),
-                invertRLEnd:     @(ls?.InvertRLEnd ?? 99.5),
-                roadRLStart:     @(ls?.RoadRLStart ?? 101.0),
-                roadRLEnd:       @(ls?.RoadRLEnd ?? 100.5),
-                pipeDiameterMm:  @(ls?.PipeDiameterMm ?? 600),
-                roadwayWidthM:   @(ls?.RoadwayWidthM ?? 7.5),
-                wingwallAngle:   @(ls?.WingwallAngle ?? 30)
-            }
+
+                totalLengthM:
+                            @(ls?.TotalLengthM ?? 8.5),
+
+                invertRLStart:
+                            @(ls?.InvertRLStart ?? 100.0),
+
+                invertRLEnd:
+                            @(ls?.InvertRLEnd ?? 99.5),
+
+                roadRLStart:
+                            @(ls?.RoadRLStart ?? 101.0),
+
+                roadRLEnd:
+                            @(ls?.RoadRLEnd ?? 100.5),
+
+                pipeDiameterMm:
+                            @(ls?.PipeDiameterMm ?? 600),
+
+                roadwayWidthM:
+                            @(ls?.RoadwayWidthM ?? 7.5),
+
+                wingwallAngle:
+                            @(ls?.WingwallAngle ?? 30)
+                    }
+
         };
+
     </script>
+
+
     <script src="~/js/drawing/culvert-3d-viewer.js"></script>
 }

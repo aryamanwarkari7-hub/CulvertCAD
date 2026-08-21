@@ -1,19 +1,145 @@
 @* Views/Account/Profile.cshtml *@
 @model CulvertCAD.Core.DTOs.UserProfileDto
-@{ ViewData["Title"] = "My Profile"; }
+
+@{
+    ViewData["Title"] = "My Profile";
+}
 
 <div class="page">
-    <div class="page-header"><h1 class="page-title">My Profile</h1></div>
 
-    <div class="card" style="padding:1.5rem;max-width:600px">
-        <div class="param-list">
-            <div class="pr"><span class="pr-l">Full Name</span><span class="pr-v">@Model.FullName</span></div>
-            <div class="pr"><span class="pr-l">Email</span><span class="pr-v">@Model.Email</span></div>
-            <div class="pr"><span class="pr-l">Employee Code</span><span class="pr-v">@(Model.EmployeeCode ?? "—")</span></div>
-            <div class="pr"><span class="pr-l">Designation</span><span class="pr-v">@(Model.Designation ?? "—")</span></div>
-            <div class="pr"><span class="pr-l">Department</span><span class="pr-v">@(Model.Department ?? "—")</span></div>
-            <div class="pr"><span class="pr-l">Roles</span><span class="pr-v">@string.Join(", ", Model.Roles)</span></div>
-            <div class="pr"><span class="pr-l">Last Login</span><span class="pr-v">@(Model.LastLoginAt?.ToString("dd MMM yyyy HH:mm") ?? "—")</span></div>
+    <!-- =================================================
+         PAGE HEADER
+         ================================================= -->
+
+    <div class="page-header">
+
+        <div>
+
+            <div class="breadcrumb">
+
+                <span class="breadcrumb-current">
+
+                    <i class="bi bi-person-circle"
+                       aria-hidden="true"></i>
+
+                    My Profile
+
+                </span>
+
+            </div>
+
+            <h1 class="page-title">
+                My Profile
+            </h1>
+
+            <p class="page-sub">
+                View your account and system information.
+            </p>
+
         </div>
+
     </div>
+
+
+    <!-- =================================================
+         PROFILE
+         ================================================= -->
+
+    <div class="card profile-card">
+
+        <div class="card-hd">
+
+            <h3>
+
+                <i class="bi bi-person-vcard"
+                   aria-hidden="true"></i>
+
+                Account Information
+
+            </h3>
+
+        </div>
+
+
+        <div class="profile-body">
+
+            <div class="profile-summary">
+
+                <div class="profile-avatar">
+
+                    @(Model.FullName?.FirstOrDefault() ?? '?')
+
+                </div>
+
+                <div>
+
+                    <h2>
+                        @Model.FullName
+                    </h2>
+
+                    <p>
+                        @Model.Email
+                    </p>
+
+                </div>
+
+            </div>
+
+
+            <div class="param-list">
+
+                <div class="pr">
+                    <span class="pr-l">Full Name</span>
+                    <span class="pr-v">@Model.FullName</span>
+                </div>
+
+                <div class="pr">
+                    <span class="pr-l">Email</span>
+                    <span class="pr-v">@Model.Email</span>
+                </div>
+
+                <div class="pr">
+                    <span class="pr-l">Employee Code</span>
+                    <span class="pr-v">@(Model.EmployeeCode ?? "—")</span>
+                </div>
+
+                <div class="pr">
+                    <span class="pr-l">Designation</span>
+                    <span class="pr-v">@(Model.Designation ?? "—")</span>
+                </div>
+
+                <div class="pr">
+                    <span class="pr-l">Department</span>
+                    <span class="pr-v">@(Model.Department ?? "—")</span>
+                </div>
+
+                <div class="pr">
+                    <span class="pr-l">Roles</span>
+
+                    <span class="pr-v profile-roles">
+
+                        @foreach (var role in Model.Roles)
+                        {
+                            <span class="badge badge-blue">
+                                @role
+                            </span>
+                        }
+
+                    </span>
+
+                </div>
+
+                <div class="pr">
+                    <span class="pr-l">Last Login</span>
+                    <span class="pr-v">
+                        @(Model.LastLoginAt?.ToString("dd MMM yyyy HH:mm") ?? "—")
+                    </span>
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
 </div>

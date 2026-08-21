@@ -1,0 +1,225 @@
+/* =========================================================
+   CulvertCAD — Designs
+   ========================================================= */
+
+/* ---------------------------------------------------------
+   Design Grid
+   --------------------------------------------------------- */
+
+.design-grid {
+    display: grid;
+    grid-template-columns: repeat( auto-fill, minmax(310px, 1fr) );
+    gap: var(--sp-6);
+}
+
+
+/* ---------------------------------------------------------
+   Design Card
+   --------------------------------------------------------- */
+
+.design-card {
+    background: var(--bg-card);
+    border: 1px solid var(--bdr);
+    border-radius: var(--r-lg);
+    padding: var(--sp-8);
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-3);
+    color: inherit;
+    text-decoration: none;
+    transition: border-color var(--transition-fast), background-color var(--transition-fast);
+}
+
+    .design-card:hover {
+        border-color: var(--acc);
+        background: var(--bg-up);
+        text-decoration: none;
+    }
+
+.design-card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--sp-5);
+}
+
+.design-code {
+    font-family: var(--mono);
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-semibold);
+    color: var(--acc);
+}
+
+.design-name {
+    font-size: var(--fs-lg);
+    font-weight: var(--fw-semibold);
+    color: var(--tx);
+}
+
+.design-location {
+    font-size: var(--fs-body);
+    color: var(--tx-2);
+}
+
+.design-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--sp-6);
+    padding-top: var(--sp-5);
+    margin-top: var(--sp-2);
+    border-top: 1px solid var(--bdr);
+    font-size: var(--fs-sm);
+    color: var(--tx-2);
+}
+
+
+/* ---------------------------------------------------------
+   Design Details
+   --------------------------------------------------------- */
+
+.design-detail-grid {
+    display: grid;
+    grid-template-columns: minmax(260px, 1fr) minmax(0, 1.6fr);
+    gap: var(--sp-9);
+}
+
+.design-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.design-info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--sp-7);
+    padding: var(--sp-3) var(--sp-8);
+    border-bottom: 1px solid var(--bdr);
+    font-size: var(--fs-body);
+}
+
+    .design-info-row:last-child {
+        border-bottom: none;
+    }
+
+.design-info-label {
+    color: var(--tx-2);
+}
+
+.design-info-value {
+    color: var(--tx);
+    font-family: var(--mono);
+    font-weight: var(--fw-semibold);
+    text-align: right;
+}
+
+
+/* ---------------------------------------------------------
+   Design Results
+   --------------------------------------------------------- */
+
+.design-results {
+    padding: var(--sp-7) var(--sp-8);
+}
+
+.design-result-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--sp-7);
+}
+
+.design-result {
+    padding: var(--sp-6);
+    background: var(--bg-up);
+    border: 1px solid var(--bdr);
+    border-radius: var(--r);
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-2);
+}
+
+.design-result-label {
+    font-size: var(--fs-sm);
+    color: var(--tx-2);
+}
+
+.design-result-value {
+    font-family: var(--mono);
+    font-size: var(--fs-xl);
+    font-weight: var(--fw-semibold);
+    color: var(--tx);
+}
+
+
+/* ---------------------------------------------------------
+   Design Empty State
+   --------------------------------------------------------- */
+
+.design-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--sp-6);
+    padding: 3.5rem var(--sp-8);
+    background: var(--bg-card);
+    border: 2px dashed var(--bdr);
+    border-radius: var(--r-lg);
+    color: var(--tx-2);
+    text-align: center;
+}
+
+
+/* ---------------------------------------------------------
+   Responsive
+   --------------------------------------------------------- */
+
+@media (max-width: 900px) {
+    .design-detail-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 600px) {
+    .design-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .design-card {
+        padding: var(--sp-6);
+    }
+
+    .design-info-row {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: var(--sp-1);
+        padding-left: var(--sp-6);
+        padding-right: var(--sp-6);
+    }
+
+    .design-info-value {
+        text-align: left;
+    }
+
+    .design-results {
+        padding-left: var(--sp-6);
+        padding-right: var(--sp-6);
+    }
+
+    .design-result-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+
+/* =========================================================
+   DESIGN DETAILS
+   ========================================================= */
+
+/* ---------------------------------------------------------
+   Spacing Between Result Cards and Revision History
+   --------------------------------------------------------- */
+
+.dd-grid {
+    margin-bottom: 1rem;
+}

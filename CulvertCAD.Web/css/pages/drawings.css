@@ -1,0 +1,116 @@
+/* =========================================================
+   CulvertCAD — 3D Drawing Viewer
+   ========================================================= */
+
+/* ---------------------------------------------------------
+   Viewer Container
+   --------------------------------------------------------- */
+
+.viewer-container {
+    position: relative;
+    background: var(--bg-card);
+    border: 1px solid var(--bdr);
+    border-radius: var(--r-lg);
+    overflow: hidden;
+}
+
+
+/* ---------------------------------------------------------
+   Three.js Canvas
+   --------------------------------------------------------- */
+
+#threejs-canvas-wrap {
+    position: relative;
+    width: 100%;
+    height: 650px;
+}
+
+#threejs-canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+
+/* ---------------------------------------------------------
+   Viewer Controls
+   --------------------------------------------------------- */
+
+.viewer-controls {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: .4rem;
+}
+
+.vc-btn {
+    width: 36px;
+    height: 36px;
+    background: rgba(22, 27, 34, .9);
+    border: 1px solid var(--bdr);
+    border-radius: var(--r);
+    color: var(--tx);
+    cursor: pointer;
+    font-size: 1rem;
+}
+
+    .vc-btn:hover {
+        background: var(--bg-hov);
+    }
+
+
+/* ---------------------------------------------------------
+   Viewer Information Panel
+   --------------------------------------------------------- */
+
+.viewer-info-panel {
+    position: absolute;
+    bottom: 1rem;
+    left: 1rem;
+    background: rgba(22, 27, 34, .92);
+    border: 1px solid var(--bdr);
+    border-radius: var(--r);
+    padding: .75rem 1rem;
+    min-width: 200px;
+}
+
+.vi-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    font-size: .78rem;
+    padding: .2rem 0;
+}
+
+    .vi-row span {
+        color: var(--tx-2);
+    }
+
+    .vi-row strong {
+        color: var(--acc);
+        font-family: var(--mono);
+    }
+
+
+/* ---------------------------------------------------------
+   Responsive Viewer
+   --------------------------------------------------------- */
+
+@media (max-width: 700px) {
+    #threejs-canvas-wrap {
+        height: 500px;
+    }
+
+    .viewer-info-panel {
+        min-width: 160px;
+        left: .6rem;
+        bottom: .6rem;
+    }
+
+    .viewer-controls {
+        top: .6rem;
+        right: .6rem;
+    }
+}

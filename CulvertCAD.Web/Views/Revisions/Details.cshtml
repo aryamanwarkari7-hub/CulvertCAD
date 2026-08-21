@@ -1,23 +1,70 @@
 @* Views/Revisions/Details.cshtml *@
 @model CulvertCAD.Core.DTOs.RevisionDto
-@{ ViewData["Title"] = $"Revision {Model.RevisionNumber}"; }
+
+@{
+    ViewData["Title"] = $"Revision {Model.RevisionNumber}";
+}
 
 <div class="page">
+
+    <!-- =====================================================
+         PAGE HEADER
+         ===================================================== -->
+
     <div class="page-header">
+
         <div>
-            <div class="breadcrumb"><a asp-controller="Designs" asp-action="Details" asp-route-id="@ViewBag.DesignId">Design</a> / @Model.RevisionNumber</div>
-            <h1 class="page-title">Revision @Model.RevisionNumber</h1>
-            <p class="page-sub">@Model.RevisionPurpose · @Model.RevisionDate.ToString("dd MMM yyyy")</p>
+
+            <div class="breadcrumb">
+
+                <a asp-controller="Designs"
+                   asp-action="Details"
+                   asp-route-id="@ViewBag.DesignId">
+
+                    @* <i class="bi bi-pencil-square" aria-hidden="true"></i> *@
+                    Design
+
+                </a>
+
+                <span>/</span>
+
+                @Model.RevisionNumber
+
+            </div>
+
+
+            <h1 class="page-title">
+                Revision @Model.RevisionNumber
+            </h1>
+
+
+            <p class="page-sub">
+                @Model.RevisionPurpose
+                ·
+                @Model.RevisionDate.ToString("dd MMM yyyy")
+            </p>
+
         </div>
+
+
+        <!-- =================================================
+             PAGE ACTIONS
+             ================================================= -->
+
         <div class="action-row">
 
             @if (Model.Status == "RevisionRequired" && !Model.IsLocked)
             {
-                <button onclick="openAction('StartRevision','Start Revision')"
+                <button type="button"
+                        onclick="openAction('StartRevision','Start Revision')"
                         class="btn-primary">
-                    ✎ Start Revision
+
+                    <i class="bi bi-arrow-repeat" aria-hidden="true"></i>
+                    <span>Start Revision</span>
+
                 </button>
             }
+
 
             @if (Model.Status == "Draft" && !Model.IsLocked)
             {
@@ -25,25 +72,39 @@
                    asp-action="EditInputs"
                    asp-route-id="@Model.Id"
                    class="btn-ghost">
-                    ✎ Edit Inputs
+
+                    <i class="bi bi-pencil" aria-hidden="true"></i>
+                    <span>Edit Inputs</span>
+
                 </a>
 
-                <button onclick="openAction('Submit','Submit for Review')"
+
+                <button type="button"
+                        onclick="openAction('Submit','Submit for Review')"
                         class="btn-primary">
-                    ↑ Submit for Review
+
+                    <i class="bi bi-send" aria-hidden="true"></i>
+                    <span>Submit for Review</span>
+
                 </button>
             }
+
 
             @if (Model.Status == "Submitted" &&
                 (User.IsInRole("SuperAdmin") ||
                  User.IsInRole("Admin") ||
                  User.IsInRole("CheckingEngineer")))
             {
-                <button onclick="openAction('StartReview','Start Review')"
+                <button type="button"
+                        onclick="openAction('StartReview','Start Review')"
                         class="btn-primary">
-                    🔍 Start Review
+
+                    <i class="bi bi-search" aria-hidden="true"></i>
+                    <span>Start Review</span>
+
                 </button>
             }
+
 
             @if (Model.Status == "UnderReview")
             {
@@ -51,164 +112,711 @@
                      User.IsInRole("Admin") ||
                      User.IsInRole("CheckingEngineer"))
                 {
-                    <button onclick="openAction('RequestChanges','Request Changes')"
+                    <button type="button"
+                            onclick="openAction('RequestChanges','Request Changes')"
                             class="btn-warn">
-                        ↩ Request Changes
+
+                        <i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i>
+                        <span>Request Changes</span>
+
                     </button>
                 }
+
 
                 @if (User.IsInRole("SuperAdmin") ||
                      User.IsInRole("Admin"))
                 {
-                    <button onclick="openAction('Approve','Approve Revision')"
+                    <button type="button"
+                            onclick="openAction('Approve','Approve Revision')"
                             class="btn-success">
-                        ✓ Approve
+
+                        <i class="bi bi-check-lg" aria-hidden="true"></i>
+                        <span>Approve</span>
+
                     </button>
                 }
             }
+
 
             <a asp-controller="Drawings"
                asp-action="Viewer"
                asp-route-revisionId="@Model.Id"
                class="btn-ghost">
-                🎨 3D Viewer
+
+                <i class="bi bi-box" aria-hidden="true"></i>
+                <span>3D Viewer</span>
+
             </a>
+
 
             <a asp-controller="BOQ"
                asp-action="Generate"
                asp-route-revisionId="@Model.Id"
                class="btn-ghost">
-                📋 BOQ
+
+                <i class="bi bi-list-columns" aria-hidden="true"></i>
+                <span>BOQ</span>
+
             </a>
 
         </div>
+
     </div>
 
-    <div class="status-banner" style="border-left:4px solid @RevColor(Model.Status)">
+
+    <!-- =====================================================
+         REVISION STATUS
+         ===================================================== -->
+
+    <div class="status-banner revision-status-banner @StatusClass(Model.Status)">
+
         <div class="sb-left">
-            <span class="sb-pill" style="background:@RevColor(Model.Status)">@Model.Status</span>
-            <span class="sb-desc">Rev. @Model.RevisionCode — @Model.ChangeDescription</span>
-            @if (Model.IsLocked) { <span class="badge badge-green">🔒 Locked</span> }
+
+            <div class="revision-status-main">
+
+                <span class="sb-pill">
+                    @Model.Status
+                </span>
+
+                @if (Model.IsLocked)
+                {
+                    <span class="badge badge-green">
+
+                        <i class="bi bi-lock-fill" aria-hidden="true"></i>
+                        Locked
+
+                    </span>
+                }
+
+            </div>
+
+
+            <div class="sb-desc">
+
+                <strong>
+                    Rev. @Model.RevisionCode
+                </strong>
+
+                <span>
+                    @Model.ChangeDescription
+                </span>
+
+            </div>
+
         </div>
+
+
+        <!-- =================================================
+             SIGN-OFF INFORMATION
+             ================================================= -->
+
         <div class="sb-sigs">
-            <div class="sig-block"><span class="sig-lbl">Prepared</span><span class="sig-name">@Model.CreatedByName</span><span class="sig-dt">@Model.CreatedAt.ToString("dd MMM yyyy")</span></div>
-            @if (!string.IsNullOrEmpty(Model.CheckedByName)) { <div class="sig-block"><span class="sig-lbl">Checked</span><span class="sig-name">@Model.CheckedByName</span></div> }
-            @if (!string.IsNullOrEmpty(Model.ApprovedByName)) { <div class="sig-block"><span class="sig-lbl">Approved</span><span class="sig-name">@Model.ApprovedByName</span><span class="sig-dt">@Model.ApprovedAt?.ToString("dd MMM yyyy")</span></div> }
+
+            <div class="sig-block">
+
+                <span class="sig-lbl">
+                    Prepared
+                </span>
+
+                <span class="sig-name">
+                    @Model.CreatedByName
+                </span>
+
+                <span class="sig-dt">
+                    @Model.CreatedAt.ToString("dd MMM yyyy")
+                </span>
+
+            </div>
+
+
+            @if (!string.IsNullOrEmpty(Model.CheckedByName))
+            {
+                <div class="sig-block">
+
+                    <span class="sig-lbl">
+                        Checked
+                    </span>
+
+                    <span class="sig-name">
+                        @Model.CheckedByName
+                    </span>
+
+                </div>
+            }
+
+
+            @if (!string.IsNullOrEmpty(Model.ApprovedByName))
+            {
+                <div class="sig-block">
+
+                    <span class="sig-lbl">
+                        Approved
+                    </span>
+
+                    <span class="sig-name">
+                        @Model.ApprovedByName
+                    </span>
+
+                    <span class="sig-dt">
+                        @Model.ApprovedAt?.ToString("dd MMM yyyy")
+                    </span>
+
+                </div>
+            }
+
         </div>
+
     </div>
+
+
+    <!-- =====================================================
+         CALCULATION + WORKFLOW
+         ===================================================== -->
 
     <div class="rd-grid">
+
+        <!-- =================================================
+             CALCULATION SHEET
+             ================================================= -->
         @if (Model.Result != null)
         {
             <div class="card">
-                <div class="card-hd"><h3>Calculation Sheet</h3></div>
+
+                <div class="card-hd">
+
+                    <h3>
+                        <i class="bi bi-calculator" aria-hidden="true"></i>
+                        Calculation Sheet
+                    </h3>
+
+                </div>
+
+
                 <div class="calc-sheet">
+
+                    <!-- -------------------------------------
+                         HYDRAULIC DESIGN
+                         ------------------------------------- -->
+
                     <div class="cs-sect">
-                        <div class="cs-hd"><span>Hydraulic Design — Manning's Equation (IS 783)</span>
-                            <span class="@(Model.Result.HydraulicAdequate ? "chk-ok" : "chk-fail")">@(Model.Result.HydraulicAdequate ? "✓ OK" : "✗ FAIL")</span></div>
+
+                        <div class="cs-hd">
+
+                            <span>
+                                Hydraulic Design
+                                — Manning's Equation (IS 783)
+                            </span>
+
+                            <span class="@(Model.Result.HydraulicAdequate ? "chk-ok" : "chk-fail")">
+
+                                <i class="bi @(Model.Result.HydraulicAdequate ? "bi-check-circle" : "bi-x-circle")"
+                                   aria-hidden="true"></i>
+
+                                @(Model.Result.HydraulicAdequate ? "OK" : "FAIL")
+
+                            </span>
+
+                        </div>
+
+
                         @foreach (var s in Model.Result.HydraulicSteps)
                         {
-                            <div class="rr"><span>@s.Label <small>(@s.Clause)</small></span><strong>@s.Result @s.Unit</strong></div>
+                            <div class="rr">
+
+                                <span>
+                                    @s.Label
+
+                                    <small>
+                                        (@s.Clause)
+                                    </small>
+                                </span>
+
+                                <strong>
+                                    @s.Result @s.Unit
+                                </strong>
+
+                            </div>
                         }
+
                     </div>
+
+
+                    <!-- -------------------------------------
+                         STRUCTURAL DESIGN
+                         ------------------------------------- -->
+
                     <div class="cs-sect">
-                        <div class="cs-hd"><span>Structural Design — IS 783:1985 Cl.5</span>
-                            <span class="@(Model.Result.StructuralAdequate ? "chk-ok" : "chk-fail")">@(Model.Result.StructuralAdequate ? "✓ OK" : "✗ FAIL")</span></div>
+
+                        <div class="cs-hd">
+
+                            <span>
+                                Structural Design
+                                — IS 783:1985 Cl.5
+                            </span>
+
+                            <span class="@(Model.Result.StructuralAdequate ? "chk-ok" : "chk-fail")">
+
+                                <i class="bi @(Model.Result.StructuralAdequate ? "bi-check-circle" : "bi-x-circle")"
+                                   aria-hidden="true"></i>
+
+                                @(Model.Result.StructuralAdequate ? "OK" : "FAIL")
+
+                            </span>
+
+                        </div>
+
+
                         @foreach (var s in Model.Result.StructuralSteps)
                         {
-                            <div class="rr"><span>@s.Label <small>(@s.Clause)</small></span><strong>@s.Result @s.Unit</strong></div>
+                            <div class="rr">
+
+                                <span>
+                                    @s.Label
+
+                                    <small>
+                                        (@s.Clause)
+                                    </small>
+                                </span>
+
+                                <strong>
+                                    @s.Result @s.Unit
+                                </strong>
+
+                            </div>
                         }
-                        <div class="rr"><span>Selected Pipe (IS 458)</span><strong>@Model.Result.SelectedPipeClass</strong></div>
-                        <div class="rr @(Model.Result.FactorOfSafety >= 1.5 ? "rr-ok" : "rr-fail")"><span>Factor of Safety</span><strong>@Model.Result.FactorOfSafety.ToString("0.000")</strong></div>
+
+
+                        <div class="rr">
+
+                            <span>
+                                Selected Pipe (IS 458)
+                            </span>
+
+                            <strong>
+                                @Model.Result.SelectedPipeClass
+                            </strong>
+
+                        </div>
+
+
+                        <div class="rr @(Model.Result.FactorOfSafety >= 1.5 ? "rr-ok" : "rr-fail")">
+
+                            <span>
+                                Factor of Safety
+                            </span>
+
+                            <strong>
+                                @Model.Result.FactorOfSafety.ToString("0.000")
+                            </strong>
+
+                        </div>
+
                     </div>
+
+
+                    <!-- -------------------------------------
+                         DESIGN VERDICT
+                         ------------------------------------- -->
+
                     <div class="cs-verdict @(Model.Result.IsDesignSatisfactory ? "cv-ok" : "cv-fail")">
-                        @(Model.Result.IsDesignSatisfactory ? "✓ DESIGN IS SATISFACTORY" : "✗ DESIGN IS INADEQUATE — REVISION REQUIRED")
+
+                        <i class="bi @(Model.Result.IsDesignSatisfactory ? "bi-check-circle" : "bi-exclamation-triangle")"
+                           aria-hidden="true"></i>
+
+                        <span>
+                            @(Model.Result.IsDesignSatisfactory
+                                ? "DESIGN IS SATISFACTORY"
+                                : "DESIGN IS INADEQUATE — REVISION REQUIRED")
+                        </span>
+
                     </div>
+
                 </div>
+
             </div>
         }
 
+
+        <!-- =================================================
+             WORKFLOW HISTORY
+             ================================================= -->
+
         <div class="card">
-            <div class="card-hd"><h3>Workflow History</h3></div>
+
+            <div class="card-hd">
+
+                <h3>
+                    <i class="bi bi-clock-history" aria-hidden="true"></i>
+                    Workflow History
+                </h3>
+
+            </div>
+
+
             <div class="wf-timeline">
+
                 @foreach (var h in Model.StatusHistory)
                 {
-                    <div class="wft-item">
-                        <div class="wft-dot" style="background:@RevColor(h.ToStatus)"></div>
+                    <div class="wft-item @WorkflowClass(h.ToStatus)">
+
+                        <div class="wft-dot"></div>
+
+
                         <div class="wft-body">
-                            <div class="wft-hd"><strong>@h.ToStatus</strong><span class="wft-dt">@h.ChangedAt.ToString("dd MMM yyyy HH:mm")</span></div>
-                            <div class="wft-by">by @h.ChangedByName</div>
-                            @if (!string.IsNullOrEmpty(h.Remarks)) { <div class="wft-rem">"@h.Remarks"</div> }
+
+                            <div class="wft-hd">
+
+                                <strong>
+                                    @h.ToStatus
+                                </strong>
+
+                                <span class="wft-dt">
+                                    @h.ChangedAt.ToString("dd MMM yyyy HH:mm")
+                                </span>
+
+                            </div>
+
+
+                            <div class="wft-by">
+
+                                <i class="bi bi-person" aria-hidden="true"></i>
+
+                                <span>
+                                    @h.ChangedByName
+                                </span>
+
+                            </div>
+
+
+                            @if (!string.IsNullOrEmpty(h.Remarks))
+                            {
+                                <div class="wft-rem">
+
+                                    <i class="bi bi-chat-left-text" aria-hidden="true"></i>
+
+                                    <span>
+                                        @h.Remarks
+                                    </span>
+
+                                </div>
+                            }
+
                         </div>
+
                     </div>
                 }
+
             </div>
+
         </div>
+
     </div>
 
-    <div class="card mt-6">
-        <div class="card-hd"><h3>Review Comments</h3></div>
+
+    <!-- =====================================================
+         REVIEW COMMENTS
+         ===================================================== -->
+
+    <div class="card mt-6 review-comments">
+
+        <div class="card-hd">
+
+            <h3>
+                <i class="bi bi-chat-left-text" aria-hidden="true"></i>
+                Review Comments
+            </h3>
+
+            <span class="badge badge-gray">
+                @Model.Comments.Count comments
+            </span>
+
+        </div>
+
+
         <div class="comments">
-            @foreach (var c in Model.Comments)
+
+            @if (!Model.Comments.Any())
             {
-                <div class="cmt">
-                    <div class="cmt-av">@c.AuthorName.FirstOrDefault()</div>
-                    <div class="cmt-body">
-                        <div class="cmt-hd"><strong>@c.AuthorName</strong>
-                            <span class="badge badge-xs @(c.Status == "Resolved" ? "badge-green" : "badge-yellow")">@c.Status</span>
-                            <span class="cmt-dt">@c.CreatedAt.ToString("dd MMM yyyy")</span></div>
-                        <p class="cmt-txt">@c.CommentText</p>
-                        @if (c.Status != "Resolved")
-                        {
-                            <form asp-action="ResolveComment" method="post" style="display:inline">
-                                @Html.AntiForgeryToken()
-                                <input type="hidden" name="commentId" value="@c.Id" />
-                                <input type="hidden" name="revisionId" value="@Model.Id" />
-                                <button type="submit" class="btn-xs">Mark Resolved</button>
-                            </form>
-                        }
-                    </div>
+                <div class="empty-feed">
+                    No review comments yet.
                 </div>
             }
+            else
+            {
+                @foreach (var c in Model.Comments)
+                {
+                    <div class="cmt">
+
+                        <div class="cmt-av">
+                            @c.AuthorName.FirstOrDefault()
+                        </div>
+
+
+                        <div class="cmt-body">
+
+                            <div class="cmt-hd">
+
+                                <strong>
+                                    @c.AuthorName
+                                </strong>
+
+                                <span class="badge badge-xs @(c.Status == "Resolved" ? "badge-green" : "badge-yellow")">
+
+                                    <i class="bi @(c.Status == "Resolved" ? "bi-check-circle" : "bi-clock")"
+                                       aria-hidden="true"></i>
+
+                                    @c.Status
+
+                                </span>
+
+                                <span class="cmt-dt">
+                                    @c.CreatedAt.ToString("dd MMM yyyy")
+                                </span>
+
+                            </div>
+
+
+                            <p class="cmt-txt">
+                                @c.CommentText
+                            </p>
+
+
+                            @if (c.Status != "Resolved")
+                            {
+                                <form asp-action="ResolveComment"
+                                      method="post"
+                                      class="comment-action-form">
+
+                                    @Html.AntiForgeryToken()
+
+                                    <input type="hidden"
+                                           name="commentId"
+                                           value="@c.Id" />
+
+                                    <input type="hidden"
+                                           name="revisionId"
+                                           value="@Model.Id" />
+
+                                    <button type="submit"
+                                            class="btn-xs">
+
+                                        <i class="bi bi-check-lg" aria-hidden="true"></i>
+                                        <span>Mark Resolved</span>
+
+                                    </button>
+
+                                </form>
+                            }
+
+                        </div>
+
+                    </div>
+                }
+            }
+
+
+            <!-- =================================================
+                 ADD COMMENT
+                 ================================================= -->
             @if (!Model.IsLocked)
             {
-                <form asp-action="AddComment" method="post" class="cmt-form">
+                <form asp-action="AddComment"
+                      method="post"
+                      class="cmt-form">
+
                     @Html.AntiForgeryToken()
-                    <input type="hidden" name="id" value="@Model.Id" />
-                    <div class="cmt-av">@(User.Identity?.Name?.FirstOrDefault().ToString() ?? "?")</div>
-                    <div class="cmt-input-row">
-                        <input type="text" name="commentText" class="fi" placeholder="Add a comment or review note..." />
-                        <button type="submit" class="btn-primary">Post</button>
+
+                    <input type="hidden"
+                           name="id"
+                           value="@Model.Id" />
+
+
+                    <div class="cmt-av">
+
+                        @(User.Identity?.Name?.FirstOrDefault().ToString() ?? "?")
+
                     </div>
+
+
+                    <div class="cmt-input-row">
+
+                        <input type="text"
+                               name="commentText"
+                               class="fi"
+                               placeholder="Add a comment or review note..."
+                               required />
+
+
+                        <button type="submit"
+                                class="btn-primary">
+
+                            <i class="bi bi-send" aria-hidden="true"></i>
+                            <span>Post</span>
+
+                        </button>
+
+                    </div>
+
                 </form>
             }
+
         </div>
+
     </div>
+
 </div>
 
-<div id="actionModal" class="modal-bg" style="display:none">
+
+<!-- =========================================================
+     WORKFLOW ACTION MODAL
+     ========================================================= -->
+
+<div id="actionModal"
+     class="modal-bg modal-hidden">
+
     <div class="modal modal-sm">
-        <div class="modal-hd"><h3 id="actionTitle"></h3><button onclick="document.getElementById('actionModal').style.display='none'">✕</button></div>
-        <form id="actionForm" method="post" class="modal-body">
+
+        <div class="modal-hd">
+
+            <h3 id="actionTitle">
+            </h3>
+
+            <button type="button"
+                    class="modal-close"
+                    onclick="closeAction()"
+                    aria-label="Close">
+
+                <i class="bi bi-x-lg" aria-hidden="true"></i>
+
+            </button>
+
+        </div>
+
+
+        <form id="actionForm"
+              method="post"
+              class="modal-body">
+
             @Html.AntiForgeryToken()
-            <input type="hidden" name="id" value="@Model.Id" />
-            <div class="fg"><label>Remarks</label><textarea name="remarks" class="fi ta" rows="3"></textarea></div>
-            <div class="modal-actions">
-                <button type="button" class="btn-ghost" onclick="document.getElementById('actionModal').style.display='none'">Cancel</button>
-                <button type="submit" class="btn-primary">Confirm</button>
+
+            <input type="hidden"
+                   name="id"
+                   value="@Model.Id" />
+
+
+            <div class="fg">
+
+                <label for="actionRemarks">
+                    Remarks
+                </label>
+
+                <textarea id="actionRemarks"
+                          name="remarks"
+                          class="fi ta"
+                          rows="3"
+                          placeholder="Enter remarks..."></textarea>
+
             </div>
+
+
+            <div class="modal-actions">
+
+                <button type="button"
+                        class="btn-ghost"
+                        onclick="closeAction()">
+
+                    <i class="bi bi-x-lg" aria-hidden="true"></i>
+                    <span>Cancel</span>
+
+                </button>
+
+
+                <button type="submit"
+                        class="btn-primary">
+
+                    <i class="bi bi-check-lg" aria-hidden="true"></i>
+                    <span>Confirm</span>
+
+                </button>
+
+            </div>
+
         </form>
+
     </div>
+
 </div>
+
 
 <script>
-function openAction(action, title) {
-    document.getElementById('actionTitle').innerText = title;
-    document.getElementById('actionForm').action = '/Revisions/' + action;
-    document.getElementById('actionModal').style.display = 'flex';
-}
+
+    function openAction(action, title) {
+
+        const modal = document.getElementById('actionModal');
+        const form = document.getElementById('actionForm');
+        const titleElement = document.getElementById('actionTitle');
+
+        titleElement.innerText = title;
+
+        form.action = '/Revisions/' + action;
+
+        modal.classList.remove('modal-hidden');
+
+        const remarks = document.getElementById('actionRemarks');
+
+        if (remarks) {
+            remarks.focus();
+        }
+    }
+
+
+    function closeAction() {
+
+        const modal = document.getElementById('actionModal');
+
+        modal.classList.add('modal-hidden');
+
+        const remarks = document.getElementById('actionRemarks');
+
+        if (remarks) {
+            remarks.value = '';
+        }
+    }
+
+
+    document.getElementById('actionModal')
+        ?.addEventListener('click', function(event) {
+
+            if (event.target === this) {
+                closeAction();
+            }
+
+        });
+
 </script>
 
+
 @functions {
-    string RevColor(string s) => s switch { "Approved"=>"#3fb950","Submitted"=>"#d29922","UnderReview"=>"#58a6ff","RevisionRequired"=>"#f85149",_=>"#6b7280" };
+
+    string StatusClass(string s) => s switch
+    {
+        "Approved" => "status-approved",
+        "Submitted" => "status-submitted",
+        "UnderReview" => "status-under-review",
+        "RevisionRequired" => "status-revision-required",
+        "Draft" => "status-draft",
+        _ => "status-default"
+    };
+
+
+    string WorkflowClass(string s) => s switch
+    {
+        "Approved" => "wft-approved",
+        "Submitted" => "wft-submitted",
+        "UnderReview" => "wft-under-review",
+        "RevisionRequired" => "wft-revision-required",
+        "Draft" => "wft-draft",
+        _ => "wft-default"
+    };
+
 }

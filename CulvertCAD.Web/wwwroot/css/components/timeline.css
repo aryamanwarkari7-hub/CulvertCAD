@@ -1,0 +1,138 @@
+
+/* =========================================================
+   REVISION HISTORY COMPONENT
+   ========================================================= */
+
+.revision-history {
+    overflow: hidden;
+}
+
+.revision-history-header {
+    background: var(--bg-up);
+}
+
+.rev-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.revision-row {
+    display: flex;
+    align-items: flex-start;
+    gap: .75rem;
+    padding: .9rem 1rem;
+    border-bottom: 1px solid var(--bdr);
+}
+
+.revision-row:last-child {
+    border-bottom: none;
+}
+
+.revision-row-latest {
+    margin: .4rem .5rem;
+    padding: .9rem .75rem;
+    border: 1px solid var(--bdr);
+    border-radius: var(--r);
+    background: var(--bg-up);
+}
+
+.revision-row-latest:last-child {
+    border-bottom: 1px solid var(--bdr);
+}
+
+.revision-status-dot {
+    flex: 0 0 9px;
+    width: 9px;
+    height: 9px;
+    margin-top: .45rem;
+    border-radius: 50%;
+}
+
+.revision-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.revision-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.revision-title {
+    display: flex;
+    align-items: center;
+    gap: .45rem;
+    flex-wrap: wrap;
+}
+
+.revision-title strong {
+    color: var(--tx);
+    font-size: .85rem;
+}
+
+.revision-description {
+    margin: .3rem 0 0;
+    color: var(--tx-2);
+    font-size: .78rem;
+    line-height: 1.45;
+}
+
+.revision-meta {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-top: .45rem;
+    color: var(--tx-m);
+    font-size: .7rem;
+}
+
+.revision-meta span {
+    display: inline-flex;
+    align-items: center;
+    gap: .3rem;
+}
+
+.revision-view-btn {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: 1px solid var(--bdr);
+    border-radius: var(--r);
+    background: transparent;
+    color: var(--tx-2);
+    text-decoration: none;
+    transition: background .15s ease, border-color .15s ease, color .15s ease;
+}
+
+.revision-view-btn:hover {
+    background: var(--bg-hov);
+    border-color: var(--acc);
+    color: var(--acc);
+}
+
+.revision-view-btn i {
+    font-size: .8rem;
+}
+
+.revision-status-dot.status-approved { background: var(--green); }
+.revision-status-dot.status-submitted { background: var(--yellow); }
+.revision-status-dot.status-under-review { background: var(--blue); }
+.revision-status-dot.status-revision-required { background: var(--red); }
+.revision-status-dot.status-default { background: var(--tx-m); }
+
+@media (max-width: 600px) {
+    .revision-row {
+        padding: .8rem;
+    }
+
+    .revision-meta {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: .25rem;
+    }
+}

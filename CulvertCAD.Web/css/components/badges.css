@@ -1,0 +1,113 @@
+/* =========================================================
+   CulvertCAD — Badges
+   ========================================================= */
+
+/* ---------------------------------------------------------
+   Base Badge
+   --------------------------------------------------------- */
+
+.badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--sp-1);
+    padding: .12rem var(--sp-3);
+    border-radius: var(--r-pill);
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-bold);
+    line-height: 1.4;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+
+/* ---------------------------------------------------------
+   Semantic Badges
+   --------------------------------------------------------- */
+
+.badge-green {
+    background: var(--green-bg-strong);
+    color: var(--green);
+}
+
+.badge-yellow {
+    background: var(--yellow-bg);
+    color: var(--yellow);
+}
+
+.badge-blue {
+    background: var(--blue-bg-strong);
+    color: var(--blue);
+}
+
+.badge-red {
+    background: var(--red-bg-strong);
+    color: var(--red);
+}
+
+.badge-gray {
+    background: rgba(139, 148, 158, .14);
+    color: var(--tx-2);
+}
+
+
+/* ---------------------------------------------------------
+   Small Badge
+   --------------------------------------------------------- */
+
+.badge-xs {
+    font-size: .6rem;
+    padding: .1rem var(--sp-2);
+}
+
+
+/* ---------------------------------------------------------
+   Status Badge Variants
+   --------------------------------------------------------- */
+
+.badge-draft {
+    background: rgba(139, 148, 158, .14);
+    color: var(--tx-2);
+}
+
+.badge-submitted {
+    background: var(--yellow-bg);
+    color: var(--yellow);
+}
+
+.badge-review {
+    background: var(--blue-bg-strong);
+    color: var(--blue);
+}
+
+.badge-approved {
+    background: var(--green-bg-strong);
+    color: var(--green);
+}
+
+.badge-revision {
+    background: var(--red-bg-strong);
+    color: var(--red);
+}
+
+
+/* ---------------------------------------------------------
+   Locked Badge
+   --------------------------------------------------------- */
+
+.badge-locked {
+    background: var(--green-bg-strong);
+    color: var(--green);
+}
+
+
+/* ---------------------------------------------------------
+   Responsive
+   --------------------------------------------------------- */
+
+@media (max-width: 600px) {
+    .badge {
+        font-size: .62rem;
+    }
+}

@@ -1,0 +1,493 @@
+/* =========================================================
+   CulvertCAD — Projects
+   ========================================================= */
+
+/* ---------------------------------------------------------
+   Project Grid
+   --------------------------------------------------------- */
+
+.proj-grid {
+    display: grid;
+    grid-template-columns: repeat( auto-fill, minmax(310px, 1fr) );
+    gap: var(--sp-6);
+}
+
+
+/* ---------------------------------------------------------
+   Project Empty State
+   --------------------------------------------------------- */
+
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--sp-6);
+    padding: 3.5rem var(--sp-12);
+    background: var(--bg-card);
+    border: 2px dashed var(--bdr);
+    border-radius: var(--r-lg);
+    color: var(--tx-2);
+    text-align: center;
+}
+
+.es-icon {
+    font-size: 2.5rem;
+}
+
+
+/* ---------------------------------------------------------
+   Project Detail Layout
+   --------------------------------------------------------- */
+
+.dd-grid {
+    display: grid;
+    grid-template-columns: minmax(260px, 1fr) minmax(0, 1.6fr);
+    gap: var(--sp-9);
+}
+
+
+/* ---------------------------------------------------------
+   Project Parameters
+   --------------------------------------------------------- */
+
+.param-list {
+    padding: var(--sp-5) var(--sp-8);
+    display: flex;
+    flex-direction: column;
+}
+
+.pr {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--sp-7);
+    padding: var(--sp-3) 0;
+    border-bottom: 1px solid var(--bdr);
+    font-size: var(--fs-body);
+}
+
+    .pr:last-child {
+        border-bottom: none;
+    }
+
+.pr-l {
+    color: var(--tx-2);
+}
+
+.pr-v {
+    font-weight: var(--fw-semibold);
+    font-family: var(--mono);
+    color: var(--tx);
+    text-align: right;
+}
+
+
+/* ---------------------------------------------------------
+   Review Block
+   --------------------------------------------------------- */
+
+.rb {
+    padding: var(--sp-7) var(--sp-8);
+}
+
+.check-pills {
+    display: flex;
+    gap: var(--sp-6);
+    margin-bottom: var(--sp-7);
+    flex-wrap: wrap;
+}
+
+.cp {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-2);
+    padding: var(--sp-2) var(--sp-5);
+    border-radius: var(--r);
+    font-size: var(--fs-md);
+    font-weight: var(--fw-semibold);
+}
+
+.cp-ok {
+    background: var(--green-bg);
+    color: var(--green);
+}
+
+.cp-fail {
+    background: var(--red-bg);
+    color: var(--red);
+}
+
+.rb-cols {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--sp-9);
+}
+
+.rb-sect-hd {
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-bold);
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: var(--tx-2);
+    padding-bottom: var(--sp-2);
+    margin-bottom: var(--sp-1);
+    border-bottom: 1px solid var(--bdr);
+}
+
+
+/* ---------------------------------------------------------
+   Revision Timeline
+   --------------------------------------------------------- */
+
+.rev-timeline {
+    padding: var(--sp-6) var(--sp-8);
+    display: flex;
+    flex-direction: column;
+}
+
+.rt-item {
+    display: flex;
+    gap: var(--sp-6);
+    padding: var(--sp-4) 0;
+    border-bottom: 1px solid var(--bdr);
+}
+
+    .rt-item:last-child {
+        border-bottom: none;
+    }
+
+.rt-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    margin-top: .45rem;
+}
+
+.rt-body {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-1);
+}
+
+.rt-hd {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+    flex-wrap: wrap;
+}
+
+    .rt-hd strong {
+        font-family: var(--mono);
+        font-size: var(--fs-base);
+        color: var(--tx);
+    }
+
+.rt-desc {
+    font-size: var(--fs-body);
+    color: var(--tx-2);
+}
+
+.rt-meta {
+    display: flex;
+    gap: var(--sp-7);
+    font-size: var(--fs-sm);
+    color: var(--tx-m);
+    flex-wrap: wrap;
+}
+
+.pc-meta {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+}
+
+    .pc-meta i {
+        flex-shrink: 0;
+        color: var(--tx-m);
+    }
+
+.pc-footer span {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-2);
+}
+
+/* ---------------------------------------------------------
+   Project Tabs
+   --------------------------------------------------------- */
+
+.tab {
+    padding: .4rem .9rem;
+    border: none;
+    background: transparent;
+    color: var(--tx-2);
+    cursor: pointer;
+    border-radius: var(--r);
+    font-size: .8rem;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    transition: background-color .15s ease, color .15s ease;
+}
+
+    .tab:hover:not(.active) {
+        background: var(--bg-hov);
+        color: var(--tx);
+    }
+
+    .tab.active {
+        background: var(--acc);
+        color: #fff;
+        font-weight: 600;
+        box-shadow: 0 0 0 1px var(--acc);
+    }
+
+        .tab.active i {
+            color: #fff;
+        }
+
+.tab-panel-hidden {
+    display: none;
+}
+
+.project-page-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+}
+
+
+/* ---------------------------------------------------------
+   Project Detail — Survey Banner
+   --------------------------------------------------------- */
+
+.info-banner {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--sp-3);
+}
+
+    .info-banner > i {
+        flex-shrink: 0;
+        margin-top: .15rem;
+    }
+
+    .info-banner a {
+        white-space: nowrap;
+    }
+
+
+/* =========================================================
+   PROJECT MEMBERS
+   ========================================================= */
+
+.members-grid {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-2);
+}
+
+.member-card {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+    padding: var(--sp-3) var(--sp-4);
+    background: var(--bg-card);
+    border: 1px solid var(--bdr);
+    border-radius: var(--r);
+    transition: border-color .15s ease, background-color .15s ease;
+}
+
+    .member-card:hover {
+        background: var(--bg-hov);
+        border-color: var(--bdr-foc);
+    }
+
+.member-av {
+    width: 38px;
+    height: 38px;
+    flex: 0 0 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: var(--acc-dim);
+    color: var(--acc);
+    font-family: var(--mono);
+    font-size: .85rem;
+    font-weight: 600;
+}
+
+.member-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: .15rem;
+}
+
+    .member-info strong {
+        color: var(--tx);
+        font-size: .85rem;
+        font-weight: 600;
+    }
+
+    .member-info span {
+        color: var(--tx-2);
+        font-size: .75rem;
+    }
+
+.member-card .badge {
+    flex-shrink: 0;
+}
+
+/* =========================================================
+   PROJECT FORM
+   ========================================================= */
+
+.project-form {
+    width: 100%;
+    max-width: 700px;
+    padding: var(--sp-8);
+}
+
+
+/* ---------------------------------------------------------
+   Form Section
+   --------------------------------------------------------- */
+
+.form-section {
+    padding-bottom: var(--sp-8);
+    margin-bottom: var(--sp-8);
+    border-bottom: 1px solid var(--bdr);
+}
+
+    .form-section:last-of-type {
+        margin-bottom: 0;
+    }
+
+.form-section-header {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--sp-3);
+    margin-bottom: var(--sp-6);
+}
+
+    .form-section-header > i {
+        color: var(--acc);
+        font-size: 1rem;
+        margin-top: .15rem;
+    }
+
+    .form-section-header h3 {
+        color: var(--tx);
+        font-size: var(--fs-base);
+        font-weight: var(--fw-semibold);
+    }
+
+    .form-section-header p {
+        margin-top: .15rem;
+        color: var(--tx-2);
+        font-size: var(--fs-sm);
+    }
+
+
+/* ---------------------------------------------------------
+   Required Field
+   --------------------------------------------------------- */
+
+.required-mark {
+    color: var(--red);
+}
+
+
+/* ---------------------------------------------------------
+   Project Responsive
+   --------------------------------------------------------- */
+
+@media (max-width: 900px) {
+    .dd-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .rb-cols {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 700px) {
+
+    .project-form {
+        max-width: none;
+        padding: var(--sp-6);
+    }
+
+    .form-row-2 {
+        grid-template-columns: 1fr;
+        gap: 0;
+    }
+}
+
+@media (max-width: 600px) {
+    .proj-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .empty-state {
+        padding: 2.5rem var(--sp-6);
+    }
+
+    .param-list {
+        padding-left: var(--sp-6);
+        padding-right: var(--sp-6);
+    }
+
+    .pr {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: var(--sp-1);
+    }
+
+    .pr-v {
+        text-align: left;
+    }
+
+    .rb {
+        padding-left: var(--sp-6);
+        padding-right: var(--sp-6);
+    }
+
+    .rev-timeline {
+        padding-left: var(--sp-6);
+        padding-right: var(--sp-6);
+    }
+
+    .info-banner {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+        .info-banner a {
+            white-space: normal;
+        }
+}
+
+
+@media (max-width: 480px) {
+
+    .form-actions {
+        flex-direction: column-reverse;
+        align-items: stretch;
+    }
+
+        .form-actions .btn-primary,
+        .form-actions .btn-ghost {
+            width: 100%;
+            justify-content: center;
+        }
+}

@@ -1,0 +1,214 @@
+/* =========================================================
+   CulvertCAD — Cards
+   ========================================================= */
+
+/* ---------------------------------------------------------
+   Base Card
+   --------------------------------------------------------- */
+
+.card {
+    background: var(--bg-card);
+    border: 1px solid var(--bdr);
+    border-radius: var(--r-lg);
+    overflow: hidden;
+}
+
+.card-hd {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-5);
+    padding: var(--sp-6) var(--sp-8);
+    border-bottom: 1px solid var(--bdr);
+}
+
+    .card-hd h2,
+    .card-hd h3 {
+        font-size: var(--fs-lg);
+        font-weight: var(--fw-semibold);
+        color: var(--tx);
+    }
+
+
+/* ---------------------------------------------------------
+   Statistic Cards
+   --------------------------------------------------------- */
+
+.stat-card {
+    background: var(--bg-card);
+    border: 1px solid var(--bdr);
+    border-radius: var(--r-lg);
+    padding: var(--sp-8);
+    display: flex;
+    align-items: center;
+    gap: var(--sp-6);
+}
+
+.stat-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: var(--r);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    flex-shrink: 0;
+}
+
+.stat-val {
+    font-size: var(--fs-display);
+    font-weight: var(--fw-bold);
+    font-family: var(--mono);
+    color: var(--tx);
+    line-height: 1;
+}
+
+.stat-lbl {
+    font-size: var(--fs-sm);
+    color: var(--tx-2);
+    margin-top: var(--sp-1);
+}
+
+
+/* ---------------------------------------------------------
+   Project Cards
+   --------------------------------------------------------- */
+
+.proj-card {
+    background: var(--bg-card);
+    border: 1px solid var(--bdr);
+    border-radius: var(--r-lg);
+    padding: var(--sp-8);
+    text-decoration: none;
+    color: inherit;
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-2);
+    transition: border-color var(--transition-fast), background-color var(--transition-fast);
+}
+
+    .proj-card:hover {
+        border-color: var(--acc);
+        background: var(--bg-up);
+        text-decoration: none;
+    }
+
+.pc-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-5);
+}
+
+.pc-code {
+    font-family: var(--mono);
+    font-size: var(--fs-sm);
+    color: var(--acc);
+    font-weight: var(--fw-semibold);
+}
+
+.pc-name {
+    font-size: var(--fs-lg);
+    font-weight: var(--fw-semibold);
+    color: var(--tx);
+}
+
+.pc-meta {
+    font-size: var(--fs-md);
+    color: var(--tx-2);
+}
+
+.pc-footer {
+    display: flex;
+    gap: var(--sp-7);
+    margin-top: var(--sp-2);
+    padding-top: var(--sp-5);
+    border-top: 1px solid var(--bdr);
+    font-size: var(--fs-xs);
+    color: var(--tx-m);
+}
+
+
+/* ---------------------------------------------------------
+   Empty State
+   --------------------------------------------------------- */
+
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--sp-6);
+    padding: 3.5rem 2rem;
+    background: var(--bg-card);
+    border: 2px dashed var(--bdr);
+    border-radius: var(--r-lg);
+    color: var(--tx-2);
+    text-align: center;
+}
+
+.es-icon {
+    font-size: 2.5rem;
+}
+
+
+/* ---------------------------------------------------------
+   Metadata Strip
+   --------------------------------------------------------- */
+
+.meta-strip {
+    display: grid;
+    grid-template-columns: repeat( auto-fill, minmax(190px, 1fr) );
+    background: var(--bg-card);
+    border: 1px solid var(--bdr);
+    border-radius: var(--r-lg);
+    overflow: hidden;
+    margin-bottom: var(--sp-9);
+}
+
+.mi {
+    padding: var(--sp-5) var(--sp-7);
+    border-right: 1px solid var(--bdr);
+    border-bottom: 1px solid var(--bdr);
+}
+
+.mi-lbl {
+    display: block;
+    font-size: var(--fs-xs);
+    color: var(--tx-m);
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    margin-bottom: var(--sp-1);
+}
+
+.mi-val {
+    font-size: var(--fs-body);
+    font-weight: var(--fw-semibold);
+    color: var(--tx);
+}
+
+
+/* ---------------------------------------------------------
+   Responsive Cards
+   --------------------------------------------------------- */
+
+@media (max-width: 600px) {
+    .card-hd {
+        padding: var(--sp-5) var(--sp-6);
+    }
+
+    .stat-card {
+        padding: var(--sp-6);
+    }
+
+    .proj-card {
+        padding: var(--sp-6);
+    }
+
+    .meta-strip {
+        grid-template-columns: 1fr;
+    }
+
+    .mi {
+        border-right: none;
+    }
+}

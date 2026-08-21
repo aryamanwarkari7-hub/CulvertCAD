@@ -1,94 +1,389 @@
 @* Views/Projects/Details.cshtml *@
 @model CulvertCAD.Core.DTOs.ProjectDto
-@{ ViewData["Title"] = Model.ProjectName; var designs = ViewBag.Designs as List<CulvertCAD.Core.DTOs.CulvertDesignDto> ?? new(); var summary = ViewBag.SurveySummary as CulvertCAD.Core.DTOs.SurveySummaryDto; }
+
+@{
+    ViewData["Title"] = Model.ProjectName;
+
+    var designs =
+        ViewBag.Designs as List<CulvertCAD.Core.DTOs.CulvertDesignDto>
+        ?? new();
+
+    var summary =
+        ViewBag.SurveySummary as CulvertCAD.Core.DTOs.SurveySummaryDto;
+}
 
 <div class="page">
+
+    <!-- =====================================================
+         Page Header
+         ===================================================== -->
+
     <div class="page-header">
+
         <div>
-            <div class="breadcrumb"><a asp-action="Index">Projects</a> / @Model.ProjectCode</div>
-            <h1 class="page-title">@Model.ProjectName</h1>
-            <p class="page-sub">@Model.Location · @Model.State</p>
+            <div class="breadcrumb">
+                <a asp-action="Index">Projects</a>
+                <span>/</span>
+                @Model.ProjectCode
+            </div>
+
+            <h1 class="page-title">
+                @Model.ProjectName
+            </h1>
+
+            <p class="page-sub">
+                @Model.Location · @Model.State
+            </p>
         </div>
-        <div style="display:flex;gap:.5rem">
-            <a asp-controller="Survey" asp-action="Upload" asp-route-projectId="@Model.Id" class="btn-ghost">📊 Survey Data</a>
-            <a asp-controller="Designs" asp-action="Create" asp-route-projectId="@Model.Id" class="btn-primary">＋ New Design</a>
+
+        <div class="action-row">
+
+            <a asp-controller="Survey"
+               asp-action="Upload"
+               asp-route-projectId="@Model.Id"
+               class="btn-ghost">
+
+                <i class="bi bi-bar-chart-line"
+                   aria-hidden="true"></i>
+
+                <span>Survey Data</span>
+            </a>
+
+            <a asp-controller="Designs"
+               asp-action="Create"
+               asp-route-projectId="@Model.Id"
+               class="btn-primary">
+
+                <i class="bi bi-plus-lg"
+                   aria-hidden="true"></i>
+
+                <span>New Design</span>
+            </a>
+
         </div>
+
     </div>
 
+
+    <!-- =====================================================
+         Project Metadata
+         ===================================================== -->
+
     <div class="meta-strip">
-        @if (!string.IsNullOrEmpty(Model.ClientName)) { <div class="mi"><span class="mi-lbl">Client</span><span class="mi-val">@Model.ClientName</span></div> }
-        @if (!string.IsNullOrEmpty(Model.ConsultantName)) { <div class="mi"><span class="mi-lbl">Consultant</span><span class="mi-val">@Model.ConsultantName</span></div> }
-        @if (!string.IsNullOrEmpty(Model.RoadName)) { <div class="mi"><span class="mi-lbl">Road</span><span class="mi-val">@Model.RoadName</span></div> }
-        @if (!string.IsNullOrEmpty(Model.ChainageFrom)) { <div class="mi"><span class="mi-lbl">Chainage</span><span class="mi-val">@Model.ChainageFrom – @Model.ChainageTo</span></div> }
-        <div class="mi"><span class="mi-lbl">Status</span><span class="mi-val">@Model.Status</span></div>
+
+        @if (!string.IsNullOrEmpty(Model.ClientName))
+        {
+            <div class="mi">
+                <span class="mi-lbl">Client</span>
+                <span class="mi-val">@Model.ClientName</span>
+            </div>
+        }
+
+        @if (!string.IsNullOrEmpty(Model.ConsultantName))
+        {
+            <div class="mi">
+                <span class="mi-lbl">Consultant</span>
+                <span class="mi-val">@Model.ConsultantName</span>
+            </div>
+        }
+
+        @if (!string.IsNullOrEmpty(Model.RoadName))
+        {
+            <div class="mi">
+                <span class="mi-lbl">Road</span>
+                <span class="mi-val">@Model.RoadName</span>
+            </div>
+        }
+
+        @if (!string.IsNullOrEmpty(Model.ChainageFrom))
+        {
+            <div class="mi">
+                <span class="mi-lbl">Chainage</span>
+                <span class="mi-val">
+                    @Model.ChainageFrom – @Model.ChainageTo
+                </span>
+            </div>
+        }
+
+        <div class="mi">
+            <span class="mi-lbl">Status</span>
+            <span class="mi-val">@Model.Status</span>
+        </div>
+
     </div>
+
+
+    <!-- =====================================================
+         Survey Summary
+         ===================================================== -->
 
     @if (summary != null)
     {
         <div class="info-banner">
-            📊 Survey data loaded: <strong>@summary.TotalPoints</strong> points · <strong>@summary.DetectedCulverts</strong> culvert locations detected ·
-            Alignment length <strong>@((summary.AlignmentLengthM/1000).ToString("0.00"))km</strong> ·
-            <a asp-controller="Survey" asp-action="Review" asp-route-projectId="@Model.Id">View Survey Analysis →</a>
+
+            <i class="bi bi-bar-chart-line"
+               aria-hidden="true"></i>
+
+            <span>
+                Survey data loaded:
+                <strong>@summary.TotalPoints</strong> points
+                ·
+                <strong>@summary.DetectedCulverts</strong>
+                culvert locations detected
+                ·
+                Alignment length
+                <strong>
+                    @((summary.AlignmentLengthM / 1000).ToString("0.00"))km
+                </strong>
+                ·
+                <a asp-controller="Survey"
+                   asp-action="Review"
+                   asp-route-projectId="@Model.Id">
+                    View Survey Analysis
+                    <i class="bi bi-arrow-right"
+                       aria-hidden="true"></i>
+                </a>
+            </span>
+
         </div>
     }
 
+
+    <!-- =====================================================
+         Project Tabs
+         ===================================================== -->
+
     <div class="tab-bar">
-        <button class="tab active" onclick="showTab('designs')">📐 Designs (@designs.Count)</button>
-        <button class="tab" onclick="showTab('members')">👥 Members (@Model.Members.Count)</button>
+
+        <button type="button"
+                class="tab active"
+                data-tab="designs"
+                onclick="showTab('designs', this)">
+
+            <i class="bi bi-rulers"
+               aria-hidden="true"></i>
+
+            <span>
+                Designs (@designs.Count)
+            </span>
+
+        </button>
+
+        <button type="button"
+                class="tab"
+                data-tab="members"
+                onclick="showTab('members', this)">
+
+            <i class="bi bi-people"
+               aria-hidden="true"></i>
+
+            <span>
+                Members (@Model.Members.Count)
+            </span>
+
+        </button>
+
     </div>
 
+
+    <!-- =====================================================
+         Designs Tab
+         ===================================================== -->
+
     <div id="tab-designs">
+
         @if (!designs.Any())
         {
-            <div class="empty-state"><div class="es-icon">📐</div><p>No designs yet.</p>
-                <a asp-controller="Designs" asp-action="Create" asp-route-projectId="@Model.Id" class="btn-primary">Create First Design</a></div>
+            <div class="empty-state">
+
+                <i class="bi bi-rulers es-icon"
+                   aria-hidden="true"></i>
+
+                <p>No designs yet.</p>
+
+                <a asp-controller="Designs"
+                   asp-action="Create"
+                   asp-route-projectId="@Model.Id"
+                   class="btn-primary">
+
+                    <i class="bi bi-plus-lg"
+                       aria-hidden="true"></i>
+
+                    <span>Create First Design</span>
+
+                </a>
+
+            </div>
         }
         else
         {
-            <table class="dt">
-                <thead><tr><th>Code</th><th>Design Name</th><th>Chainage</th><th>Type</th><th>Q (m³/s)</th><th>Revisions</th><th>Status</th><th></th></tr></thead>
-                <tbody>
-                @foreach (var d in designs)
-                {
-                    <tr>
-                        <td><code>@(d.DesignCode ?? "—")</code></td>
-                        <td><strong>@d.DesignName</strong><br /><small>@d.CulvertLocation</small></td>
-                        <td>@(d.Chainage ?? "—")</td>
-                        <td>@d.CulvertType</td>
-                        <td>@(d.DesignDischargeQ?.ToString("0.000") ?? "—")</td>
-                        <td><span class="badge badge-gray">@d.RevisionCount rev</span></td>
-                        <td><span class="badge @RevBadge(d.LatestRevisionStatus)">@(d.LatestRevisionStatus ?? "Draft")</span></td>
-                        <td><a asp-controller="Designs" asp-action="Details" asp-route-id="@d.Id" class="btn-xs">View →</a></td>
-                    </tr>
-                }
-                </tbody>
-            </table>
+            <div class="table-responsive">
+
+                <table class="dt">
+
+                    <thead>
+                        <tr>
+                            <th>Code</th>
+                            <th>Design Name</th>
+                            <th>Chainage</th>
+                            <th>Type</th>
+                            <th>Q (m³/s)</th>
+                            <th>Revisions</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+
+                        </tr>
+                    </thead>
+
+                    <tbody>
+
+                        @foreach (var design in designs)
+                        {
+                            <tr>
+
+                                <td>
+                                    <code>
+                                        @(design.DesignCode ?? "—")
+                                    </code>
+                                </td>
+
+                                <td>
+                                    <strong>
+                                        @design.DesignName
+                                    </strong>
+
+                                    <br />
+
+                                    <small>
+                                        @design.CulvertLocation
+                                    </small>
+                                </td>
+
+                                <td>
+                                    @(design.Chainage ?? "—")
+                                </td>
+
+                                <td>
+                                    @design.CulvertType
+                                </td>
+
+                                <td>
+                                    @(design.DesignDischargeQ?
+                                        .ToString("0.000") ?? "—")
+                                </td>
+
+                                <td>
+                                    <span class="badge badge-gray">
+                                        @design.RevisionCount rev
+                                    </span>
+                                </td>
+
+                                <td>
+                                    <span class="badge @RevBadge(design.LatestRevisionStatus)">
+                                        @(design.LatestRevisionStatus ?? "Draft")
+                                    </span>
+                                </td>
+
+                                <td>
+                                    <a asp-controller="Designs"
+                                       asp-action="Details"
+                                       asp-route-id="@design.Id"
+                                       class="btn-xs"
+                                       title="View Design"
+                                       aria-label="View Design">
+
+                                        <i class="bi bi-eye" aria-hidden="true"></i>
+
+                                    </a>
+                                </td>
+
+                            </tr>
+                        }
+
+                    </tbody>
+
+                </table>
+
+            </div>
         }
+
     </div>
 
-    <div id="tab-members" style="display:none">
+
+    <!-- =====================================================
+         Members Tab
+         ===================================================== -->
+
+    <div id="tab-members" class="tab-panel-hidden">
+
         <div class="members-grid">
-            @foreach (var m in Model.Members)
+
+            @if (!Model.Members.Any())
             {
-                <div class="member-card">
-                    <div class="member-av">@m.FullName.FirstOrDefault()</div>
-                    <div class="member-info"><strong>@m.FullName</strong><span>@m.Email</span></div>
-                    <span class="badge badge-blue">@m.Role</span>
+                <div class="empty-state">
+                    <i class="bi bi-people es-icon" aria-hidden="true"></i>
+
+                    <p>No project members assigned.</p>
                 </div>
             }
+            else
+            {
+                @foreach (var member in Model.Members)
+                {
+                    <div class="member-card">
+
+                        <div class="member-av">
+                            @(member.FullName?.FirstOrDefault() ?? '?')
+                        </div>
+
+                        <div class="member-info">
+                            <strong>@member.FullName</strong>
+                            <span>@member.Email</span>
+                        </div>
+
+                        <span class="badge badge-blue">
+                            @member.Role
+                        </span>
+
+                    </div>
+                }
+            }
+
         </div>
+
     </div>
+
 </div>
 
-<script>
-function showTab(tab) {
-    document.getElementById('tab-designs').style.display = tab === 'designs' ? 'block' : 'none';
-    document.getElementById('tab-members').style.display  = tab === 'members' ? 'block' : 'none';
-    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-    event.target.classList.add('active');
+
+@section Scripts {
+    <script>
+        function showTab(tab, button) {
+            const designs = document.getElementById('tab-designs');
+            const members = document.getElementById('tab-members');
+
+            designs.classList.toggle('tab-panel-hidden', tab !== 'designs');
+            members.classList.toggle('tab-panel-hidden', tab !== 'members');
+
+            document
+                .querySelectorAll('.tab')
+                .forEach(tabButton => {
+                    tabButton.classList.remove('active');
+                });
+
+            button.classList.add('active');
+        }
+    </script>
 }
-</script>
+
 
 @functions {
-    string RevBadge(string? s) => s switch { "Approved"=>"badge-green","Submitted"=>"badge-yellow","UnderReview"=>"badge-blue","RevisionRequired"=>"badge-red",_=>"badge-gray" };
+    string RevBadge(string? status) => status switch
+    {
+        "Approved"         => "badge-green",
+        "Submitted"        => "badge-yellow",
+        "UnderReview"      => "badge-blue",
+        "RevisionRequired" => "badge-red",
+        _                  => "badge-gray"
+    };
 }

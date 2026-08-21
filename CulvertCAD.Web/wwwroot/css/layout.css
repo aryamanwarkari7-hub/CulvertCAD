@@ -1,0 +1,272 @@
+/* =========================================================
+   CulvertCAD — Application Layout
+   ========================================================= */
+
+/* ---------------------------------------------------------
+   Application Shell
+   --------------------------------------------------------- */
+
+.app-shell {
+    display: grid;
+    grid-template-columns: var(--sb-w) minmax(0, 1fr);
+    min-height: 100vh;
+}
+
+
+/* ---------------------------------------------------------
+   Sidebar
+   --------------------------------------------------------- */
+
+.sidebar {
+    background: var(--bg-card);
+    border-right: 1px solid var(--bdr);
+    display: flex;
+    flex-direction: column;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow: hidden;
+}
+
+.sidebar-header {
+    padding: var(--sp-6) .9rem;
+    border-bottom: 1px solid var(--bdr);
+    min-height: 56px;
+    display: flex;
+    align-items: center;
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+    text-decoration: none;
+}
+
+    .logo:hover {
+        text-decoration: none;
+    }
+
+.logo-glyph {
+    font-size: 1.35rem;
+    color: var(--acc);
+}
+
+.logo-text {
+    font-family: var(--mono);
+    font-weight: var(--fw-bold);
+    font-size: .95rem;
+    color: var(--tx);
+    letter-spacing: .06em;
+}
+
+
+/* ---------------------------------------------------------
+   Sidebar Navigation
+   --------------------------------------------------------- */
+
+.sidebar-nav {
+    flex: 1;
+    padding: var(--sp-5) .45rem;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.nav-item {
+    display: flex;
+    align-items: center;
+    gap: .7rem;
+    padding: .55rem .7rem;
+    border-radius: var(--r);
+    color: var(--tx-2);
+    text-decoration: none;
+    font-size: .875rem;
+    font-weight: var(--fw-medium);
+    transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+
+    .nav-item:hover {
+        background: var(--bg-hov);
+        color: var(--tx);
+        text-decoration: none;
+    }
+
+.nav-icon {
+    font-size: .95rem;
+    width: 1.2rem;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+
+/* ---------------------------------------------------------
+   Sidebar Footer
+   --------------------------------------------------------- */
+
+.sidebar-footer {
+    padding: var(--sp-5) .9rem;
+    border-top: 1px solid var(--bdr);
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+}
+
+.user-chip {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.avatar {
+    width: var(--avatar-sm);
+    height: var(--avatar-sm);
+    border-radius: 50%;
+    background: linear-gradient( 135deg, var(--acc), var(--acc-dk) );
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: var(--fw-bold);
+    font-size: .78rem;
+    color: #fff;
+    flex-shrink: 0;
+}
+
+.user-name {
+    font-size: .78rem;
+    font-weight: var(--fw-semibold);
+    color: var(--tx);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.logout-btn {
+    background: none;
+    border: none;
+    color: var(--tx-2);
+    cursor: pointer;
+    font-size: 1rem;
+    padding: var(--sp-1);
+    border-radius: var(--r);
+    flex-shrink: 0;
+}
+
+    .logout-btn:hover {
+        color: var(--red);
+    }
+
+
+/* ---------------------------------------------------------
+   Main Application Area
+   --------------------------------------------------------- */
+
+.main-area {
+    min-width: 0;
+    min-height: 100vh;
+    overflow-y: auto;
+}
+
+
+/* ---------------------------------------------------------
+   Page Container
+   --------------------------------------------------------- */
+
+.page {
+    width: 100%;
+    max-width: var(--page-max);
+    padding: var(--page-pad-y) var(--page-pad-x);
+}
+
+
+/* ---------------------------------------------------------
+   Page Header
+   --------------------------------------------------------- */
+
+.page-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: var(--sp-10);
+    gap: var(--sp-7);
+    flex-wrap: wrap;
+}
+
+.page-title {
+    font-size: var(--fs-2xl);
+    font-weight: var(--fw-bold);
+    color: var(--tx);
+    font-family: var(--mono);
+}
+
+.page-sub {
+    color: var(--tx-2);
+    font-size: var(--fs-base);
+    margin-top: var(--sp-1);
+}
+
+
+
+/* ---------------------------------------------------------
+   Mobile / Tablet
+   --------------------------------------------------------- */
+
+@media (max-width: 900px) {
+    .app-shell {
+        grid-template-columns: 1fr;
+    }
+
+    .sidebar {
+        position: relative;
+        width: 100%;
+        height: auto;
+        min-height: 0;
+        border-right: none;
+        border-bottom: 1px solid var(--bdr);
+    }
+
+    .sidebar-nav {
+        flex-direction: row;
+        overflow-x: auto;
+        padding: var(--sp-3) .45rem;
+    }
+
+    .nav-item {
+        flex: 0 0 auto;
+    }
+
+    .sidebar-footer {
+        display: none;
+    }
+
+    .main-area {
+        min-height: auto;
+        overflow-y: visible;
+    }
+}
+
+
+/* ---------------------------------------------------------
+   Small Mobile
+   --------------------------------------------------------- */
+
+@media (max-width: 600px) {
+    .page {
+        padding: 1rem;
+    }
+
+    .page-header {
+        margin-bottom: 1rem;
+    }
+
+    .page-title {
+        font-size: 1.25rem;
+    }
+
+    .page-sub {
+        font-size: .8rem;
+    }
+}
