@@ -13,7 +13,7 @@ namespace CulvertCAD.Core.Entities
         public decimal? CatchmentAreaHa { get; set; }
         public decimal? RainfallIntensityMmHr { get; set; }
         public decimal? RunoffCoefficient { get; set; }
-        public decimal? DesignDischargeQ { get; set; }
+        public decimal? DesignDischargeOverrideQ { get; set; }
         public int? ReturnPeriodYrs { get; set; }
         public HydrologicalMethod HydroMethod { get; set; }
 
@@ -31,7 +31,7 @@ namespace CulvertCAD.Core.Entities
 
         // Design basis
 
-        public int DesignId { get; set; }
+        
         public string? DesignStandard { get; set; }
     }
 }

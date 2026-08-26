@@ -132,26 +132,38 @@ public class AddCommentDto       { public string CommentText { get; set; } = "";
 
 public class CalculationResultDto
 {
-    public int     SelectedDiameterMm   { get; set; }
-    public int     NumberOfPipes        { get; set; }
-    public double  QfullM3s             { get; set; }
-    public double  VelocityFullFlowMs   { get; set; }
-    public double  VelocityDesignMs     { get; set; }
-    public double  HeadwaterDepthM      { get; set; }
-    public bool    HydraulicAdequate    { get; set; }
-    public double  EarthLoadKNm         { get; set; }
-    public double  LiveLoadKNm          { get; set; }
-    public double  TotalLoadKNm         { get; set; }
-    public string  BeddingClass         { get; set; } = "";
-    public double  BeddingFactor        { get; set; }
-    public double  RequiredCrushKNm     { get; set; }
-    public string  SelectedPipeClass    { get; set; } = "";
-    public double  PipeCrushCapKNm      { get; set; }
-    public double  FactorOfSafety       { get; set; }
-    public bool    StructuralAdequate   { get; set; }
-    public bool    IsDesignSatisfactory { get; set; }
-    public DateTime CalculatedAt        { get; set; }
-    public List<CalcStepDto> HydraulicSteps  { get; set; } = new();
+    public double CatchmentAreaHa { get; set; }
+    public double RainfallIntensityMmHr { get; set; }
+    public double RunoffCoefficient { get; set; }
+    public double DesignDischargeQ { get; set; }
+
+    public int SelectedDiameterMm { get; set; }
+    public int NumberOfPipes { get; set; }
+    public double QfullM3s { get; set; }
+    public double QdesignM3s { get; set; }
+    public double VelocityFullFlowMs { get; set; }
+    public double VelocityDesignMs { get; set; }
+    public double HeadwaterDepthM { get; set; }
+    public bool HydraulicAdequate { get; set; }
+
+    public double EarthLoadKNm { get; set; }
+    public double LiveLoadKNm { get; set; }
+    public double TotalLoadKNm { get; set; }
+
+    public string BeddingClass { get; set; } = "";
+    public double BeddingFactor { get; set; }
+    public double RequiredCrushKNm { get; set; }
+
+    public string SelectedPipeClass { get; set; } = "";
+    public int SelectedPipeDiaMm { get; set; }
+    public double PipeCrushCapKNm { get; set; }
+    public double FactorOfSafety { get; set; }
+    public bool StructuralAdequate { get; set; }
+
+    public bool IsDesignSatisfactory { get; set; }
+    public DateTime CalculatedAt { get; set; }
+
+    public List<CalcStepDto> HydraulicSteps { get; set; } = new();
     public List<CalcStepDto> StructuralSteps { get; set; } = new();
 }
 
