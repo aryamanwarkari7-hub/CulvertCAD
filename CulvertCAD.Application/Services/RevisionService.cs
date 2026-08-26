@@ -83,7 +83,7 @@ public class RevisionService : IRevisionService
             CatchmentAreaHa = design.CatchmentAreaHa,
             RainfallIntensityMmHr = design.RainfallIntensityMmHr,
             RunoffCoefficient = design.RunoffCoefficient,
-            DesignDischargeQ = design.DesignDischargeQ,
+            DesignDischargeOverrideQ = design.DesignDischargeQ,
             ReturnPeriodYrs = design.ReturnPeriodYrs,
             HydroMethod = design.HydroMethod,
 
@@ -113,10 +113,13 @@ public class RevisionService : IRevisionService
         revision.InputSnapshotId = inputSnapshotId;
 
         // Keep the existing calculation behaviour for this step.
-        var calcResult = await _calc.CalculateAsync(design);
+        var engineeringResult = await _calc.CalculateAsync(input);
 
-        calcResult.DesignId = design.Id;
-        calcResult.RevisionId = revision.Id;
+        var calcResult = BuildCalculationResultDocument(
+    engineeringResult,
+    input,
+    revision.DesignId,
+    revision.Id);
 
         var resultSnapshotId = await _calcRepo.InsertAsync(calcResult);
 
@@ -244,7 +247,7 @@ public class RevisionService : IRevisionService
 
         var oldInput = document.Input;
 
-        input.DesignId = revision.DesignId;
+       
 
         // Capture important changes before replacing the snapshot.
         var changes = new List<string>();
@@ -296,10 +299,13 @@ public class RevisionService : IRevisionService
 
         await _revisionInputRepo.UpdateAsync(document);
 
-        var calcResult = await _calc.CalculateAsync(input);
+        var engineeringResult = await _calc.CalculateAsync(input);
 
-        calcResult.DesignId = revision.DesignId;
-        calcResult.RevisionId = revision.Id;
+        var calcResult = BuildCalculationResultDocument(
+    engineeringResult,
+    input,
+    revision.DesignId,
+    revision.Id);
 
         var existingResult = await _calcRepo
             .GetByRevisionAsync(revision.Id);
@@ -336,5 +342,56 @@ public class RevisionService : IRevisionService
         }
 
         await _db.SaveChangesAsync();
+    }
+
+    private static CalculationResultDocument BuildCalculationResultDocument(
+    RevisionEngineeringResultModel result,
+    RevisionEngineeringInput input,
+    int designId,
+    int revisionId)
+    {
+        return new CalculationResultDocument
+        {
+            DesignId = designId,
+            RevisionId = revisionId,
+            CalculatedAt = DateTime.UtcNow,
+
+            CatchmentAreaHa = (double)(input.CatchmentAreaHa ?? 0),
+            RainfallIntensityMmHr = (double)(input.RainfallIntensityMmHr ?? 80),
+            RunoffCoefficient = (double)(input.RunoffCoefficient ?? 0.55m),
+
+            DesignDischargeQ = result.DesignDischargeQ,
+
+            SelectedDiameterMm = result.SelectedDiameterMm,
+            NumberOfPipes = result.NumberOfPipes,
+
+            QfullM3s = result.QfullM3s,
+            QdesignM3s = result.QdesignM3s,
+
+            VelocityFullFlowMs = result.VelocityFullFlowMs,
+            VelocityDesignMs = result.VelocityDesignMs,
+
+            HeadwaterDepthM = result.HeadwaterDepthM,
+            HydraulicAdequate = result.HydraulicAdequate,
+
+            EarthLoadWeKNm = result.EarthLoadWeKNm,
+            LiveLoadWlKNm = result.LiveLoadWlKNm,
+            TotalLoadWtKNm = result.TotalLoadWtKNm,
+
+            BeddingClass = result.BeddingClass,
+            BeddingFactor = result.BeddingFactor,
+            RequiredCrushKNm = result.RequiredCrushKNm,
+
+            SelectedPipeClass = result.SelectedPipeClass,
+            SelectedPipeDiaMm = result.SelectedPipeDiaMm,
+            PipeCrushCapKNm = result.PipeCrushCapKNm,
+
+            FactorOfSafety = result.FactorOfSafety,
+            StructuralAdequate = result.StructuralAdequate,
+            IsDesignSatisfactory = result.IsDesignSatisfactory,
+
+            HydraulicSteps = result.HydraulicSteps,
+            StructuralSteps = result.StructuralSteps
+        };
     }
 }
