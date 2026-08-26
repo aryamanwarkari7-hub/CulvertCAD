@@ -98,7 +98,8 @@ public class DesignsController : Controller
             CulvertLocation = d.CulvertLocation, Chainage = d.Chainage,
             CulvertType = d.CulvertType.ToString(),
             CatchmentAreaHa = d.CatchmentAreaHa, RainfallIntensityMmHr = d.RainfallIntensityMmHr,
-            RunoffCoefficient = d.RunoffCoefficient, DesignDischargeQ = d.DesignDischargeQ,
+            RunoffCoefficient = d.RunoffCoefficient,
+            DesignDischargeQ = d.DesignDischargeQ,
             ReturnPeriodYrs = d.ReturnPeriodYrs, HydroMethod = d.HydroMethod.ToString(),
             FillHeightM = d.FillHeightM, RoadwayWidthM = d.RoadwayWidthM,
             SlopePercent = d.SlopePercent, SoilType = d.SoilType,
@@ -132,20 +133,54 @@ public class DesignsController : Controller
         CreatedAt = r.CreatedAt, SubmittedAt = r.SubmittedAt, ApprovedAt = r.ApprovedAt,
         Result = calc == null ? null : new CalculationResultDto
         {
-            SelectedDiameterMm = calc.SelectedDiameterMm, NumberOfPipes = calc.NumberOfPipes,
-            QfullM3s = calc.QfullM3s, VelocityFullFlowMs = calc.VelocityFullFlowMs,
-            VelocityDesignMs = calc.VelocityDesignMs, HeadwaterDepthM = calc.HeadwaterDepthM,
-            HydraulicAdequate = calc.HydraulicAdequate, EarthLoadKNm = calc.EarthLoadWeKNm,
-            LiveLoadKNm = calc.LiveLoadWlKNm, TotalLoadKNm = calc.TotalLoadWtKNm,
-            BeddingClass = calc.BeddingClass, BeddingFactor = calc.BeddingFactor,
-            RequiredCrushKNm = calc.RequiredCrushKNm, SelectedPipeClass = calc.SelectedPipeClass,
-            PipeCrushCapKNm = calc.PipeCrushCapKNm, FactorOfSafety = calc.FactorOfSafety,
-            StructuralAdequate = calc.StructuralAdequate, IsDesignSatisfactory = calc.IsDesignSatisfactory,
+            CatchmentAreaHa = calc.CatchmentAreaHa,
+            RainfallIntensityMmHr = calc.RainfallIntensityMmHr,
+            RunoffCoefficient = calc.RunoffCoefficient,
+            DesignDischargeQ = calc.DesignDischargeQ,
+
+            SelectedDiameterMm = calc.SelectedDiameterMm,
+            NumberOfPipes = calc.NumberOfPipes,
+            QfullM3s = calc.QfullM3s,
+            QdesignM3s = calc.QdesignM3s,
+            VelocityFullFlowMs = calc.VelocityFullFlowMs,
+            VelocityDesignMs = calc.VelocityDesignMs,
+            HeadwaterDepthM = calc.HeadwaterDepthM,
+            HydraulicAdequate = calc.HydraulicAdequate,
+
+            EarthLoadKNm = calc.EarthLoadWeKNm,
+            LiveLoadKNm = calc.LiveLoadWlKNm,
+            TotalLoadKNm = calc.TotalLoadWtKNm,
+
+            BeddingClass = calc.BeddingClass,
+            BeddingFactor = calc.BeddingFactor,
+            RequiredCrushKNm = calc.RequiredCrushKNm,
+
+            SelectedPipeClass = calc.SelectedPipeClass,
+            SelectedPipeDiaMm = calc.SelectedPipeDiaMm,
+            PipeCrushCapKNm = calc.PipeCrushCapKNm,
+            FactorOfSafety = calc.FactorOfSafety,
+            StructuralAdequate = calc.StructuralAdequate,
+            IsDesignSatisfactory = calc.IsDesignSatisfactory,
+
             CalculatedAt = calc.CalculatedAt,
+
             HydraulicSteps = calc.HydraulicSteps.Select(s => new CalcStepDto
-                { Label=s.Label, Formula=s.Formula, Result=s.Result, Unit=s.Unit, Clause=s.Clause }).ToList(),
+            {
+                Label = s.Label,
+                Formula = s.Formula,
+                Result = s.Result,
+                Unit = s.Unit,
+                Clause = s.Clause
+            }).ToList(),
+
             StructuralSteps = calc.StructuralSteps.Select(s => new CalcStepDto
-                { Label=s.Label, Formula=s.Formula, Result=s.Result, Unit=s.Unit, Clause=s.Clause }).ToList(),
+            {
+                Label = s.Label,
+                Formula = s.Formula,
+                Result = s.Result,
+                Unit = s.Unit,
+                Clause = s.Clause
+            }).ToList()
         }
     };
 }
@@ -276,8 +311,7 @@ public class RevisionsController : Controller
 
             var input = new RevisionEngineeringInput
             {
-                DesignId = design.Id,
-
+                
                 CulvertType = design.CulvertType,
                 CulvertLocation = design.CulvertLocation,
                 Chainage = design.Chainage,
@@ -285,7 +319,7 @@ public class RevisionsController : Controller
                 CatchmentAreaHa = design.CatchmentAreaHa,
                 RainfallIntensityMmHr = design.RainfallIntensityMmHr,
                 RunoffCoefficient = design.RunoffCoefficient,
-                DesignDischargeQ = design.DesignDischargeQ,
+                DesignDischargeOverrideQ = design.DesignDischargeQ,
                 ReturnPeriodYrs = design.ReturnPeriodYrs,
                 HydroMethod = design.HydroMethod,
 
@@ -360,10 +394,7 @@ public class RevisionsController : Controller
 
         try
         {
-            input.DesignId = await _db.DesignRevisions
-                .Where(r => r.Id == id)
-                .Select(r => r.DesignId)
-                .FirstAsync();
+            
 
             await _revSvc.UpdateRevisionInputsAsync(
                 id,

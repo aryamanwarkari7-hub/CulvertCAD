@@ -1,13 +1,14 @@
 // CulvertCAD.Web/Program.cs
+using CulvertCAD.Application.Services;
+using CulvertCAD.Core.Entities;
+using CulvertCAD.Infrastructure.Drawing;
+using CulvertCAD.Infrastructure.MongoDB.Repositories;
+using CulvertCAD.Infrastructure.MySQL.Data;
+using CulvertCAD.Infrastructure.MySQL.Repositories;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using MongoDB.Driver;
 using Serilog;
-using CulvertCAD.Core.Entities;
-using CulvertCAD.Infrastructure.MySQL.Data;
-using CulvertCAD.Infrastructure.MongoDB.Repositories;
-using CulvertCAD.Infrastructure.Drawing;
-using CulvertCAD.Application.Services;
 
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
@@ -20,29 +21,36 @@ builder.Host.UseSerilog();
 // ── MySQL (EF Core) ───────────────────────────────────────────────────────────
 var mysqlConn = builder.Configuration.GetConnectionString("MySQL");
 builder.Services.AddDbContext<AppDbContext>(opt =>
-    opt.UseMySql(mysqlConn, ServerVersion.AutoDetect(mysqlConn),
-        mysql => mysql.MigrationsAssembly("CulvertCAD.Infrastructure")));
+    opt.UseMySql(
+        mysqlConn,
+        ServerVersion.AutoDetect(mysqlConn),
+        mysql => mysql.MigrationsAssembly("CulvertCAD.Infrastructure")
+    )
+);
 
 // ── MongoDB ───────────────────────────────────────────────────────────────────
 var mongoConn = builder.Configuration.GetConnectionString("MongoDB");
 var mongoDbName = builder.Configuration["MongoDbName"] ?? "CulvertCAD_Documents";
 builder.Services.AddSingleton<IMongoClient>(_ => new MongoClient(mongoConn));
-builder.Services.AddSingleton(sp =>
-    new MongoDbContext(sp.GetRequiredService<IMongoClient>(), mongoDbName));
+builder.Services.AddSingleton(sp => new MongoDbContext(
+    sp.GetRequiredService<IMongoClient>(),
+    mongoDbName
+));
 
 // ── Identity ──────────────────────────────────────────────────────────────────
-builder.Services.AddIdentity<ApplicationUser, IdentityRole<int>>(opt =>
-{
-    opt.Password.RequiredLength = 8;
-    opt.Password.RequireDigit = true;
-    opt.Password.RequireUppercase = true;
-    opt.Password.RequireNonAlphanumeric = false;
-    opt.Lockout.MaxFailedAccessAttempts = 5;
-    opt.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
-    opt.User.RequireUniqueEmail = true;
-})
-.AddEntityFrameworkStores<AppDbContext>()
-.AddDefaultTokenProviders();
+builder
+    .Services.AddIdentity<ApplicationUser, IdentityRole<int>>(opt =>
+    {
+        opt.Password.RequiredLength = 8;
+        opt.Password.RequireDigit = true;
+        opt.Password.RequireUppercase = true;
+        opt.Password.RequireNonAlphanumeric = false;
+        opt.Lockout.MaxFailedAccessAttempts = 5;
+        opt.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
+        opt.User.RequireUniqueEmail = true;
+    })
+    .AddEntityFrameworkStores<AppDbContext>()
+    .AddDefaultTokenProviders();
 
 builder.Services.ConfigureApplicationCookie(opt =>
 {
@@ -60,13 +68,22 @@ builder.Services.AddScoped<IRevisionInputRepository, RevisionInputRepository>();
 builder.Services.AddScoped<IDrawingRepository, DrawingRepository>();
 builder.Services.AddScoped<IAlignmentRepository, AlignmentRepository>();
 builder.Services.AddScoped<IBatchRunRepository, BatchRunRepository>();
+builder.Services.AddScoped<IPipeCatalogRepository, PipeCatalogRepository>();
 
 // ── Application Services ──────────────────────────────────────────────────────
+builder.Services.AddScoped<IHydrologyCalculationService, HydrologyCalculationService>();
+builder.Services.AddScoped<IHeadwaterCalculationService, HeadwaterCalculationService>();
+builder.Services.AddScoped<IHydraulicCalculationService, HydraulicCalculationService>();
+builder.Services.AddScoped<IStructuralCalculationService, StructuralCalculationService>();
+builder.Services.AddScoped<IPipeSelectionService, PipeSelectionService>();
 builder.Services.AddScoped<IDesignCalculationService, DesignCalculationService>();
+builder.Services.AddScoped<IFOSCalculationService, FOSCalculationService>();
 builder.Services.AddScoped<IRevisionService, RevisionService>();
 builder.Services.AddScoped<ISurveyImportService, SurveyImportService>();
 builder.Services.AddScoped<IBOQService, BOQService>();
 builder.Services.AddScoped<IDxfDrawingEngine, DxfDrawingEngine>();
+
+builder.Services.AddScoped<IEngineeringInputValidationService, EngineeringInputValidationService>();
 
 // ── MVC ───────────────────────────────────────────────────────────────────────
 builder.Services.AddControllersWithViews();
@@ -97,14 +114,16 @@ app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapControllerRoute(
-    name: "default",
-    pattern: "{controller=Home}/{action=Index}/{id?}");
+app.MapControllerRoute(name: "default", pattern: "{controller=Home}/{action=Index}/{id?}");
 
 app.Run();
 
 // ── SEEDER ────────────────────────────────────────────────────────────────────
-static async Task SeedAsync(AppDbContext db, UserManager<ApplicationUser> um, RoleManager<IdentityRole<int>> rm)
+static async Task SeedAsync(
+    AppDbContext db,
+    UserManager<ApplicationUser> um,
+    RoleManager<IdentityRole<int>> rm
+)
 {
     string[] roles = { "SuperAdmin", "Admin", "DesignEngineer", "CheckingEngineer", "Viewer" };
     foreach (var role in roles)
@@ -113,7 +132,9 @@ static async Task SeedAsync(AppDbContext db, UserManager<ApplicationUser> um, Ro
 
     if (!db.Organisations.Any())
     {
-        db.Organisations.Add(new Organisation { Name = "Default Organisation", ShortName = "DEFAULT" });
+        db.Organisations.Add(
+            new Organisation { Name = "Default Organisation", ShortName = "DEFAULT" }
+        );
         await db.SaveChangesAsync();
     }
 
@@ -121,12 +142,17 @@ static async Task SeedAsync(AppDbContext db, UserManager<ApplicationUser> um, Ro
     {
         var admin = new ApplicationUser
         {
-            UserName = "admin@culvertcad.in", Email = "admin@culvertcad.in",
-            FullName = "System Administrator", EmployeeCode = "EMP001",
-            Designation = "Senior Engineer", Department = "Design",
-            EmailConfirmed = true, IsActive = true
+            UserName = "admin@culvertcad.in",
+            Email = "admin@culvertcad.in",
+            FullName = "System Administrator",
+            EmployeeCode = "EMP001",
+            Designation = "Senior Engineer",
+            Department = "Design",
+            EmailConfirmed = true,
+            IsActive = true,
         };
         var r = await um.CreateAsync(admin, "Admin@123");
-        if (r.Succeeded) await um.AddToRoleAsync(admin, "SuperAdmin");
+        if (r.Succeeded)
+            await um.AddToRoleAsync(admin, "SuperAdmin");
     }
 }
