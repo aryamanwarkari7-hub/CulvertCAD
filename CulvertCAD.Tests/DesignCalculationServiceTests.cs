@@ -49,15 +49,30 @@ public class DesignCalculationServiceTests
         var db = GetInMemoryDb();
         var svc = new DesignCalculationService(
             new HydrologyCalculationService(),
-            new HydraulicCalculationService(new HeadwaterCalculationService()),
-            new StructuralCalculationService(),
+            new HydraulicCalculationService(
+                new HeadwaterCalculationService(),
+                new EngineeringCalculationSettings { ManningN = 0.013, DesignCapacityFactor = 0.75 }
+            ),
+            new StructuralCalculationService(
+                new EngineeringCalculationSettings
+                {
+                    ManningN = 0.013,
+                    DesignCapacityFactor = 0.75,
+                    TrenchWidthClearanceM = 0.6,
+                    StructuralKmu = 0.150,
+                    BeddingClass = "ClassB",
+                    BeddingFactor = 1.9,
+                }
+            ),
             new PipeSelectionService(new PipeCatalogRepository(db)),
             new FOSCalculationService(),
-            new EngineeringInputValidationService()
+            new EngineeringInputValidationService(),
+            new EngineeringCalculationSettings { StructuralFosMinimum = 1.5 }
         );
 
         var result = new HydraulicCalculationService(
-            new HeadwaterCalculationService()
+            new HeadwaterCalculationService(),
+            new EngineeringCalculationSettings { ManningN = 0.013, DesignCapacityFactor = 0.75 }
         ).CalculateHydraulic(Q: 1.8333, slopePct: 1.5);
 
         Assert.True(result.IsAdequate);
@@ -71,15 +86,30 @@ public class DesignCalculationServiceTests
         var db = GetInMemoryDb();
         var svc = new DesignCalculationService(
             new HydrologyCalculationService(),
-            new HydraulicCalculationService(new HeadwaterCalculationService()),
-            new StructuralCalculationService(),
+            new HydraulicCalculationService(
+                new HeadwaterCalculationService(),
+                new EngineeringCalculationSettings { ManningN = 0.013, DesignCapacityFactor = 0.75 }
+            ),
+            new StructuralCalculationService(
+                new EngineeringCalculationSettings
+                {
+                    ManningN = 0.013,
+                    DesignCapacityFactor = 0.75,
+                    TrenchWidthClearanceM = 0.6,
+                    StructuralKmu = 0.150,
+                    BeddingClass = "ClassB",
+                    BeddingFactor = 1.9,
+                }
+            ),
             new PipeSelectionService(new PipeCatalogRepository(db)),
             new FOSCalculationService(),
-            new EngineeringInputValidationService()
+            new EngineeringInputValidationService(),
+            new EngineeringCalculationSettings { StructuralFosMinimum = 1.5 }
         );
 
         var result = new HydraulicCalculationService(
-            new HeadwaterCalculationService()
+            new HeadwaterCalculationService(),
+            new EngineeringCalculationSettings { ManningN = 0.013, DesignCapacityFactor = 0.75 }
         ).CalculateHydraulic(Q: 1.8333, slopePct: 0.1);
 
         // At 0.1% slope with this discharge, expect either failure or max pipes (4)
@@ -92,7 +122,17 @@ public class DesignCalculationServiceTests
     [InlineData(1.5, 8.5)]
     public void GetLiveLoad_IRC_ClassA_MatchesIS783Table1(double H, double expectedWl)
     {
-        var result = new StructuralCalculationService().CalculateStructural(
+        var result = new StructuralCalculationService(
+            new EngineeringCalculationSettings
+            {
+                ManningN = 0.013,
+                DesignCapacityFactor = 0.75,
+                TrenchWidthClearanceM = 0.6,
+                StructuralKmu = 0.150,
+                BeddingClass = "ClassB",
+                BeddingFactor = 1.9,
+            }
+        ).CalculateStructural(
             H: H,
             diaMm: 600,
             numberOfPipes: 1,
@@ -108,7 +148,17 @@ public class DesignCalculationServiceTests
     {
         var db = GetInMemoryDb();
 
-        var result = new StructuralCalculationService().CalculateStructural(
+        var result = new StructuralCalculationService(
+            new EngineeringCalculationSettings
+            {
+                ManningN = 0.013,
+                DesignCapacityFactor = 0.75,
+                TrenchWidthClearanceM = 0.6,
+                StructuralKmu = 0.150,
+                BeddingClass = "ClassB",
+                BeddingFactor = 1.9,
+            }
+        ).CalculateStructural(
             H: 0.5,
             diaMm: 600,
             numberOfPipes: 1,
@@ -129,11 +179,25 @@ public class DesignCalculationServiceTests
 
         var svc = new DesignCalculationService(
             new HydrologyCalculationService(),
-            new HydraulicCalculationService(new HeadwaterCalculationService()),
-            new StructuralCalculationService(),
+            new HydraulicCalculationService(
+                new HeadwaterCalculationService(),
+                new EngineeringCalculationSettings { ManningN = 0.013, DesignCapacityFactor = 0.75 }
+            ),
+            new StructuralCalculationService(
+                new EngineeringCalculationSettings
+                {
+                    ManningN = 0.013,
+                    DesignCapacityFactor = 0.75,
+                    TrenchWidthClearanceM = 0.6,
+                    StructuralKmu = 0.150,
+                    BeddingClass = "ClassB",
+                    BeddingFactor = 1.9,
+                }
+            ),
             new PipeSelectionService(new PipeCatalogRepository(db)),
             new FOSCalculationService(),
-            new EngineeringInputValidationService()
+            new EngineeringInputValidationService(),
+            new EngineeringCalculationSettings { StructuralFosMinimum = 1.5 }
         );
 
         var input = new RevisionEngineeringInput
@@ -162,11 +226,25 @@ public class DesignCalculationServiceTests
 
         var svc = new DesignCalculationService(
             new HydrologyCalculationService(),
-            new HydraulicCalculationService(new HeadwaterCalculationService()),
-            new StructuralCalculationService(),
+            new HydraulicCalculationService(
+                new HeadwaterCalculationService(),
+                new EngineeringCalculationSettings { ManningN = 0.013, DesignCapacityFactor = 0.75 }
+            ),
+            new StructuralCalculationService(
+                new EngineeringCalculationSettings
+                {
+                    ManningN = 0.013,
+                    DesignCapacityFactor = 0.75,
+                    TrenchWidthClearanceM = 0.6,
+                    StructuralKmu = 0.150,
+                    BeddingClass = "ClassB",
+                    BeddingFactor = 1.9,
+                }
+            ),
             new PipeSelectionService(new PipeCatalogRepository(db)),
             new FOSCalculationService(),
-            new EngineeringInputValidationService()
+            new EngineeringInputValidationService(),
+            new EngineeringCalculationSettings { StructuralFosMinimum = 1.5 }
         );
 
         var input = new RevisionEngineeringInput
@@ -221,11 +299,25 @@ public class DesignCalculationServiceTests
 
         var svc = new DesignCalculationService(
             new HydrologyCalculationService(),
-            new HydraulicCalculationService(new HeadwaterCalculationService()),
-            new StructuralCalculationService(),
+            new HydraulicCalculationService(
+                new HeadwaterCalculationService(),
+                new EngineeringCalculationSettings { ManningN = 0.013, DesignCapacityFactor = 0.75 }
+            ),
+            new StructuralCalculationService(
+                new EngineeringCalculationSettings
+                {
+                    ManningN = 0.013,
+                    DesignCapacityFactor = 0.75,
+                    TrenchWidthClearanceM = 0.6,
+                    StructuralKmu = 0.150,
+                    BeddingClass = "ClassB",
+                    BeddingFactor = 1.9,
+                }
+            ),
             new PipeSelectionService(new PipeCatalogRepository(db)),
             new FOSCalculationService(),
-            new EngineeringInputValidationService()
+            new EngineeringInputValidationService(),
+            new EngineeringCalculationSettings { StructuralFosMinimum = 1.5 }
         );
 
         var input = new RevisionEngineeringInput
@@ -287,11 +379,25 @@ public class DesignCalculationServiceTests
 
         var svc = new DesignCalculationService(
             new HydrologyCalculationService(),
-            new HydraulicCalculationService(new HeadwaterCalculationService()),
-            new StructuralCalculationService(),
+            new HydraulicCalculationService(
+                new HeadwaterCalculationService(),
+                new EngineeringCalculationSettings { ManningN = 0.013, DesignCapacityFactor = 0.75 }
+            ),
+            new StructuralCalculationService(
+                new EngineeringCalculationSettings
+                {
+                    ManningN = 0.013,
+                    DesignCapacityFactor = 0.75,
+                    TrenchWidthClearanceM = 0.6,
+                    StructuralKmu = 0.150,
+                    BeddingClass = "ClassB",
+                    BeddingFactor = 1.9,
+                }
+            ),
             new PipeSelectionService(new PipeCatalogRepository(db)),
             new FOSCalculationService(),
-            new EngineeringInputValidationService()
+            new EngineeringInputValidationService(),
+            new EngineeringCalculationSettings { StructuralFosMinimum = 1.5 }
         );
 
         var input = new RevisionEngineeringInput

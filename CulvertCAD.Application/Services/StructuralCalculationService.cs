@@ -6,6 +6,13 @@ namespace CulvertCAD.Application.Services;
 
 public class StructuralCalculationService : IStructuralCalculationService
 {
+    private readonly EngineeringCalculationSettings _settings;
+
+    public StructuralCalculationService(EngineeringCalculationSettings settings)
+    {
+        _settings = settings;
+    }
+
     private static readonly (double H, double Wl)[] LiveLoadTable =
     {
         (0.3, 22.0),
@@ -30,8 +37,8 @@ public class StructuralCalculationService : IStructuralCalculationService
     )
     {
         double D = diaMm / 1000.0;
-        double Bd = D + 0.6;
-        double Kmu = 0.150;
+        double Bd = D + _settings.TrenchWidthClearanceM;
+        double Kmu = _settings.StructuralKmu;
 
         double Cd = (1.0 - Math.Exp(-2.0 * Kmu * H / Bd)) / (2.0 * Kmu);
 
@@ -40,8 +47,8 @@ public class StructuralCalculationService : IStructuralCalculationService
         double Wl = GetLiveLoad(H, loadClass);
         double Wt = We + Wl;
 
-        const string beddingClass = "ClassB";
-        const double Bf = 1.9;
+        string beddingClass = _settings.BeddingClass;
+        double Bf = _settings.BeddingFactor;
 
         double reqCrush = Wt / Bf;
 
@@ -58,7 +65,7 @@ public class StructuralCalculationService : IStructuralCalculationService
             new()
             {
                 Label = "Trench Width Bd",
-                Formula = "D + 0.6",
+                Formula = $"D + {_settings.TrenchWidthClearanceM:0.###}",
                 Result = $"{Bd:0.000}",
                 Unit = "m",
                 Clause = "IS 783 Cl.7.2",
@@ -107,7 +114,7 @@ public class StructuralCalculationService : IStructuralCalculationService
             {
                 Label = "Bedding Factor Bf",
                 Formula = "Class B",
-                Result = "1.9",
+                Result = $"{Bf:0.###}",
                 Unit = "",
                 Clause = "IS 783 Cl.6",
             },

@@ -89,6 +89,15 @@ builder.Services.AddScoped<IEngineeringInputValidationService, EngineeringInputV
 builder.Services.AddControllersWithViews();
 builder.Services.AddHttpContextAccessor();
 
+builder.Services.AddSingleton(
+    builder
+        .Configuration.GetSection("EngineeringCalculationSettings")
+        .Get<EngineeringCalculationSettings>()
+        ?? throw new InvalidOperationException(
+            "EngineeringCalculationSettings configuration is missing."
+        )
+);
+
 var app = builder.Build();
 
 // ── Migrate & Seed ────────────────────────────────────────────────────────────

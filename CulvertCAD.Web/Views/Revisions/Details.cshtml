@@ -318,6 +318,21 @@
 
                         </div>
 
+                        <div class="rr">
+
+                            <span>
+                                Design Discharge Q
+                            </span>
+
+                            <strong>
+                                @Model.Result.DesignDischargeQ.ToString("0.000") m³/s
+                                <small>
+                                    (@Model.Result.DesignDischargeSource)
+                                </small>
+                            </strong>
+
+                        </div>
+
 
                         @foreach (var s in Model.Result.HydraulicSteps)
                         {

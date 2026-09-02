@@ -81,11 +81,32 @@ Hydrology calculation could continue with default values when required hydrology
 
 ### Rectification
 
-Hydrology inputs are now subject to the engineering input validation boundary.
+Hydrology inputs are now subject to the engineering input validation boundary through:
 
-The calculation service no longer relies on silent defaults for the validated required inputs.
+```text
+EngineeringInputValidationService
+```
+
+`DesignCalculationService.CalculateAsync()` calls validation before performing hydrology or hydraulic calculation.
+
+Both calculation paths in `RevisionService` call:
+
+```text
+_calc.CalculateAsync(input)
+        ↓
+BuildCalculationResultDocument(...)
+```
+
+Therefore the `??` values still present in `BuildCalculationResultDocument()` are persistence-mapping fallbacks only; they are not used as inputs to the engineering calculation.
 
 ### Verification
+
+Code-path tracing confirmed:
+
+- Missing Catchment Area is rejected before calculation.
+- Missing Rainfall Intensity is rejected before calculation.
+- Missing Runoff Coefficient is rejected before calculation.
+- `RevisionService` creates the calculation result only after `CalculateAsync()` completes successfully on both identified paths.
 
 Validation tests cover missing:
 
@@ -97,7 +118,9 @@ Validation tests cover missing:
 
 ### Cleared Conclusion
 
-The original H2 default-input fault has been cleared through explicit validation.
+The original H2 fault — silent defaulting of missing hydrology inputs during the engineering calculation — is cleared.
+
+A separate persistence-cleanup issue remains: `BuildCalculationResultDocument()` still uses fallback literals (`0`, `80`, `0.55`) when copying validated nullable inputs into non-nullable result fields. These values do not affect the calculation and are therefore not classified as H2.
 
 ---
 

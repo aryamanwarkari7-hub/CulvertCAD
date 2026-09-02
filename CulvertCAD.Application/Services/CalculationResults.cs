@@ -16,6 +16,10 @@ public class HydraulicResult
 
     public double Qfull { get; set; }
 
+    public double QdesignTotal { get; set; }
+
+    public double QfullTotal { get; set; }
+
     public List<CalcStep> Steps { get; set; } = new();
 
     public double VelocityDesign { get; set; }

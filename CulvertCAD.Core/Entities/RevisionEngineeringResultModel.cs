@@ -5,11 +5,16 @@ public class RevisionEngineeringResultModel
     // Hydrology / Design Discharge
     public double DesignDischargeQ { get; set; }
 
+    public string DesignDischargeSource { get; set; } = string.Empty;
+
     // Hydraulic Results
     public int SelectedDiameterMm { get; set; }
     public int NumberOfPipes { get; set; }
     public double QfullM3s { get; set; }
     public double QdesignM3s { get; set; }
+
+    public double QfullTotalM3s { get; set; }
+    public double QdesignTotalM3s { get; set; }
     public double VelocityFullFlowMs { get; set; }
     public double VelocityDesignMs { get; set; }
     public double HeadwaterDepthM { get; set; }

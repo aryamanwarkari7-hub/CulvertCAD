@@ -1,9 +1,9 @@
 // CulvertCAD.Application/Services/RevisionService.cs
-using Microsoft.EntityFrameworkCore;
 using CulvertCAD.Core.Entities;
 using CulvertCAD.Core.Enums;
-using CulvertCAD.Infrastructure.MySQL.Data;
 using CulvertCAD.Infrastructure.MongoDB.Repositories;
+using CulvertCAD.Infrastructure.MySQL.Data;
+using Microsoft.EntityFrameworkCore;
 
 namespace CulvertCAD.Application.Services;
 
@@ -11,10 +11,21 @@ public interface IRevisionService
 {
     Task<DesignRevision> CreateRevisionAsync(CulvertDesign design, string? changeDesc, int userId);
     Task TransitionAsync(int revisionId, RevisionStatus newStatus, int userId, string remarks);
-    Task<bool> CanTransitionAsync(int revisionId, RevisionStatus to, int userId, IList<string> roles);
-    Task AddCommentAsync(int revisionId, string text, string? fieldRef, CommentType type, int userId);
+    Task<bool> CanTransitionAsync(
+        int revisionId,
+        RevisionStatus to,
+        int userId,
+        IList<string> roles
+    );
+    Task AddCommentAsync(
+        int revisionId,
+        string text,
+        string? fieldRef,
+        CommentType type,
+        int userId
+    );
     Task ResolveCommentAsync(int commentId, int userId);
-    Task UpdateRevisionInputsAsync(int revisionId,RevisionEngineeringInput input,int userId);
+    Task UpdateRevisionInputsAsync(int revisionId, RevisionEngineeringInput input, int userId);
 }
 
 public class RevisionService : IRevisionService
@@ -25,24 +36,26 @@ public class RevisionService : IRevisionService
 
     private readonly IRevisionInputRepository _revisionInputRepo;
 
-    public RevisionService(AppDbContext db, 
-        IDesignCalculationService calc, 
+    public RevisionService(
+        AppDbContext db,
+        IDesignCalculationService calc,
         ICalcResultRepository calcRepo,
-        IRevisionInputRepository revisionInputRepo)
-    { _db = db;
+        IRevisionInputRepository revisionInputRepo
+    )
+    {
+        _db = db;
         _calc = calc;
         _calcRepo = calcRepo;
         _revisionInputRepo = revisionInputRepo;
     }
 
     public async Task<DesignRevision> CreateRevisionAsync(
-    CulvertDesign design,
-    string? changeDesc,
-    int userId)
+        CulvertDesign design,
+        string? changeDesc,
+        int userId
+    )
     {
-        var existing = await _db.DesignRevisions
-            .Where(r => r.DesignId == design.Id)
-            .ToListAsync();
+        var existing = await _db.DesignRevisions.Where(r => r.DesignId == design.Id).ToListAsync();
 
         int nextIdx = existing.Count;
 
@@ -57,17 +70,12 @@ public class RevisionService : IRevisionService
             DesignId = design.Id,
             RevisionNumber = $"R{nextIdx}",
             RevisionCode = nextIdx.ToString("D2"),
-            RevisionPurpose = nextIdx == 0
-                ? "Issued for Design"
-                : "Revised per Review",
-            ChangeDescription = changeDesc ??
-                                (nextIdx == 0
-                                    ? "Initial Design"
-                                    : "Revision"),
+            RevisionPurpose = nextIdx == 0 ? "Issued for Design" : "Revised per Review",
+            ChangeDescription = changeDesc ?? (nextIdx == 0 ? "Initial Design" : "Revision"),
             RevisionDate = DateTime.UtcNow,
             Status = RevisionStatus.Draft,
             CreatedByUserId = userId,
-            IsLatest = true
+            IsLatest = true,
         };
 
         _db.DesignRevisions.Add(revision);
@@ -97,7 +105,7 @@ public class RevisionService : IRevisionService
             BearingCapacityKNm2 = design.BearingCapacityKNm2,
             LoadClass = design.LoadClass,
 
-            DesignStandard = design.DesignStandard
+            DesignStandard = design.DesignStandard,
         };
 
         var inputDocument = new RevisionInputDocument
@@ -105,7 +113,7 @@ public class RevisionService : IRevisionService
             DesignId = design.Id,
             RevisionId = revision.Id,
             CreatedAt = DateTime.UtcNow,
-            Input = input
+            Input = input,
         };
 
         var inputSnapshotId = await _revisionInputRepo.InsertAsync(inputDocument);
@@ -116,98 +124,152 @@ public class RevisionService : IRevisionService
         var engineeringResult = await _calc.CalculateAsync(input);
 
         var calcResult = BuildCalculationResultDocument(
-    engineeringResult,
-    input,
-    revision.DesignId,
-    revision.Id);
+            engineeringResult,
+            input,
+            revision.DesignId,
+            revision.Id
+        );
 
         var resultSnapshotId = await _calcRepo.InsertAsync(calcResult);
 
         revision.ResultSnapshotId = resultSnapshotId;
 
-        _db.RevisionStatusHistory.Add(new RevisionStatusHistory
-        {
-            RevisionId = revision.Id,
-            ToStatus = RevisionStatus.Draft,
-            ChangedByUserId = userId,
-            Remarks = $"Revision {revision.RevisionNumber} created",
-            ChangedAt = DateTime.UtcNow
-        });
+        _db.RevisionStatusHistory.Add(
+            new RevisionStatusHistory
+            {
+                RevisionId = revision.Id,
+                ToStatus = RevisionStatus.Draft,
+                ChangedByUserId = userId,
+                Remarks = $"Revision {revision.RevisionNumber} created",
+                ChangedAt = DateTime.UtcNow,
+            }
+        );
 
         await _db.SaveChangesAsync();
 
         return revision;
     }
-    public async Task TransitionAsync(int revisionId, RevisionStatus newStatus, int userId, string remarks)
+
+    public async Task TransitionAsync(
+        int revisionId,
+        RevisionStatus newStatus,
+        int userId,
+        string remarks
+    )
     {
-        var rev = await _db.DesignRevisions.FindAsync(revisionId)
+        var rev =
+            await _db.DesignRevisions.FindAsync(revisionId)
             ?? throw new KeyNotFoundException($"Revision {revisionId} not found.");
 
         if (rev.IsLocked)
-            throw new InvalidOperationException("Revision is locked (approved) and cannot be changed.");
+            throw new InvalidOperationException(
+                "Revision is locked (approved) and cannot be changed."
+            );
 
         var fromStatus = rev.Status;
         rev.Status = newStatus;
 
         switch (newStatus)
         {
-            case RevisionStatus.Submitted:   rev.SubmittedAt = DateTime.UtcNow; break;
-            case RevisionStatus.UnderReview: rev.CheckedByUserId = userId; rev.CheckedAt = DateTime.UtcNow; break;
+            case RevisionStatus.Submitted:
+                rev.SubmittedAt = DateTime.UtcNow;
+                break;
+            case RevisionStatus.UnderReview:
+                rev.CheckedByUserId = userId;
+                rev.CheckedAt = DateTime.UtcNow;
+                break;
             case RevisionStatus.Approved:
-                rev.ApprovedByUserId = userId; rev.ApprovedAt = DateTime.UtcNow;
-                rev.IsApproved = true; rev.IsLocked = true; break;
-            case RevisionStatus.Superseded: rev.IsLatest = false; break;
+                rev.ApprovedByUserId = userId;
+                rev.ApprovedAt = DateTime.UtcNow;
+                rev.IsApproved = true;
+                rev.IsLocked = true;
+                break;
+            case RevisionStatus.Superseded:
+                rev.IsLatest = false;
+                break;
         }
 
-        _db.RevisionStatusHistory.Add(new RevisionStatusHistory
-        {
-            RevisionId = revisionId, FromStatus = fromStatus, ToStatus = newStatus,
-            ChangedByUserId = userId, Remarks = remarks, ChangedAt = DateTime.UtcNow,
-        });
+        _db.RevisionStatusHistory.Add(
+            new RevisionStatusHistory
+            {
+                RevisionId = revisionId,
+                FromStatus = fromStatus,
+                ToStatus = newStatus,
+                ChangedByUserId = userId,
+                Remarks = remarks,
+                ChangedAt = DateTime.UtcNow,
+            }
+        );
 
-        _db.AuditLogs.Add(new AuditLog
-        {
-            UserId = userId, Action = $"Revision {rev.RevisionNumber} → {newStatus}",
-            EntityType = "DesignRevision", EntityId = revisionId.ToString(),
-            OldValues = fromStatus.ToString(), NewValues = newStatus.ToString(), Timestamp = DateTime.UtcNow,
-        });
+        _db.AuditLogs.Add(
+            new AuditLog
+            {
+                UserId = userId,
+                Action = $"Revision {rev.RevisionNumber} → {newStatus}",
+                EntityType = "DesignRevision",
+                EntityId = revisionId.ToString(),
+                OldValues = fromStatus.ToString(),
+                NewValues = newStatus.ToString(),
+                Timestamp = DateTime.UtcNow,
+            }
+        );
 
         await _db.SaveChangesAsync();
     }
 
-    public async Task<bool> CanTransitionAsync(int revisionId, RevisionStatus to, int userId, IList<string> roles)
+    public async Task<bool> CanTransitionAsync(
+        int revisionId,
+        RevisionStatus to,
+        int userId,
+        IList<string> roles
+    )
     {
         var rev = await _db.DesignRevisions.FindAsync(revisionId);
-        if (rev == null || rev.IsLocked) return false;
+        if (rev == null || rev.IsLocked)
+            return false;
 
-        bool isAdmin   = roles.Contains("SuperAdmin") || roles.Contains("Admin");
+        bool isAdmin = roles.Contains("SuperAdmin") || roles.Contains("Admin");
         bool isChecker = roles.Contains("CheckingEngineer") || isAdmin;
-        bool isAuthor  = rev.CreatedByUserId == userId;
+        bool isAuthor = rev.CreatedByUserId == userId;
 
         return (rev.Status, to) switch
         {
-            (RevisionStatus.Draft,            RevisionStatus.Submitted)        => isAuthor,
-            (RevisionStatus.Submitted,        RevisionStatus.UnderReview)      => isChecker,
-            (RevisionStatus.UnderReview,      RevisionStatus.Approved)         => isAdmin,
-            (RevisionStatus.UnderReview,      RevisionStatus.RevisionRequired) => isChecker,
-            (RevisionStatus.RevisionRequired, RevisionStatus.Draft)            => true,
-            _ => false
+            (RevisionStatus.Draft, RevisionStatus.Submitted) => isAuthor,
+            (RevisionStatus.Submitted, RevisionStatus.UnderReview) => isChecker,
+            (RevisionStatus.UnderReview, RevisionStatus.Approved) => isAdmin,
+            (RevisionStatus.UnderReview, RevisionStatus.RevisionRequired) => isChecker,
+            (RevisionStatus.RevisionRequired, RevisionStatus.Draft) => true,
+            _ => false,
         };
     }
 
-    public async Task AddCommentAsync(int revisionId, string text, string? fieldRef, CommentType type, int userId)
+    public async Task AddCommentAsync(
+        int revisionId,
+        string text,
+        string? fieldRef,
+        CommentType type,
+        int userId
+    )
     {
-        _db.RevisionComments.Add(new RevisionComment
-        {
-            RevisionId = revisionId, AuthorId = userId, CommentText = text,
-            FieldReference = fieldRef, Type = type, CreatedAt = DateTime.UtcNow,
-        });
+        _db.RevisionComments.Add(
+            new RevisionComment
+            {
+                RevisionId = revisionId,
+                AuthorId = userId,
+                CommentText = text,
+                FieldReference = fieldRef,
+                Type = type,
+                CreatedAt = DateTime.UtcNow,
+            }
+        );
         await _db.SaveChangesAsync();
     }
 
     public async Task ResolveCommentAsync(int commentId, int userId)
     {
-        var c = await _db.RevisionComments.FindAsync(commentId) ?? throw new KeyNotFoundException("Comment not found.");
+        var c =
+            await _db.RevisionComments.FindAsync(commentId)
+            ?? throw new KeyNotFoundException("Comment not found.");
         c.Status = CommentStatus.Resolved;
         c.ResolvedAt = DateTime.UtcNow;
         c.ResolvedByUserId = userId;
@@ -215,39 +277,31 @@ public class RevisionService : IRevisionService
     }
 
     public async Task UpdateRevisionInputsAsync(
-    int revisionId,
-    RevisionEngineeringInput input,
-    int userId)
+        int revisionId,
+        RevisionEngineeringInput input,
+        int userId
+    )
     {
-        var revision = await _db.DesignRevisions
-            .FirstOrDefaultAsync(r => r.Id == revisionId);
+        var revision = await _db.DesignRevisions.FirstOrDefaultAsync(r => r.Id == revisionId);
 
         if (revision == null)
-            throw new KeyNotFoundException(
-                $"Revision {revisionId} not found.");
+            throw new KeyNotFoundException($"Revision {revisionId} not found.");
 
         if (revision.IsLocked)
-            throw new InvalidOperationException(
-                "Approved revision cannot be edited.");
+            throw new InvalidOperationException("Approved revision cannot be edited.");
 
         if (revision.Status != RevisionStatus.Draft)
-            throw new InvalidOperationException(
-                "Only a Draft revision can be edited.");
+            throw new InvalidOperationException("Only a Draft revision can be edited.");
 
         if (string.IsNullOrWhiteSpace(revision.InputSnapshotId))
-            throw new InvalidOperationException(
-                "Revision input snapshot was not found.");
+            throw new InvalidOperationException("Revision input snapshot was not found.");
 
-        var document = await _revisionInputRepo
-    .GetByIdAsync(revision.InputSnapshotId);
+        var document = await _revisionInputRepo.GetByIdAsync(revision.InputSnapshotId);
 
         if (document == null)
-            throw new InvalidOperationException(
-                "Revision input snapshot was not found.");
+            throw new InvalidOperationException("Revision input snapshot was not found.");
 
         var oldInput = document.Input;
-
-       
 
         // Capture important changes before replacing the snapshot.
         var changes = new List<string>();
@@ -255,43 +309,48 @@ public class RevisionService : IRevisionService
         if (oldInput.FillHeightM != input.FillHeightM)
         {
             changes.Add(
-                $"Fill Height: {oldInput.FillHeightM:0.000} m → {input.FillHeightM:0.000} m");
+                $"Fill Height: {oldInput.FillHeightM:0.000} m → {input.FillHeightM:0.000} m"
+            );
         }
 
         if (oldInput.CatchmentAreaHa != input.CatchmentAreaHa)
         {
             changes.Add(
-                $"Catchment Area: {oldInput.CatchmentAreaHa:0.###} ha → {input.CatchmentAreaHa:0.###} ha");
+                $"Catchment Area: {oldInput.CatchmentAreaHa:0.###} ha → {input.CatchmentAreaHa:0.###} ha"
+            );
         }
 
         if (oldInput.RainfallIntensityMmHr != input.RainfallIntensityMmHr)
         {
             changes.Add(
-                $"Rainfall Intensity: {oldInput.RainfallIntensityMmHr:0.###} mm/hr → {input.RainfallIntensityMmHr:0.###} mm/hr");
+                $"Rainfall Intensity: {oldInput.RainfallIntensityMmHr:0.###} mm/hr → {input.RainfallIntensityMmHr:0.###} mm/hr"
+            );
         }
 
         if (oldInput.RunoffCoefficient != input.RunoffCoefficient)
         {
             changes.Add(
-                $"Runoff Coefficient: {oldInput.RunoffCoefficient:0.###} → {input.RunoffCoefficient:0.###}");
+                $"Runoff Coefficient: {oldInput.RunoffCoefficient:0.###} → {input.RunoffCoefficient:0.###}"
+            );
         }
 
         if (oldInput.SlopePercent != input.SlopePercent)
         {
-            changes.Add(
-                $"Slope: {oldInput.SlopePercent:0.###}% → {input.SlopePercent:0.###}%");
+            changes.Add($"Slope: {oldInput.SlopePercent:0.###}% → {input.SlopePercent:0.###}%");
         }
 
         if (oldInput.SoilUnitWeightKNm3 != input.SoilUnitWeightKNm3)
         {
             changes.Add(
-                $"Soil Unit Weight: {oldInput.SoilUnitWeightKNm3:0.###} kN/m³ → {input.SoilUnitWeightKNm3:0.###} kN/m³");
+                $"Soil Unit Weight: {oldInput.SoilUnitWeightKNm3:0.###} kN/m³ → {input.SoilUnitWeightKNm3:0.###} kN/m³"
+            );
         }
 
         if (oldInput.BearingCapacityKNm2 != input.BearingCapacityKNm2)
         {
             changes.Add(
-                $"Bearing Capacity: {oldInput.BearingCapacityKNm2:0.###} kN/m² → {input.BearingCapacityKNm2:0.###} kN/m²");
+                $"Bearing Capacity: {oldInput.BearingCapacityKNm2:0.###} kN/m² → {input.BearingCapacityKNm2:0.###} kN/m²"
+            );
         }
 
         // Replace the MongoDB input snapshot.
@@ -302,13 +361,13 @@ public class RevisionService : IRevisionService
         var engineeringResult = await _calc.CalculateAsync(input);
 
         var calcResult = BuildCalculationResultDocument(
-    engineeringResult,
-    input,
-    revision.DesignId,
-    revision.Id);
+            engineeringResult,
+            input,
+            revision.DesignId,
+            revision.Id
+        );
 
-        var existingResult = await _calcRepo
-            .GetByRevisionAsync(revision.Id);
+        var existingResult = await _calcRepo.GetByRevisionAsync(revision.Id);
 
         if (existingResult != null)
         {
@@ -320,35 +379,37 @@ public class RevisionService : IRevisionService
         }
         else
         {
-            var resultSnapshotId =
-                await _calcRepo.InsertAsync(calcResult);
+            var resultSnapshotId = await _calcRepo.InsertAsync(calcResult);
 
             revision.ResultSnapshotId = resultSnapshotId;
         }
 
         if (changes.Count > 0)
         {
-            _db.RevisionStatusHistory.Add(new RevisionStatusHistory
-            {
-                RevisionId = revision.Id,
-                FromStatus = revision.Status,
-                ToStatus = revision.Status,
-                ChangedByUserId = userId,
-                Remarks =
-                    $"Revision {revision.RevisionNumber} inputs updated and calculation recalculated. " +
-                    string.Join("; ", changes),
-                ChangedAt = DateTime.UtcNow
-            });
+            _db.RevisionStatusHistory.Add(
+                new RevisionStatusHistory
+                {
+                    RevisionId = revision.Id,
+                    FromStatus = revision.Status,
+                    ToStatus = revision.Status,
+                    ChangedByUserId = userId,
+                    Remarks =
+                        $"Revision {revision.RevisionNumber} inputs updated and calculation recalculated. "
+                        + string.Join("; ", changes),
+                    ChangedAt = DateTime.UtcNow,
+                }
+            );
         }
 
         await _db.SaveChangesAsync();
     }
 
     private static CalculationResultDocument BuildCalculationResultDocument(
-    RevisionEngineeringResultModel result,
-    RevisionEngineeringInput input,
-    int designId,
-    int revisionId)
+        RevisionEngineeringResultModel result,
+        RevisionEngineeringInput input,
+        int designId,
+        int revisionId
+    )
     {
         return new CalculationResultDocument
         {
@@ -367,6 +428,8 @@ public class RevisionService : IRevisionService
 
             QfullM3s = result.QfullM3s,
             QdesignM3s = result.QdesignM3s,
+            QfullTotalM3s = result.QfullTotalM3s,
+            QdesignTotalM3s = result.QdesignTotalM3s,
 
             VelocityFullFlowMs = result.VelocityFullFlowMs,
             VelocityDesignMs = result.VelocityDesignMs,
@@ -391,7 +454,7 @@ public class RevisionService : IRevisionService
             IsDesignSatisfactory = result.IsDesignSatisfactory,
 
             HydraulicSteps = result.HydraulicSteps,
-            StructuralSteps = result.StructuralSteps
+            StructuralSteps = result.StructuralSteps,
         };
     }
 }

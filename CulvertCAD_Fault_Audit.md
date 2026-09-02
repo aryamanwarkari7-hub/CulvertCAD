@@ -265,30 +265,21 @@ The authoritative design basis must eventually be established.
 
 ## 13. Problem H1 — Hydrological Method Selection Is Not Honored
 
-**Status:** CONFIRMED — HIGH
+**Status:** CLEARED — IMPLEMENTATION VERIFIED
 
-The model supports hydrological method selection such as:
+The selected hydrological method is passed to
+IHydrologyCalculationService.
 
-- Rational
-- Dicken
-- Ryve
-- Inglis
+Rational is currently implemented.
 
-But the current calculation actually performs the Rational Method calculation.
+Dicken, Ryve, and Inglis are explicitly rejected as unsupported
+rather than silently falling back to the Rational Method.
 
-Conceptually:
+Therefore the previous fault condition is cleared.
 
-```text
-Selected HydroMethod
-        ↓
-Current implementation
-        ↓
-Q = C × I × A / 360
-```
-
-The selected alternative method does not currently produce its own calculation.
-
-This is a direct engineering correctness issue.
+Future implementation of additional hydrological methods remains
+an engineering/methodology enhancement and requires verified
+engineering formulas and applicable standards before implementation.
 
 ---
 
@@ -317,39 +308,55 @@ No calculation
 
 ## 15. Problem H3 — Design Discharge Override Rule
 
-**Status:** NEEDS VERIFICATION — MEDIUM**
+**Status:** CONFIRMED — TRACEABILITY DEFICIENCY — MEDIUM
 
-The system supports optional `DesignDischargeQ`.
+The calculation path has been verified.
 
-The exact rule needs to be traced:
+If `DesignDischargeOverrideQ` is supplied, it is used as the authoritative
+design discharge and passed directly to hydraulic calculation.
 
-- Is override authoritative?
-- Is the hydrological Q still calculated?
-- Which Q enters hydraulics?
-- What is stored for traceability?
-- What appears in the Calculation Sheet?
+If the override is blank, the design discharge is calculated through
+`HydrologyCalculationService.CalculateQ(...)` using the selected
+`HydroMethod`.
 
-Do not classify this as a formula fault until the complete flow is verified.
+Therefore:
+
+- Override Q is authoritative when supplied.
+- Hydrological Q is used when no override is supplied.
+- The Q entering hydraulic calculation is the authoritative Q.
+- `RevisionEngineeringResultModel.DesignDischargeQ` stores the Q actually used.
+
+However, the Calculation Sheet does not explicitly identify the source of
+the design discharge.
+
+The engineer therefore cannot distinguish between:
+
+- Hydrologically calculated Q, and
+- Engineer-entered override Q.
+
+**Classification:** Traceability/documentation deficiency, not a calculation
+formula fault.
+
+**Required rectification:**
+The Calculation Sheet should explicitly identify the design discharge source
+and, where applicable, indicate that an engineer override was used.
+
+**Do NOT fix yet.**
 
 ---
 
 ## 16. Problem H4 — Hydrology Embedded in DesignCalculationService
 
-**Status:** CONFIRMED — ARCHITECTURAL**
+**Status:** RESOLVED — ARCHITECTURE**
 
-The current `DesignCalculationService` contains hydrology logic.
+The hydrology calculation is separated behind
+`IHydrologyCalculationService`, implemented by
+`HydrologyCalculationService`.
 
-Target later:
+`DesignCalculationService` acts as the orchestration layer and
+delegates hydrological calculation through the interface.
 
-```text
-IHydrologyCalculationService
-HydrologyCalculationService
-```
-
-with `DesignCalculationService` acting as the orchestrator.
-
-This is an architecture migration item, not an immediate formula change.
-
+Therefore H4 is not currently a calculation fault and does not require further refactoring.
 ---
 
 # Current Fault Register
@@ -370,8 +377,8 @@ This is an architecture migration item, not an immediate formula change.
 | P12 | Design standard not driving calculation | Confirmed |
 | H1 | HydroMethod not honored | Confirmed |
 | H2 | Hydrology inputs can be defaulted | Confirmed |
-| H3 | Design Q override rule | Needs verification |
-| H4 | Hydrology embedded in monolithic service | Confirmed architectural |
+| H3 | Design Q override rule | Verified — traceability deficiency |
+| H4 | Hydrology embedded in monolithic service | Not a calculation fault — orchestration is separated through IHydrologyCalculationService |
 
 ---
 
@@ -1396,14 +1403,15 @@ This confirms that the service is carrying several responsibilities that should 
 | P7 | Hard-coded trench width | Confirmed — High |
 | P8 | Hard-coded structural `Kμ` | Confirmed — High / basis verification |
 | P9 | Hard-coded bedding class/factor | Confirmed — High / basis verification |
-| P10 | Bearing capacity input ignored | Confirmed — High |
-| P11 | Soil type not meaningfully used | Confirmed — High |
-| P12 | Design standard does not drive calculation | Confirmed — High |
+| P10 | Bearing capacity input ignored | Deferred — Engineering basis required |
+| P11 | Soil type not meaningfully used | Deferred — Engineering soil-property basis required |
+| P12 | Design standard does not drive calculation | Deferred — Engineering methodology mapping required |
 | F-INPUT-01 | Roadway Width input is captured but not used by calculation | Confirmed — High |
 | F-INPUT-02 | Skew Angle input is captured but not used by calculation | Confirmed — High |
 | F-INPUT-03 | Return Period input is captured but not used by calculation | Confirmed — High |
-| H1 | Hydrological method selection not honored | Confirmed — High |
-| H2 | Hydrology inputs can be defaulted | Confirmed — High |
+| H1 | Hydrological method selection not honored | Cleared — Rational implemented; unsupported methods explicitly rejected |
+| H2 | Hydrology inputs can be defaulted | Not confirmed — validation requires core hydrology inputs |
+| H3 | Design Q override rule | Cleared — override is explicit and authoritative; result presentation could be improved for traceability
 | HY1 | Stored design capacity can represent per-pipe capacity for multi-pipe designs | Confirmed — High |
 | HY3 | Hard-coded diameter list separate from PipeCatalog | Confirmed — Architecture/Data |
 | HW1 | No barrel friction/length in headwater | Confirmed — High |
@@ -1434,6 +1442,9 @@ This confirms that the service is carrying several responsibilities that should 
 | LL3 | Out-of-range live-load table behavior |
 | B3 | Exact engineering basis for required crushing-load formula |
 | PS4 | Completeness of pipe-selection specification |
+| P10 | Bearing/foundation calculation and acceptance criterion |
+| P11 | Controlled soil types and engineering properties used by calculation |
+| P12 | Design-standard-to-calculation-method mapping and applicable clauses |
 
 ---
 

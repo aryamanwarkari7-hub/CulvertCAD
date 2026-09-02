@@ -17,6 +17,7 @@ public class DesignCalculationService : IDesignCalculationService
     private readonly IStructuralCalculationService _structuralCalculationService;
     private readonly IFOSCalculationService _fosCalculationService;
     private readonly IEngineeringInputValidationService _inputValidationService;
+    private readonly EngineeringCalculationSettings _settings;
 
     public DesignCalculationService(
         IHydrologyCalculationService hydrologyCalculationService,
@@ -24,7 +25,8 @@ public class DesignCalculationService : IDesignCalculationService
         IStructuralCalculationService structuralCalculationService,
         IPipeSelectionService pipeSelectionService,
         IFOSCalculationService fosCalculationService,
-        IEngineeringInputValidationService inputValidationService
+        IEngineeringInputValidationService inputValidationService,
+        EngineeringCalculationSettings settings
     )
     {
         _hydrologyCalculationService = hydrologyCalculationService;
@@ -33,6 +35,7 @@ public class DesignCalculationService : IDesignCalculationService
         _pipeSelectionService = pipeSelectionService;
         _fosCalculationService = fosCalculationService;
         _inputValidationService = inputValidationService;
+        _settings = settings;
     }
 
     public async Task<RevisionEngineeringResultModel> CalculateAsync(RevisionEngineeringInput input)
@@ -44,8 +47,10 @@ public class DesignCalculationService : IDesignCalculationService
             throw new ArgumentException(string.Join(" ", validationErrors));
         }
 
-        double Q = input.DesignDischargeOverrideQ.HasValue
-            ? (double)input.DesignDischargeOverrideQ.Value
+        bool isDesignDischargeOverride = input.DesignDischargeOverrideQ.HasValue;
+
+        double Q = isDesignDischargeOverride
+            ? (double)input.DesignDischargeOverrideQ!.Value
             : _hydrologyCalculationService.CalculateQ(
                 input.HydroMethod,
                 (double)input.RunoffCoefficient!.Value,
@@ -113,12 +118,13 @@ public class DesignCalculationService : IDesignCalculationService
                 )
                 : 0;
 
-        return BuildEngineeringResult(input, Q, hyd, str, pipe, fos);
+        return BuildEngineeringResult(input, Q, isDesignDischargeOverride, hyd, str, pipe, fos);
     }
 
-    private static RevisionEngineeringResultModel BuildEngineeringResult(
+    private RevisionEngineeringResultModel BuildEngineeringResult(
         RevisionEngineeringInput input,
         double Q,
+        bool isDesignDischargeOverride,
         HydraulicResult hyd,
         StructuralResult str,
         PipeCatalog? pipe,
@@ -129,11 +135,17 @@ public class DesignCalculationService : IDesignCalculationService
         {
             DesignDischargeQ = Q,
 
+            DesignDischargeSource = isDesignDischargeOverride
+                ? "Engineer Override"
+                : $"{input.HydroMethod} Method",
+
             SelectedDiameterMm = hyd.DiameterMm,
             NumberOfPipes = hyd.NPipes,
 
             QfullM3s = hyd.Qfull,
             QdesignM3s = hyd.Qdesign,
+            QfullTotalM3s = hyd.QfullTotal,
+            QdesignTotalM3s = hyd.QdesignTotal,
 
             VelocityFullFlowMs = hyd.VelocityFull,
             VelocityDesignMs = hyd.VelocityDesign,
@@ -162,9 +174,9 @@ public class DesignCalculationService : IDesignCalculationService
 
             FactorOfSafety = Math.Round(fos, 3),
 
-            StructuralAdequate = fos >= 1.5,
+            StructuralAdequate = fos >= _settings.StructuralFosMinimum,
 
-            IsDesignSatisfactory = hyd.IsAdequate && fos >= 1.5,
+            IsDesignSatisfactory = hyd.IsAdequate && fos >= _settings.StructuralFosMinimum,
         };
     }
 }

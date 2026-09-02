@@ -4,11 +4,16 @@ namespace CulvertCAD.Application.Services;
 
 public class HydraulicCalculationService : IHydraulicCalculationService
 {
+    private readonly EngineeringCalculationSettings _settings;
     private readonly IHeadwaterCalculationService _headwaterCalculationService;
 
-    public HydraulicCalculationService(IHeadwaterCalculationService headwaterCalculationService)
+    public HydraulicCalculationService(
+        IHeadwaterCalculationService headwaterCalculationService,
+        EngineeringCalculationSettings settings
+    )
     {
         _headwaterCalculationService = headwaterCalculationService;
+        _settings = settings;
     }
 
     private static readonly int[] StandardDiameters = { 300, 400, 500, 600, 700, 800, 900, 1000 };
@@ -16,8 +21,9 @@ public class HydraulicCalculationService : IHydraulicCalculationService
     public HydraulicResult CalculateHydraulic(double Q, double slopePct, int nPipes = 1)
     {
         double S = Math.Max(slopePct / 100.0, 0.001);
-        double n = 0.013;
+        double n = _settings.ManningN;
         double qPerPipe = Q / nPipes;
+
         var steps = new List<CalcStep>();
 
         foreach (int dMm in StandardDiameters)
@@ -25,17 +31,31 @@ public class HydraulicCalculationService : IHydraulicCalculationService
             double D = dMm / 1000.0;
             double A_pipe = Math.PI * D * D / 4.0;
             double R = D / 4.0;
+
             double Qfull = (1.0 / n) * A_pipe * Math.Pow(R, 2.0 / 3.0) * Math.Pow(S, 0.5);
 
             double vFull = Qfull / A_pipe;
             double vDesign = qPerPipe / A_pipe;
 
-            if (Qfull * 0.75 >= qPerPipe && vFull >= 0.6 && vFull <= 3.5)
+            if (Qfull * _settings.DesignCapacityFactor >= qPerPipe && vFull >= 0.6 && vFull <= 3.5)
             {
                 double HW = _headwaterCalculationService.CalculateHeadwater(qPerPipe, D);
 
                 steps.AddRange(
-                    BuildHydraulicSteps(Q, nPipes, D, A_pipe, R, Qfull, vFull, vDesign, HW, n, S)
+                    BuildHydraulicSteps(
+                        Q,
+                        nPipes,
+                        D,
+                        A_pipe,
+                        R,
+                        Qfull,
+                        vFull,
+                        vDesign,
+                        HW,
+                        n,
+                        S,
+                        _settings.DesignCapacityFactor
+                    )
                 );
 
                 return new HydraulicResult
@@ -43,7 +63,9 @@ public class HydraulicCalculationService : IHydraulicCalculationService
                     DiameterMm = dMm,
                     NPipes = nPipes,
                     Qfull = Math.Round(Qfull, 4),
-                    Qdesign = Math.Round(Qfull * 0.75, 4),
+                    Qdesign = Math.Round(Qfull * _settings.DesignCapacityFactor, 4),
+                    QfullTotal = Math.Round(Qfull * nPipes, 4),
+                    QdesignTotal = Math.Round(Qfull * _settings.DesignCapacityFactor * nPipes, 4),
                     VelocityFull = Math.Round(vFull, 3),
                     VelocityDesign = Math.Round(vDesign, 3),
                     HeadwaterDepth = Math.Round(HW, 3),
@@ -70,7 +92,8 @@ public class HydraulicCalculationService : IHydraulicCalculationService
         double vd,
         double HW,
         double n,
-        double S
+        double S,
+        double designCapacityFactor
     )
     {
         return new List<CalcStep>
@@ -118,14 +141,14 @@ public class HydraulicCalculationService : IHydraulicCalculationService
             new()
             {
                 Label = "Manning's n",
-                Formula = "concrete pipe",
+                Formula = "configured engineering value",
                 Result = $"{n}",
                 Unit = "",
                 Clause = "IS 783 Cl.7.1",
             },
             new()
             {
-                Label = "Full Bore Capacity Qfull",
+                Label = "Full Bore Capacity Qfull (per pipe)",
                 Formula = "(1/n)×A×R^(2/3)×S^(1/2)",
                 Result = $"{Qf:0.0000}",
                 Unit = "m³/s",
@@ -133,9 +156,17 @@ public class HydraulicCalculationService : IHydraulicCalculationService
             },
             new()
             {
-                Label = "Design Capacity (75% Qfull)",
-                Formula = "IRC 89 freeboard",
-                Result = $"{Qf * 0.75:0.0000}",
+                Label = $"Design Capacity ({designCapacityFactor:P0} Qfull, per pipe)",
+                Formula = "Design capacity factor × Qfull",
+                Result = $"{Qf * designCapacityFactor:0.0000}",
+                Unit = "m³/s",
+                Clause = "IRC 89 Cl.4.4",
+            },
+            new()
+            {
+                Label = "Total Design Capacity",
+                Formula = $"{designCapacityFactor:P0} × Qfull × No. of Pipes",
+                Result = $"{Qf * designCapacityFactor * nPipes:0.0000}",
                 Unit = "m³/s",
                 Clause = "IRC 89 Cl.4.4",
             },
@@ -174,7 +205,7 @@ public class HydraulicCalculationService : IHydraulicCalculationService
     )
     {
         double S = Math.Max(slopePct / 100.0, 0.001);
-        double n = 0.013;
+        double n = _settings.ManningN;
 
         double qPerPipe = Q / nPipes;
         double D = diameterMm / 1000.0;
@@ -189,16 +220,32 @@ public class HydraulicCalculationService : IHydraulicCalculationService
 
         double HW = _headwaterCalculationService.CalculateHeadwater(qPerPipe, D);
 
-        bool adequate = Qfull * 0.75 >= qPerPipe && vFull >= 0.6 && vFull <= 3.5;
+        bool adequate =
+            Qfull * _settings.DesignCapacityFactor >= qPerPipe && vFull >= 0.6 && vFull <= 3.5;
 
-        var steps = BuildHydraulicSteps(Q, nPipes, D, A_pipe, R, Qfull, vFull, vDesign, HW, n, S);
+        var steps = BuildHydraulicSteps(
+            Q,
+            nPipes,
+            D,
+            A_pipe,
+            R,
+            Qfull,
+            vFull,
+            vDesign,
+            HW,
+            n,
+            S,
+            _settings.DesignCapacityFactor
+        );
 
         return new HydraulicResult
         {
             DiameterMm = diameterMm,
             NPipes = nPipes,
             Qfull = Math.Round(Qfull, 4),
-            Qdesign = Math.Round(Qfull * 0.75, 4),
+            Qdesign = Math.Round(Qfull * _settings.DesignCapacityFactor, 4),
+            QfullTotal = Math.Round(Qfull * nPipes, 4),
+            QdesignTotal = Math.Round(Qfull * _settings.DesignCapacityFactor * nPipes, 4),
             VelocityFull = Math.Round(vFull, 3),
             VelocityDesign = Math.Round(vDesign, 3),
             HeadwaterDepth = Math.Round(HW, 3),
