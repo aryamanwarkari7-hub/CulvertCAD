@@ -37,4 +37,14 @@ public class PipeCatalogRepository : IPipeCatalogRepository
             .ThenBy(p => p.UltimateCrushingLoadKNperM)
             .FirstOrDefaultAsync();
     }
+
+    public async Task<List<int>> GetActiveDiametersAsync()
+    {
+        return await _db
+            .PipeCatalog.Where(p => p.IsActive)
+            .Select(p => p.DiameterMm)
+            .Distinct()
+            .OrderBy(d => d)
+            .ToListAsync();
+    }
 }

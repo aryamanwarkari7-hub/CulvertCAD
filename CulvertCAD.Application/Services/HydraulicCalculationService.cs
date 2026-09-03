@@ -1,4 +1,5 @@
 ﻿using CulvertCAD.Core.Entities;
+using CulvertCAD.Infrastructure.MySQL.Repositories;
 
 namespace CulvertCAD.Application.Services;
 
@@ -6,19 +7,20 @@ public class HydraulicCalculationService : IHydraulicCalculationService
 {
     private readonly EngineeringCalculationSettings _settings;
     private readonly IHeadwaterCalculationService _headwaterCalculationService;
+    private readonly IPipeCatalogRepository _pipeCatalogRepository;
 
     public HydraulicCalculationService(
         IHeadwaterCalculationService headwaterCalculationService,
+        IPipeCatalogRepository pipeCatalogRepository,
         EngineeringCalculationSettings settings
     )
     {
         _headwaterCalculationService = headwaterCalculationService;
+        _pipeCatalogRepository = pipeCatalogRepository;
         _settings = settings;
     }
 
-    private static readonly int[] StandardDiameters = { 300, 400, 500, 600, 700, 800, 900, 1000 };
-
-    public HydraulicResult CalculateHydraulic(double Q, double slopePct, int nPipes = 1)
+    public async Task<HydraulicResult> CalculateHydraulic(double Q, double slopePct, int nPipes = 1)
     {
         double S = Math.Max(slopePct / 100.0, 0.001);
         double n = _settings.ManningN;
@@ -26,7 +28,9 @@ public class HydraulicCalculationService : IHydraulicCalculationService
 
         var steps = new List<CalcStep>();
 
-        foreach (int dMm in StandardDiameters)
+        var standardDiameters = await _pipeCatalogRepository.GetActiveDiametersAsync();
+
+        foreach (int dMm in standardDiameters)
         {
             double D = dMm / 1000.0;
             double A_pipe = Math.PI * D * D / 4.0;
@@ -76,7 +80,7 @@ public class HydraulicCalculationService : IHydraulicCalculationService
         }
 
         if (nPipes < 4)
-            return CalculateHydraulic(Q, slopePct, nPipes + 1);
+            return await CalculateHydraulic(Q, slopePct, nPipes + 1);
 
         return new HydraulicResult { IsAdequate = false, Steps = steps };
     }

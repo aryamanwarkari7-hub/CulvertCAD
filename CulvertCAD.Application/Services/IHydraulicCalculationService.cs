@@ -2,7 +2,7 @@
 
 public interface IHydraulicCalculationService
 {
-    HydraulicResult CalculateHydraulic(double Q, double slopePct, int nPipes = 1);
+    Task<HydraulicResult> CalculateHydraulic(double Q, double slopePct, int nPipes = 1);
 
     HydraulicResult CalculateHydraulicForDiameter(
         double Q,

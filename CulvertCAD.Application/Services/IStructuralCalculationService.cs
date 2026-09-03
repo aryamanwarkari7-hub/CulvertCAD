@@ -1,4 +1,6 @@
-﻿namespace CulvertCAD.Application.Services;
+﻿using CulvertCAD.Core.Enums;
+
+namespace CulvertCAD.Application.Services;
 
 public interface IStructuralCalculationService
 {
@@ -6,7 +8,7 @@ public interface IStructuralCalculationService
         double H,
         int diaMm,
         int numberOfPipes,
-        string loadClass,
+        LoadClass loadClass,
         double gammaSoil = 18.5
     );
 }

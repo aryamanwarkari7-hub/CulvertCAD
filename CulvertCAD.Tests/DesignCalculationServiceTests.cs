@@ -34,6 +34,11 @@ public class DesignCalculationServiceTests
         return db;
     }
 
+    private static IPipeCatalogRepository GetPipeCatalogRepository(AppDbContext db)
+    {
+        return new PipeCatalogRepository(db);
+    }
+
     [Fact]
     public void CalculateRationalQ_StandardInputs_ReturnsExpectedDischarge()
     {
@@ -44,13 +49,14 @@ public class DesignCalculationServiceTests
     }
 
     [Fact]
-    public void CalculateHydraulic_AdequateSlope_ReturnsSatisfactoryDesign()
+    public async Task CalculateHydraulic_AdequateSlope_ReturnsSatisfactoryDesign()
     {
         var db = GetInMemoryDb();
         var svc = new DesignCalculationService(
             new HydrologyCalculationService(),
             new HydraulicCalculationService(
                 new HeadwaterCalculationService(),
+                GetPipeCatalogRepository(db),
                 new EngineeringCalculationSettings { ManningN = 0.013, DesignCapacityFactor = 0.75 }
             ),
             new StructuralCalculationService(
@@ -62,7 +68,8 @@ public class DesignCalculationServiceTests
                     StructuralKmu = 0.150,
                     BeddingClass = "ClassB",
                     BeddingFactor = 1.9,
-                }
+                },
+                new LiveLoadService()
             ),
             new PipeSelectionService(new PipeCatalogRepository(db)),
             new FOSCalculationService(),
@@ -70,8 +77,9 @@ public class DesignCalculationServiceTests
             new EngineeringCalculationSettings { StructuralFosMinimum = 1.5 }
         );
 
-        var result = new HydraulicCalculationService(
+        var result = await new HydraulicCalculationService(
             new HeadwaterCalculationService(),
+            GetPipeCatalogRepository(db),
             new EngineeringCalculationSettings { ManningN = 0.013, DesignCapacityFactor = 0.75 }
         ).CalculateHydraulic(Q: 1.8333, slopePct: 1.5);
 
@@ -81,13 +89,14 @@ public class DesignCalculationServiceTests
     }
 
     [Fact]
-    public void CalculateHydraulic_VeryFlatSlope_RequiresMultiplePipesOrFails()
+    public async Task CalculateHydraulic_VeryFlatSlope_RequiresMultiplePipesOrFails()
     {
         var db = GetInMemoryDb();
         var svc = new DesignCalculationService(
             new HydrologyCalculationService(),
             new HydraulicCalculationService(
                 new HeadwaterCalculationService(),
+                GetPipeCatalogRepository(db),
                 new EngineeringCalculationSettings { ManningN = 0.013, DesignCapacityFactor = 0.75 }
             ),
             new StructuralCalculationService(
@@ -99,7 +108,8 @@ public class DesignCalculationServiceTests
                     StructuralKmu = 0.150,
                     BeddingClass = "ClassB",
                     BeddingFactor = 1.9,
-                }
+                },
+                new LiveLoadService()
             ),
             new PipeSelectionService(new PipeCatalogRepository(db)),
             new FOSCalculationService(),
@@ -107,8 +117,9 @@ public class DesignCalculationServiceTests
             new EngineeringCalculationSettings { StructuralFosMinimum = 1.5 }
         );
 
-        var result = new HydraulicCalculationService(
+        var result = await new HydraulicCalculationService(
             new HeadwaterCalculationService(),
+            GetPipeCatalogRepository(db),
             new EngineeringCalculationSettings { ManningN = 0.013, DesignCapacityFactor = 0.75 }
         ).CalculateHydraulic(Q: 1.8333, slopePct: 0.1);
 
@@ -131,12 +142,13 @@ public class DesignCalculationServiceTests
                 StructuralKmu = 0.150,
                 BeddingClass = "ClassB",
                 BeddingFactor = 1.9,
-            }
+            },
+            new LiveLoadService()
         ).CalculateStructural(
             H: H,
             diaMm: 600,
             numberOfPipes: 1,
-            loadClass: "IRC_ClassA",
+            loadClass: LoadClass.IRC_ClassA,
             gammaSoil: 18.5
         );
 
@@ -157,12 +169,13 @@ public class DesignCalculationServiceTests
                 StructuralKmu = 0.150,
                 BeddingClass = "ClassB",
                 BeddingFactor = 1.9,
-            }
+            },
+            new LiveLoadService()
         ).CalculateStructural(
             H: 0.5,
             diaMm: 600,
             numberOfPipes: 1,
-            loadClass: "IRC_ClassA",
+            loadClass: LoadClass.IRC_ClassA,
             gammaSoil: 18.5
         );
 
@@ -181,6 +194,7 @@ public class DesignCalculationServiceTests
             new HydrologyCalculationService(),
             new HydraulicCalculationService(
                 new HeadwaterCalculationService(),
+                GetPipeCatalogRepository(db),
                 new EngineeringCalculationSettings { ManningN = 0.013, DesignCapacityFactor = 0.75 }
             ),
             new StructuralCalculationService(
@@ -192,7 +206,8 @@ public class DesignCalculationServiceTests
                     StructuralKmu = 0.150,
                     BeddingClass = "ClassB",
                     BeddingFactor = 1.9,
-                }
+                },
+                new LiveLoadService()
             ),
             new PipeSelectionService(new PipeCatalogRepository(db)),
             new FOSCalculationService(),
@@ -228,6 +243,7 @@ public class DesignCalculationServiceTests
             new HydrologyCalculationService(),
             new HydraulicCalculationService(
                 new HeadwaterCalculationService(),
+                GetPipeCatalogRepository(db),
                 new EngineeringCalculationSettings { ManningN = 0.013, DesignCapacityFactor = 0.75 }
             ),
             new StructuralCalculationService(
@@ -239,7 +255,8 @@ public class DesignCalculationServiceTests
                     StructuralKmu = 0.150,
                     BeddingClass = "ClassB",
                     BeddingFactor = 1.9,
-                }
+                },
+                new LiveLoadService()
             ),
             new PipeSelectionService(new PipeCatalogRepository(db)),
             new FOSCalculationService(),
@@ -301,6 +318,7 @@ public class DesignCalculationServiceTests
             new HydrologyCalculationService(),
             new HydraulicCalculationService(
                 new HeadwaterCalculationService(),
+                GetPipeCatalogRepository(db),
                 new EngineeringCalculationSettings { ManningN = 0.013, DesignCapacityFactor = 0.75 }
             ),
             new StructuralCalculationService(
@@ -312,7 +330,8 @@ public class DesignCalculationServiceTests
                     StructuralKmu = 0.150,
                     BeddingClass = "ClassB",
                     BeddingFactor = 1.9,
-                }
+                },
+                new LiveLoadService()
             ),
             new PipeSelectionService(new PipeCatalogRepository(db)),
             new FOSCalculationService(),
@@ -381,6 +400,7 @@ public class DesignCalculationServiceTests
             new HydrologyCalculationService(),
             new HydraulicCalculationService(
                 new HeadwaterCalculationService(),
+                GetPipeCatalogRepository(db),
                 new EngineeringCalculationSettings { ManningN = 0.013, DesignCapacityFactor = 0.75 }
             ),
             new StructuralCalculationService(
@@ -392,7 +412,8 @@ public class DesignCalculationServiceTests
                     StructuralKmu = 0.150,
                     BeddingClass = "ClassB",
                     BeddingFactor = 1.9,
-                }
+                },
+                new LiveLoadService()
             ),
             new PipeSelectionService(new PipeCatalogRepository(db)),
             new FOSCalculationService(),

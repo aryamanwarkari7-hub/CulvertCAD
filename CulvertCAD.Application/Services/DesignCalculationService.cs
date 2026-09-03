@@ -62,13 +62,13 @@ public class DesignCalculationService : IDesignCalculationService
         double H = (double)input.FillHeightM!.Value;
         double gamma = (double)input.SoilUnitWeightKNm3!.Value;
 
-        var hyd = _hydraulicCalculationService.CalculateHydraulic(Q, slope);
+        var hyd = await _hydraulicCalculationService.CalculateHydraulic(Q, slope);
 
         var str = _structuralCalculationService.CalculateStructural(
             H,
             hyd.DiameterMm,
             hyd.NPipes,
-            input.LoadClass.ToString(),
+            input.LoadClass,
             gamma
         );
 
@@ -90,7 +90,7 @@ public class DesignCalculationService : IDesignCalculationService
                 H,
                 pipe.DiameterMm,
                 hyd.NPipes,
-                input.LoadClass.ToString(),
+                input.LoadClass,
                 gamma
             );
         }
@@ -162,8 +162,8 @@ public class DesignCalculationService : IDesignCalculationService
             BeddingFactor = str.BeddingFactor,
             RequiredCrushKNm = str.RequiredCrushKNm,
 
-            HydraulicSteps = hyd.Steps,
-            StructuralSteps = str.Steps,
+            HydraulicSteps = BuildHydraulicTrace(hyd),
+            StructuralSteps = BuildStructuralTrace(str, pipe, fos),
 
             SelectedPipeClass =
                 pipe != null ? $"IS 458 {pipe.PipeClassCode} Ø{pipe.DiameterMm}mm" : "Not found",
@@ -178,5 +178,78 @@ public class DesignCalculationService : IDesignCalculationService
 
             IsDesignSatisfactory = hyd.IsAdequate && fos >= _settings.StructuralFosMinimum,
         };
+    }
+
+    private static List<CalcStep> BuildHydraulicTrace(HydraulicResult hyd)
+    {
+        var steps = new List<CalcStep>(hyd.Steps);
+
+        steps.Add(
+            new CalcStep
+            {
+                Label = "Hydraulic Result",
+                Formula = "Final hydraulic assessment",
+                Result = hyd.IsAdequate ? "PASS" : "FAIL",
+                Unit = "",
+                Clause = "",
+            }
+        );
+
+        return steps;
+    }
+
+    private List<CalcStep> BuildStructuralTrace(StructuralResult str, PipeCatalog? pipe, double fos)
+    {
+        var steps = new List<CalcStep>(str.Steps);
+
+        steps.Add(
+            new CalcStep
+            {
+                Label = "Selected Pipe",
+                Formula = "Final pipe selected from Pipe Catalog",
+                Result =
+                    pipe != null
+                        ? $"IS 458 {pipe.PipeClassCode} Ø{pipe.DiameterMm}mm"
+                        : "Not found",
+                Unit = "",
+                Clause = "",
+            }
+        );
+
+        steps.Add(
+            new CalcStep
+            {
+                Label = "Pipe Crushing Capacity",
+                Formula = "Pipe Catalog ultimate crushing load",
+                Result =
+                    pipe != null ? $"{(double)pipe.UltimateCrushingLoadKNperM:0.000}" : "0.000",
+                Unit = "kN/m",
+                Clause = "",
+            }
+        );
+
+        steps.Add(
+            new CalcStep
+            {
+                Label = "Factor of Safety",
+                Formula = "Pipe Crushing Capacity × Bedding Factor ÷ Total Load",
+                Result = $"{fos:0.000}",
+                Unit = "",
+                Clause = "",
+            }
+        );
+
+        steps.Add(
+            new CalcStep
+            {
+                Label = "Structural Verdict",
+                Formula = $"FOS ≥ {_settings.StructuralFosMinimum:0.###}",
+                Result = fos >= _settings.StructuralFosMinimum ? "PASS" : "FAIL",
+                Unit = "",
+                Clause = "",
+            }
+        );
+
+        return steps;
     }
 }

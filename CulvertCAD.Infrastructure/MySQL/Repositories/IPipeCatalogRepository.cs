@@ -7,4 +7,6 @@ public interface IPipeCatalogRepository
     Task<PipeCatalog?> GetSuitablePipeAsync(int diameterMm, double requiredCrush);
 
     Task<PipeCatalog?> GetNextSuitablePipeAsync(int diameterMm, double requiredCrush);
+
+    Task<List<int>> GetActiveDiametersAsync();
 }

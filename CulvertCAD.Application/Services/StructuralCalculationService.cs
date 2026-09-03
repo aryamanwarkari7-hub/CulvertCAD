@@ -1,38 +1,29 @@
 ﻿// CulvertCAD.Application/Services/StructuralCalculationService.cs
 
 using CulvertCAD.Core.Entities;
+using CulvertCAD.Core.Enums;
 
 namespace CulvertCAD.Application.Services;
 
 public class StructuralCalculationService : IStructuralCalculationService
 {
     private readonly EngineeringCalculationSettings _settings;
+    private readonly ILiveLoadService _liveLoadService;
 
-    public StructuralCalculationService(EngineeringCalculationSettings settings)
+    public StructuralCalculationService(
+        EngineeringCalculationSettings settings,
+        ILiveLoadService liveLoadService
+    )
     {
         _settings = settings;
+        _liveLoadService = liveLoadService;
     }
-
-    private static readonly (double H, double Wl)[] LiveLoadTable =
-    {
-        (0.3, 22.0),
-        (0.6, 18.5),
-        (0.9, 14.5),
-        (1.2, 11.0),
-        (1.5, 8.5),
-        (1.8, 6.5),
-        (2.1, 5.0),
-        (2.4, 4.0),
-        (3.0, 2.5),
-        (3.6, 2.0),
-        (4.0, 1.5),
-    };
 
     public StructuralResult CalculateStructural(
         double H,
         int diaMm,
         int numberOfPipes,
-        string loadClass,
+        LoadClass loadClass,
         double gammaSoil = 18.5
     )
     {
@@ -44,7 +35,7 @@ public class StructuralCalculationService : IStructuralCalculationService
 
         double We = Cd * gammaSoil * Bd * Bd;
 
-        double Wl = GetLiveLoad(H, loadClass);
+        double Wl = _liveLoadService.GetLiveLoad(H, loadClass);
         double Wt = We + Wl;
 
         string beddingClass = _settings.BeddingClass;
@@ -139,45 +130,4 @@ public class StructuralCalculationService : IStructuralCalculationService
             Steps = steps,
         };
     }
-
-    private static double GetLiveLoad(double H, string loadClass)
-    {
-        var table = loadClass.Contains("70R") ? LiveLoadTable70R : LiveLoadTable;
-
-        if (H <= table[0].H)
-            return table[0].Wl;
-
-        if (H >= table[^1].H)
-            return table[^1].Wl;
-
-        for (int i = 0; i < table.Length - 1; i++)
-        {
-            var a = table[i];
-            var b = table[i + 1];
-
-            if (H >= a.H && H <= b.H)
-            {
-                double t = (H - a.H) / (b.H - a.H);
-
-                return a.Wl + t * (b.Wl - a.Wl);
-            }
-        }
-
-        return table[^1].Wl;
-    }
-
-    private static readonly (double H, double Wl)[] LiveLoadTable70R =
-    {
-        (0.3, 44.0),
-        (0.6, 37.0),
-        (0.9, 29.0),
-        (1.2, 22.0),
-        (1.5, 17.0),
-        (1.8, 13.0),
-        (2.1, 10.0),
-        (2.4, 8.0),
-        (3.0, 5.0),
-        (3.6, 4.0),
-        (4.0, 3.0),
-    };
 }
