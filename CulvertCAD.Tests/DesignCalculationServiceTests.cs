@@ -3,9 +3,9 @@ using System.Threading.Tasks;
 using CulvertCAD.Application.Services;
 using CulvertCAD.Core.Entities;
 using CulvertCAD.Core.Enums;
+using CulvertCAD.Core.Repositories;
 using CulvertCAD.Infrastructure.MySQL.Data;
 using CulvertCAD.Infrastructure.MySQL.Repositories;
-// CulvertCAD.Tests/DesignCalculationServiceTests.cs
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 
@@ -34,6 +34,13 @@ public class DesignCalculationServiceTests
         return db;
     }
 
+    private static BeddingService GetBeddingService()
+    {
+        return new BeddingService(
+            new EngineeringCalculationSettings { BeddingClass = "ClassB", BeddingFactor = 1.9 }
+        );
+    }
+
     private static IPipeCatalogRepository GetPipeCatalogRepository(AppDbContext db)
     {
         return new PipeCatalogRepository(db);
@@ -57,19 +64,20 @@ public class DesignCalculationServiceTests
             new HydraulicCalculationService(
                 new HeadwaterCalculationService(),
                 GetPipeCatalogRepository(db),
-                new EngineeringCalculationSettings { ManningN = 0.013, DesignCapacityFactor = 0.75 }
+                new EngineeringCalculationSettings { ManningN = 0.013 }
             ),
             new StructuralCalculationService(
                 new EngineeringCalculationSettings
                 {
-                    ManningN = 0.013,
-                    DesignCapacityFactor = 0.75,
+                    ManningN = 0.015,
+
                     TrenchWidthClearanceM = 0.6,
                     StructuralKmu = 0.150,
                     BeddingClass = "ClassB",
                     BeddingFactor = 1.9,
                 },
-                new LiveLoadService()
+                new LiveLoadService(),
+                GetBeddingService()
             ),
             new PipeSelectionService(new PipeCatalogRepository(db)),
             new FOSCalculationService(),
@@ -80,8 +88,18 @@ public class DesignCalculationServiceTests
         var result = await new HydraulicCalculationService(
             new HeadwaterCalculationService(),
             GetPipeCatalogRepository(db),
-            new EngineeringCalculationSettings { ManningN = 0.013, DesignCapacityFactor = 0.75 }
-        ).CalculateHydraulic(Q: 1.8333, slopePct: 1.5);
+            new EngineeringCalculationSettings { ManningN = 0.013 }
+        ).CalculateHydraulic(
+            new HydraulicCalculationInputModel
+            {
+                DischargeM3s = 1.8333,
+                SlopePercent = 1.5,
+                BarrelLengthM = 10.0,
+                TailwaterLevelM = 0.0,
+                InletConfiguration = "Bevelled",
+                PermissibleHeadwaterM = 1.0,
+            }
+        );
 
         Assert.True(result.IsAdequate);
         Assert.True(result.DiameterMm > 0);
@@ -97,19 +115,20 @@ public class DesignCalculationServiceTests
             new HydraulicCalculationService(
                 new HeadwaterCalculationService(),
                 GetPipeCatalogRepository(db),
-                new EngineeringCalculationSettings { ManningN = 0.013, DesignCapacityFactor = 0.75 }
+                new EngineeringCalculationSettings { ManningN = 0.013 }
             ),
             new StructuralCalculationService(
                 new EngineeringCalculationSettings
                 {
-                    ManningN = 0.013,
-                    DesignCapacityFactor = 0.75,
+                    ManningN = 0.015,
+
                     TrenchWidthClearanceM = 0.6,
                     StructuralKmu = 0.150,
                     BeddingClass = "ClassB",
                     BeddingFactor = 1.9,
                 },
-                new LiveLoadService()
+                new LiveLoadService(),
+                GetBeddingService()
             ),
             new PipeSelectionService(new PipeCatalogRepository(db)),
             new FOSCalculationService(),
@@ -120,8 +139,18 @@ public class DesignCalculationServiceTests
         var result = await new HydraulicCalculationService(
             new HeadwaterCalculationService(),
             GetPipeCatalogRepository(db),
-            new EngineeringCalculationSettings { ManningN = 0.013, DesignCapacityFactor = 0.75 }
-        ).CalculateHydraulic(Q: 1.8333, slopePct: 0.1);
+            new EngineeringCalculationSettings { ManningN = 0.013 }
+        ).CalculateHydraulic(
+            new HydraulicCalculationInputModel
+            {
+                DischargeM3s = 1.8333,
+                SlopePercent = 0.1,
+                BarrelLengthM = 10.0,
+                TailwaterLevelM = 0.0,
+                InletConfiguration = "Bevelled",
+                PermissibleHeadwaterM = 1.0,
+            }
+        );
 
         // At 0.1% slope with this discharge, expect either failure or max pipes (4)
         Assert.True(!result.IsAdequate || result.NPipes == 4);
@@ -136,14 +165,15 @@ public class DesignCalculationServiceTests
         var result = new StructuralCalculationService(
             new EngineeringCalculationSettings
             {
-                ManningN = 0.013,
-                DesignCapacityFactor = 0.75,
+                ManningN = 0.015,
+
                 TrenchWidthClearanceM = 0.6,
                 StructuralKmu = 0.150,
                 BeddingClass = "ClassB",
                 BeddingFactor = 1.9,
             },
-            new LiveLoadService()
+            new LiveLoadService(),
+            GetBeddingService()
         ).CalculateStructural(
             H: H,
             diaMm: 600,
@@ -163,14 +193,15 @@ public class DesignCalculationServiceTests
         var result = new StructuralCalculationService(
             new EngineeringCalculationSettings
             {
-                ManningN = 0.013,
-                DesignCapacityFactor = 0.75,
+                ManningN = 0.015,
+
                 TrenchWidthClearanceM = 0.6,
                 StructuralKmu = 0.150,
                 BeddingClass = "ClassB",
                 BeddingFactor = 1.9,
             },
-            new LiveLoadService()
+            new LiveLoadService(),
+            GetBeddingService()
         ).CalculateStructural(
             H: 0.5,
             diaMm: 600,
@@ -195,19 +226,20 @@ public class DesignCalculationServiceTests
             new HydraulicCalculationService(
                 new HeadwaterCalculationService(),
                 GetPipeCatalogRepository(db),
-                new EngineeringCalculationSettings { ManningN = 0.013, DesignCapacityFactor = 0.75 }
+                new EngineeringCalculationSettings { ManningN = 0.013 }
             ),
             new StructuralCalculationService(
                 new EngineeringCalculationSettings
                 {
-                    ManningN = 0.013,
-                    DesignCapacityFactor = 0.75,
+                    ManningN = 0.015,
+
                     TrenchWidthClearanceM = 0.6,
                     StructuralKmu = 0.150,
                     BeddingClass = "ClassB",
                     BeddingFactor = 1.9,
                 },
-                new LiveLoadService()
+                new LiveLoadService(),
+                GetBeddingService()
             ),
             new PipeSelectionService(new PipeCatalogRepository(db)),
             new FOSCalculationService(),
@@ -244,19 +276,20 @@ public class DesignCalculationServiceTests
             new HydraulicCalculationService(
                 new HeadwaterCalculationService(),
                 GetPipeCatalogRepository(db),
-                new EngineeringCalculationSettings { ManningN = 0.013, DesignCapacityFactor = 0.75 }
+                new EngineeringCalculationSettings { ManningN = 0.013 }
             ),
             new StructuralCalculationService(
                 new EngineeringCalculationSettings
                 {
-                    ManningN = 0.013,
-                    DesignCapacityFactor = 0.75,
+                    ManningN = 0.015,
+
                     TrenchWidthClearanceM = 0.6,
                     StructuralKmu = 0.150,
                     BeddingClass = "ClassB",
                     BeddingFactor = 1.9,
                 },
-                new LiveLoadService()
+                new LiveLoadService(),
+                GetBeddingService()
             ),
             new PipeSelectionService(new PipeCatalogRepository(db)),
             new FOSCalculationService(),
@@ -319,19 +352,20 @@ public class DesignCalculationServiceTests
             new HydraulicCalculationService(
                 new HeadwaterCalculationService(),
                 GetPipeCatalogRepository(db),
-                new EngineeringCalculationSettings { ManningN = 0.013, DesignCapacityFactor = 0.75 }
+                new EngineeringCalculationSettings { ManningN = 0.013 }
             ),
             new StructuralCalculationService(
                 new EngineeringCalculationSettings
                 {
-                    ManningN = 0.013,
-                    DesignCapacityFactor = 0.75,
+                    ManningN = 0.015,
+
                     TrenchWidthClearanceM = 0.6,
                     StructuralKmu = 0.150,
                     BeddingClass = "ClassB",
                     BeddingFactor = 1.9,
                 },
-                new LiveLoadService()
+                new LiveLoadService(),
+                GetBeddingService()
             ),
             new PipeSelectionService(new PipeCatalogRepository(db)),
             new FOSCalculationService(),
@@ -401,19 +435,20 @@ public class DesignCalculationServiceTests
             new HydraulicCalculationService(
                 new HeadwaterCalculationService(),
                 GetPipeCatalogRepository(db),
-                new EngineeringCalculationSettings { ManningN = 0.013, DesignCapacityFactor = 0.75 }
+                new EngineeringCalculationSettings { ManningN = 0.013 }
             ),
             new StructuralCalculationService(
                 new EngineeringCalculationSettings
                 {
-                    ManningN = 0.013,
-                    DesignCapacityFactor = 0.75,
+                    ManningN = 0.015,
+
                     TrenchWidthClearanceM = 0.6,
                     StructuralKmu = 0.150,
                     BeddingClass = "ClassB",
                     BeddingFactor = 1.9,
                 },
-                new LiveLoadService()
+                new LiveLoadService(),
+                GetBeddingService()
             ),
             new PipeSelectionService(new PipeCatalogRepository(db)),
             new FOSCalculationService(),

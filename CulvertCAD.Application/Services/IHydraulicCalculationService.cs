@@ -1,12 +1,13 @@
-﻿using CulvertCAD.Application.Services;
+﻿using CulvertCAD.Core.Entities;
+
+namespace CulvertCAD.Application.Services;
 
 public interface IHydraulicCalculationService
 {
-    Task<HydraulicResult> CalculateHydraulic(double Q, double slopePct, int nPipes = 1);
+    Task<HydraulicResult> CalculateHydraulic(HydraulicCalculationInputModel input, int nPipes = 1);
 
     HydraulicResult CalculateHydraulicForDiameter(
-        double Q,
-        double slopePct,
+        HydraulicCalculationInputModel input,
         int diameterMm,
         int nPipes = 1
     );

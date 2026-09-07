@@ -1,17 +1,26 @@
-﻿namespace CulvertCAD.Application.Services;
+﻿using CulvertCAD.Core.Entities;
+
+namespace CulvertCAD.Application.Services;
 
 public class HeadwaterCalculationService : IHeadwaterCalculationService
 {
     public double CalculateHeadwater(
-        double q,
+        HydraulicCalculationInputModel input,
         double diameterM,
-        double entranceLossCoefficient = 0.5
+        int nPipes = 1
     )
     {
-        double Hc = 0.5 * diameterM;
-        double area = Math.PI * diameterM * diameterM / 4.0;
-        double velocity = q / area;
+        double qPerPipe = input.DischargeM3s / nPipes;
 
-        return Hc + entranceLossCoefficient * velocity * velocity / (2 * 9.81);
+        double area = Math.PI * diameterM * diameterM / 4.0;
+
+        double velocity = qPerPipe / area;
+
+        // Temporary structural calculation boundary.
+        // Final IRC-based headwater/control methodology will be implemented
+        // after the hydraulic input and inlet-loss basis are fully defined.
+        double criticalDepth = 0.5 * diameterM;
+
+        return criticalDepth;
     }
 }

@@ -3,7 +3,6 @@
 public class EngineeringCalculationSettings
 {
     public double ManningN { get; set; }
-    public double DesignCapacityFactor { get; set; }
     public double TrenchWidthClearanceM { get; set; }
     public double StructuralKmu { get; set; }
     public string BeddingClass { get; set; } = "ClassB";

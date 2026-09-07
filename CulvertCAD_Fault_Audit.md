@@ -1,413 +1,45 @@
 # CulvertCAD — DesignCalculationService Fault Audit
 
-## Hydrology + Previously Confirmed Issues
-
-Date: 24-08-2026
-
-## Purpose
-
-Record faults found during the controlled audit of the existing `DesignCalculationService`.
-
-**Important:** This is an audit record. No calculation logic or architecture has been changed.
+**Document status:** Reconciled current audit register  
+**Date:** 07-09-2026  
+**Basis:** Original fault audit + current source verification + cleared-status verification + architecture refactor completed to date
 
 ---
 
-## 1. Problem 1 — Hydraulic Diameter vs Structural Pipe Diameter
+## 1. Purpose
 
-**Status:** CONFIRMED — HIGH/CRITICAL CONSISTENCY ISSUE
+This document is the reconciled fault register for the current CulvertCAD engineering calculation implementation.
 
-Current flow:
+It preserves the original audit findings while updating their status against the current source.
 
-```text
-Design Q
-  ↓
-Hydraulic calculation → e.g. Ø600
-  ↓
-Structural pipe selection
-  ↓
-If Ø600 pipe is inadequate/unavailable → Ø700
-```
+The purpose is to distinguish:
 
-The hydraulic calculation is not recalculated after the structural selection changes diameter.
+- faults that have been rectified and verified,
+- faults that remain confirmed,
+- issues requiring engineering-basis verification,
+- issues that are architectural/data-boundary concerns,
+- items that are not faults by themselves.
 
-Possible result:
-
-```text
-SelectedDiameterMm = 600
-SelectedPipeDiaMm  = 700
-```
-
-Consequences:
-
-- Hydraulics based on Ø600
-- Structural pipe/FOS based on Ø700
-- Calculation Sheet can use Ø600
-- BOQ can use Ø600
-- Drawing can use Ø600
-
-This creates one revision with contradictory engineering geometry/results.
-
-**Do not fix yet.**
+**Important:** A fault being architecturally cleared does not mean its underlying engineering methodology has been approved. Engineering-basis items remain open until the applicable standard/methodology has been established.
 
 ---
 
-## 2. Problem 2 — Silent Engineering Defaults
+## 2. Working Rule
 
-**Status:** CONFIRMED — HIGH
+For every suspected fault:
 
-The calculation path can substitute internal/default values when important inputs are missing, including values such as:
-
-- Runoff coefficient
-- Rainfall intensity
-- Catchment area
-- Slope
-- Fill height
-- Soil unit weight
-
-Problem:
-
-```text
-Missing input
-  ↓
-Internal default
-  ↓
-Calculation continues
-```
-
-Required eventual behavior:
-
-```text
-Missing/invalid input
-  ↓
-Validation error
-  ↓
-Calculation prevented
-```
-
-**Do not fix yet.**
-
----
-
-## 3. Problem 3 — Hard-coded Manning Roughness
-
-**Status:** CONFIRMED — HIGH / ENGINEERING BASIS TO VERIFY
-
-The hydraulic calculation uses:
-
-```text
-Manning n = 0.013
-```
-
-directly in calculation code.
-
-Issue:
-
-- Not controlled through engineering configuration/master data.
-- Design basis must be verified before changing it.
-
----
-
-## 4. Problem 4 — Hard-coded 75% Capacity Criterion
-
-**Status:** CONFIRMED — HIGH / ENGINEERING BASIS TO VERIFY
-
-The hydraulic calculation uses:
-
-```text
-Design Capacity = Full Bore Capacity × 0.75
-```
-
-and applies the same 75% criterion for adequacy.
-
-Issue:
-
-- Engineering acceptance criterion is embedded as a constant.
-- Its adopted standard/basis must be verified.
-
----
-
-## 5. Problem 5 — Full-bore Hydraulic Model
-
-**Status:** CONFIRMED — HIGH / ENGINEERING MODEL GAP
-
-The hydraulic calculation uses full-bore geometry:
-
-```text
-A = πD² / 4
-R = D / 4
-```
-
-It does not provide a complete partial-flow culvert analysis.
-
-Limited/missing areas include:
-
-- Partial-flow depth
-- Inlet control
-- Outlet control
-- Tailwater
-- Critical/normal depth treatment
-- Complete energy-based hydraulic analysis
-
----
-
-## 6. Problem 6 — Simplified Headwater Calculation
-
-**Status:** CONFIRMED — HIGH
-
-The current headwater calculation is simplified and does not represent a complete culvert control analysis.
-
-Limited/missing factors include:
-
-- Inlet control
-- Outlet control
-- Tailwater
-- Barrel friction
-- Entrance/exit losses
-- Complete energy balance
-- Road overtopping/freeboard checks
-
----
-
-## 7. Problem 7 — Hard-coded Trench Width
-
-**Status:** CONFIRMED — HIGH
-
-Current structural calculation assumes:
-
-```text
-Trench Width = Pipe Diameter + 0.6 m
-```
-
-Issue:
-
-- Trench geometry is an embedded assumption.
-- It is not derived from explicit design/configuration data.
-- It can become inconsistent with multiple pipes and actual drawing geometry.
-
----
-
-## 8. Problem 8 — Hard-coded Structural Coefficient
-
-**Status:** CONFIRMED — HIGH / ENGINEERING BASIS TO VERIFY
-
-The structural calculation uses:
-
-```text
-Kμ = 0.150
-```
-
-as an embedded constant.
-
-The applicable formula/standard and coefficient must be verified before changing it.
-
----
-
-## 9. Problem 9 — Hard-coded Bedding Class and Factor
-
-**Status:** CONFIRMED — HIGH
-
-Current calculation uses:
-
-```text
-Bedding Class = Class B
-Bedding Factor = 1.9
-```
-
-for the calculation.
-
-Issue:
-
-- The same bedding assumption is effectively applied to every design.
-- It is not currently a meaningful selection/configuration driven by installation conditions.
-
----
-
-## 10. Problem 10 — Bearing Capacity Input Is Not Used
-
-**Status:** CONFIRMED — HIGH
-
-`BearingCapacityKNm2` exists as an engineering input but is not used by the current calculation path.
-
-Risk:
-
-- Engineer can enter a value and reasonably believe it has been checked when it has no effect on the result.
-
-Later decision:
-
-- Implement the relevant bearing/foundation calculation, or
-- remove/defer the input until supported.
-
----
-
-## 11. Problem 11 — Soil Type Is Not Used Meaningfully
-
-**Status:** CONFIRMED — HIGH
-
-`SoilType` exists in the input, but the structural calculation primarily uses the supplied soil unit weight.
-
-Changing soil type itself does not independently alter the calculation.
-
-Later decision:
-
-- Establish controlled soil properties and how soil selection affects the applicable calculations.
-
----
-
-## 12. Problem 12 — Design Standard Does Not Drive Calculation Method
-
-**Status:** CONFIRMED — HIGH
-
-`DesignStandard` exists in the input, but current formulas do not meaningfully switch methodology based on the selected standard.
-
-Issue:
-
-```text
-Selected design standard
-        ↓
-Current calculation methodology
-        ↓
-Does not necessarily change
-```
-
-The authoritative design basis must eventually be established.
-
----
-
-## 13. Problem H1 — Hydrological Method Selection Is Not Honored
-
-**Status:** CLEARED — IMPLEMENTATION VERIFIED
-
-The selected hydrological method is passed to
-IHydrologyCalculationService.
-
-Rational is currently implemented.
-
-Dicken, Ryve, and Inglis are explicitly rejected as unsupported
-rather than silently falling back to the Rational Method.
-
-Therefore the previous fault condition is cleared.
-
-Future implementation of additional hydrological methods remains
-an engineering/methodology enhancement and requires verified
-engineering formulas and applicable standards before implementation.
-
----
-
-## 14. Problem H2 — Hydrology Inputs Can Be Defaulted
-
-**Status:** CONFIRMED — HIGH
-
-Important hydrology values can receive defaults rather than causing calculation validation to fail.
-
-Examples:
-
-- Catchment area
-- Rainfall intensity
-- Runoff coefficient
-
-Required eventual behavior:
-
-```text
-Missing/invalid hydrology input
-        ↓
-Validation error
-        ↓
-No calculation
-```
-
----
-
-## 15. Problem H3 — Design Discharge Override Rule
-
-**Status:** CONFIRMED — TRACEABILITY DEFICIENCY — MEDIUM
-
-The calculation path has been verified.
-
-If `DesignDischargeOverrideQ` is supplied, it is used as the authoritative
-design discharge and passed directly to hydraulic calculation.
-
-If the override is blank, the design discharge is calculated through
-`HydrologyCalculationService.CalculateQ(...)` using the selected
-`HydroMethod`.
-
-Therefore:
-
-- Override Q is authoritative when supplied.
-- Hydrological Q is used when no override is supplied.
-- The Q entering hydraulic calculation is the authoritative Q.
-- `RevisionEngineeringResultModel.DesignDischargeQ` stores the Q actually used.
-
-However, the Calculation Sheet does not explicitly identify the source of
-the design discharge.
-
-The engineer therefore cannot distinguish between:
-
-- Hydrologically calculated Q, and
-- Engineer-entered override Q.
-
-**Classification:** Traceability/documentation deficiency, not a calculation
-formula fault.
-
-**Required rectification:**
-The Calculation Sheet should explicitly identify the design discharge source
-and, where applicable, indicate that an engineer override was used.
-
-**Do NOT fix yet.**
-
----
-
-## 16. Problem H4 — Hydrology Embedded in DesignCalculationService
-
-**Status:** RESOLVED — ARCHITECTURE**
-
-The hydrology calculation is separated behind
-`IHydrologyCalculationService`, implemented by
-`HydrologyCalculationService`.
-
-`DesignCalculationService` acts as the orchestration layer and
-delegates hydrological calculation through the interface.
-
-Therefore H4 is not currently a calculation fault and does not require further refactoring
----
-
-# Current Fault Register
-
-| ID | Issue | Status |
-| --- | --- | --- |
-| P1 | Hydraulic diameter vs structural pipe diameter | Confirmed |
-| P2 | Silent engineering defaults | Confirmed |
-| P3 | Hard-coded Manning n | Confirmed / basis verification |
-| P4 | Hard-coded 75% capacity criterion | Confirmed / basis verification |
-| P5 | Full-bore hydraulic model | Confirmed |
-| P6 | Simplified headwater | Confirmed |
-| P7 | Hard-coded trench width | Confirmed |
-| P8 | Hard-coded structural coefficient | Confirmed / basis verification |
-| P9 | Hard-coded bedding class/factor | Confirmed |
-| P10 | Bearing capacity ignored | Confirmed |
-| P11 | Soil type not meaningfully used | Confirmed |
-| P12 | Design standard not driving calculation | Confirmed |
-| H1 | HydroMethod not honored | Confirmed |
-| H2 | Hydrology inputs can be defaulted | Confirmed |
-| H3 | Design Q override rule | Verified — traceability deficiency |
-| H4 | Hydrology embedded in monolithic service | Not a calculation fault — orchestration is separated through IHydrologyCalculationService |
-
----
-
-# Working Rule
-
-For each new suspected fault:
-
-1. Identify exact code.
-2. Trace actual behavior.
+1. Identify the exact code.
+2. Trace actual current behavior.
 3. Decide whether it is truly a fault.
 4. Classify it as:
+   - Cleared
    - Confirmed
-   - Needs verification
-   - Not a fault
+   - Needs Engineering Verification
+   - Not a Fault
 5. Record impact.
-6. Do not fix immediately.
+6. Do not change engineering logic until the engineering basis is established.
 
-Only after the audit:
+The controlled sequence remains:
 
 ```text
 Fault Audit
@@ -416,279 +48,507 @@ Engineering-basis verification
     ↓
 Architecture migration
     ↓
-Controlled fixes
+Controlled engineering fixes
     ↓
 Testing
 ```
 
 ---
 
-# Next Audit Target
+## 3. Current Architecture Verification
 
-**Hydraulic calculation only.**
+The Application layer has now been checked for direct Infrastructure dependencies.
 
-Inspect:
+Current result:
 
-- Pipe diameter trial
-- Number-of-pipe trial
-- Manning calculation
-- Capacity
-- Velocity
-- Headwater
-- Hydraulic PASS/FAIL
+```text
+CulvertCAD.Application
+        ↓
+CulvertCAD.Core abstractions/entities
+        ↓
+CulvertCAD.Infrastructure implementations
+```
 
-Do not modify code until this section is understood.
+There are currently no direct `CulvertCAD.Infrastructure` references from the Application project.
+
+The major calculation responsibilities are now separated as follows:
+
+```text
+DesignCalculationService
+│
+├── IHydrologyCalculationService
+├── IHydraulicCalculationService
+│   ├── IHeadwaterCalculationService
+│   └── IPipeCatalogRepository
+├── IStructuralCalculationService
+│   ├── ILiveLoadService
+│   └── IBeddingService
+├── IPipeSelectionService
+├── IFOSCalculationService
+└── IEngineeringInputValidationService
+```
+
+`BeddingService` was extracted from `StructuralCalculationService` during the current architecture refactor.
+
+Build and tests were verified after this extraction.
 
 ---
 
-# 19. Hydraulic Audit — HY1 — Design Capacity for Multiple Pipes
+# 4. Reconciled Current Fault Register
 
-**Status:** CONFIRMED — HIGH
+## 4.1 Cleared / Rectified and Verified
 
-The hydraulic calculation divides total design discharge by the number of pipes:
+| ID | Finding | Current status |
+| --- | --- | --- |
+| P1 / PS1 | Hydraulic diameter could differ from final structural pipe diameter | **CLEARED** |
+| P2 | Silent engineering defaults | **CLEARED** |
+| H1 | Hydrological method selection not honored | **CLEARED** |
+| H2 | Hydrology inputs could be silently defaulted | **CLEARED** |
+| H3 | Design discharge override traceability | **CLEARED** |
+| H4 | Hydrology embedded in monolithic calculation service | **CLEARED** |
+| HY1 | Multi-pipe capacity semantics unclear | **CLEARED** |
+| HY3 | Hard-coded hydraulic diameter list | **CLEARED** |
+| S2 | Structural calculation did not receive number of pipes | **CLEARED** |
+| S4 | Soil unit-weight silently defaulted | **CLEARED** |
+| PS2 | Pipe selection directly coupled to persistence | **CLEARED** |
+| SR1 | Structural/hydraulic pipe configuration mismatch | **CLEARED** |
+| TR2 | Final structural selection/verdict missing from trace | **CLEARED** |
+| TR3 | Result DTO completeness | **CLEARED** |
+| TR4 | Calculation result mapping completeness | **VERIFIED** |
+| — | Bedding logic embedded in StructuralCalculationService | **CLEARED — BeddingService extracted** |
 
-```text
-qPerPipe = Q / NumberOfPipes
-```
+### P1 / PS1
 
-It then checks the 75% full-bore capacity per pipe:
+The current workflow recalculates hydraulics if structural pipe selection changes the diameter and performs a final convergence check.
 
-```text
-0.75 × Qfull ≥ qPerPipe
-```
-
-However, the stored `QdesignM3s` result is calculated as:
-
-```text
-QdesignM3s = 0.75 × Qfull
-```
-
-without multiplying by the number of pipes.
-
-Therefore, for multiple pipes, `QdesignM3s` represents the design capacity of one pipe while `DesignDischargeQ` represents the total design discharge.
-
-Example:
-
-```text
-Number of pipes = 2
-Required total Q = 1.00 m³/s
-
-Required per-pipe Q = 0.50 m³/s
-
-Qfull per pipe = 0.80 m³/s
-
-Stored Qdesign = 0.60 m³/s
-
-Total design capacity under the same rule = 1.20 m³/s
-```
-
-## Problem
-
-The result can mix:
+Current sequence:
 
 ```text
-Total design discharge
-        vs
-Per-pipe design capacity
+Hydraulic sizing
+    ↓
+Structural calculation
+    ↓
+Pipe selection
+    ↓
+Hydraulic recalculation if diameter changes
+    ↓
+Structural recalculation
+    ↓
+Final pipe selection
+    ↓
+Convergence check
 ```
 
-without clearly representing the total system capacity.
+Therefore the previous contradictory Ø600/Ø700 state is no longer the current implementation behavior.
 
-## Impact
+### P2 / H2
 
-This can cause confusion/inconsistency in:
+Engineering input validation now occurs before the main calculation path. Missing required engineering inputs are rejected rather than allowing the normal calculation workflow to proceed with silent defaults.
 
-- Calculation Sheet
-- Engineering result DTO/document
-- Reports
-- Any downstream comparison of `DesignCapacityM3s` against total `DesignDischargeQ`
+### H1 / H4
 
-## Current conclusion
+Hydrology is separated behind:
 
-The hydraulic result model needs to clearly distinguish:
+```text
+IHydrologyCalculationService
+        ↓
+HydrologyCalculationService
+```
 
-- capacity per pipe
-- total capacity of all pipes
+Rational hydrology is implemented. Unsupported hydrological methods are explicitly rejected rather than silently falling back to Rational.
 
-The correct engineering representation/formula must be confirmed before implementation.
+### H3
 
-**Do NOT fix yet.**
+`DesignDischargeOverrideQ`, when supplied, is authoritative.
+
+When no override is supplied, the selected hydrological method is used.
+
+The result stores the actual design discharge and identifies its source.
+
+### HY1
+
+Hydraulic results now distinguish:
+
+```text
+QfullM3s        = full capacity per pipe
+QdesignM3s      = design capacity per pipe
+QfullTotalM3s   = full capacity of all pipes
+QdesignTotalM3s = design capacity of all pipes
+```
+
+### HY3
+
+Hydraulic diameter candidates are now obtained from active `PipeCatalog` data through:
+
+```text
+IPipeCatalogRepository
+```
+
+rather than a hard-coded diameter list.
+
+### S2 / SR1
+
+Structural calculation now receives:
+
+```text
+NumberOfPipes
+```
+
+and the same hydraulic pipe-count configuration is propagated into structural calculation.
+
+### PS2
+
+Pipe selection is separated into:
+
+```text
+IPipeSelectionService
+        ↓
+PipeSelectionService
+        ↓
+IPipeCatalogRepository
+        ↓
+PipeCatalogRepository
+        ↓
+AppDbContext
+```
+
+### TR2
+
+The calculation trace now includes final engineering-decision information including:
+
+- selected pipe,
+- pipe crushing capacity,
+- factor of safety,
+- structural verdict.
+
+### Bedding architecture
+
+The former bedding responsibility inside `StructuralCalculationService` has been extracted:
+
+```text
+StructuralCalculationService
+        ↓
+IBeddingService
+        ↓
+BeddingService
+        ↓
+EngineeringCalculationSettings
+```
+
+This is an architecture correction only. The current bedding values have not been changed.
 
 ---
 
-# 20. Hydraulic Audit — HY2 — Velocity Acceptance Criterion
+# 5. Confirmed Open Engineering / Model Issues
 
-**Status:** NEEDS ENGINEERING VERIFICATION — MEDIUM/HIGH
+## P3 — Manning Roughness
 
-The current hydraulic adequacy condition uses full-flow velocity:
+**Status:** CONFIRMED — CURRENT VALUE NOT SUPPORTED BY IDENTIFIED IRC BASIS
+
+The hydraulic calculation uses configured Manning `n`, currently sourced from `EngineeringCalculationSettings`.
+
+Current configuration includes:
+
+```text
+ManningN = 0.013
+```
+
+The architectural problem of embedding the value directly inside calculation code has been addressed.
+
+IRC:SP:13-2022 Article 19.2.5 identifies `n = 0.015` for cement-concrete circular pipes in its stated friction-loss formulation. Therefore the current configured value `n = 0.013` is not supported by the identified IRC basis for that pipe condition.
+
+**Required action:** Reconcile the applicable Manning roughness with the complete hydraulic methodology and actual pipe/material condition before implementing the final value.
+
+---
+
+## P4 — 75% Capacity Criterion
+
+**Status:** CONFIRMED — ASSUMED 75% CRITERION NOT SUPPORTED
+
+Current hydraulic adequacy uses:
+
+```text
+Design capacity = Qfull × DesignCapacityFactor
+```
+
+with current configuration:
+
+```text
+DesignCapacityFactor = 0.75
+```
+
+The value is configurable rather than embedded directly in the calculation.
+
+IRC:SP:13-2022 does not establish a universal 75% full-flow capacity factor as the culvert acceptance criterion. The current `DesignCapacityFactor = 0.75` is therefore an application assumption.
+
+**Required action:** Replace the 75% criterion with an approved hydraulic acceptance methodology based on the governing culvert hydraulic conditions
+---
+
+## P5 — Full-Bore Hydraulic Model
+
+**Status:** CONFIRMED — HIGH / ENGINEERING MODEL GAP
+
+The current hydraulic model uses:
+
+```text
+A = πD² / 4
+R = D / 4
+```
+
+and Manning full-bore capacity.
+
+It does not provide a complete partial-flow culvert analysis.
+
+Missing/limited areas include:
+
+- partial-flow depth,
+- inlet control,
+- outlet control,
+- tailwater,
+- complete critical/normal-depth treatment,
+- complete energy-based hydraulic analysis.
+
+**Required action:** Establish the adopted hydraulic methodology before redesigning this calculation.
+
+---
+
+## P6 — Simplified Headwater
+
+**Status:** CONFIRMED — HIGH / ENGINEERING MODEL GAP
+
+The current headwater calculation is:
+
+```text
+Hc = 0.5D
+
+HW = Hc + Ke × V²/(2g)
+```
+
+It does not represent a complete culvert control analysis.
+
+---
+
+## P7 / S1 — Trench Width Assumption
+
+**Status:** CONFIRMED — HIGH / ENGINEERING BASIS TO VERIFY
+
+Current structural calculation uses:
+
+```text
+Bd = D + TrenchWidthClearanceM
+```
+
+with current configuration:
+
+```text
+TrenchWidthClearanceM = 0.6 m
+```
+
+This is now configuration rather than an inline constant, but the engineering assumption remains.
+
+The calculation does not derive trench geometry from:
+
+- number of pipes,
+- pipe spacing,
+- actual pipe arrangement,
+- installation condition,
+- construction requirements.
+
+**Required action:** Establish the engineering rule for trench width and multi-pipe arrangement.
+
+---
+
+## P8 / S5 — Structural Kμ
+
+**Status:** CONFIRMED — ENGINEERING BASIS TO VERIFY
+
+Current configuration contains:
+
+```text
+StructuralKmu = 0.150
+```
+
+The value is controlled through engineering configuration, but its applicable engineering basis remains to be verified.
+
+---
+
+## P9 / B4 — Bedding Class and Factor
+
+**Status:** CONFIRMED — ENGINEERING BASIS TO VERIFY
+
+Current configuration contains:
+
+```text
+BeddingClass  = ClassB
+BeddingFactor = 1.9
+```
+
+Bedding access has now been separated through `IBeddingService` / `BeddingService`.
+
+However, the engineering basis for automatically applying this bedding condition to every design remains open.
+
+---
+
+## P10 / SR2 — Bearing Capacity
+
+**Status:** CONFIRMED — HIGH / ENGINEERING BASIS REQUIRED
+
+`BearingCapacityKNm2` is captured as an engineering input but is not currently used in the structural acceptance calculation.
+
+Therefore the current structural verdict does not include a bearing/foundation check.
+
+**Required action:** Establish and implement the applicable bearing/foundation methodology, or explicitly defer/remove the input until supported.
+
+---
+
+## P11 / S3 — Soil Type
+
+**Status:** CONFIRMED — HIGH / ENGINEERING BASIS REQUIRED
+
+`SoilType` is captured, but the current structural calculation primarily uses the supplied soil unit weight.
+
+Changing `SoilType` itself does not independently alter the current calculation.
+
+**Required action:** Establish controlled soil properties and their effect on the adopted engineering calculations.
+
+---
+
+## P12 — Design Standard
+
+**Status:** CONFIRMED — HIGH / ENGINEERING METHODOLOGY REQUIRED
+
+`DesignStandard` is captured but does not currently drive the calculation methodology.
+
+The application therefore does not yet provide a complete:
+
+```text
+Selected Standard
+        ↓
+Applicable Method
+        ↓
+Applicable Formula
+        ↓
+Applicable Clause
+```
+
+mapping.
+
+**Required action:** Establish the authoritative design-standard mapping before implementing standard-dependent calculations.
+
+---
+
+# 6. Hydraulic Audit
+
+## HY2 — Velocity Acceptance Criterion
+
+**Status:** CONFIRMED — CURRENT VELOCITY CRITERION NOT ESTABLISHED
+
+Current adequacy uses:
 
 ```text
 vFull >= 0.6 m/s
 vFull <= 3.5 m/s
 ```
 
-The service also calculates design-flow velocity:
+The service also calculates:
 
 ```text
 vDesign = qPerPipe / A
 ```
 
-but the acceptance condition does not use `vDesign`.
+but does not use `vDesign` for adequacy.
 
-## Problem requiring verification
+No current repository engineering reference establishes whether the governing acceptance condition should use:
 
-We need to establish which velocity should govern the adopted engineering acceptance criterion:
-
-- velocity at full flow,
-- velocity at design flow,
+- full-flow velocity,
+- design-flow velocity,
 - or another standard-defined condition.
 
-## Current conclusion
-
-Do not classify this as a definite formula fault until the applicable engineering basis is verified.
-
-**Do NOT fix yet.**
-
+**Required action:** Establish the governing velocity acceptance criterion from the approved hydraulic methodology before changing the current code
 ---
 
-# 21. Hydraulic Audit — HY3 — Hard-coded Diameter List vs PipeCatalog
+# 7. Headwater Audit
 
-**Status:** CONFIRMED — ARCHITECTURAL / ENGINEERING-DATA ISSUE
-
-The hydraulic calculation uses a hard-coded diameter list:
-
-```text
-300, 400, 500, 600, 700, 800, 900, 1000 mm
-```
-
-Separately, the application has `PipeCatalog` engineering data containing pipe information.
-
-## Problem
-
-There are two sources of pipe-size information:
-
-```text
-DesignCalculationService
-    ↓
-Hard-coded diameter list
-
-PipeCatalog
-    ↓
-Database engineering data
-```
-
-These sources can diverge.
-
-A valid pipe diameter in the engineering master data could potentially be excluded from hydraulic selection because it is absent from the hard-coded list.
-
-## Current conclusion
-
-Pipe diameter availability/selection should eventually be controlled through the appropriate engineering master-data boundary.
-
-**Do NOT fix yet.**
-
----
-
-# 22. Next Audit Target
-
-The next single area to inspect is:
-
-## Hydraulic Headwater / Control Calculation
-
-Trace only:
-
-- `CalculateHeadwater(...)`
-- `Ke`
-- `Hc`
-- Velocity used in headwater
-- Headwater result
-- How headwater is consumed downstream
-
-Determine:
-
-1. Exactly what the current formula calculates.
-2. What engineering assumptions are embedded.
-3. Which values are hard-coded.
-4. Whether the result is used consistently.
-5. Which findings are confirmed faults vs items requiring engineering verification.
-
-No code changes.
-
----
-
-# 23. Headwater Audit — HW1 — No Barrel Friction/Length
+## HW1 — No Barrel Friction / Length
 
 **Status:** CONFIRMED — HIGH
 
-`CalculateHeadwater()` receives only:
+`CalculateHeadwater()` currently receives:
 
-- discharge
-- diameter
-- entrance-loss coefficient
+- discharge,
+- diameter,
+- entrance-loss coefficient.
 
 It does not receive or use:
 
-- barrel length
-- pipe/barrel slope
-- Manning roughness
-- hydraulic radius
-- tailwater
+- barrel length,
+- pipe/barrel slope,
+- Manning roughness,
+- hydraulic radius,
+- tailwater.
 
-Therefore barrel friction loss cannot be included.
+Therefore barrel friction/head loss cannot be represented.
+
+IRC:SP:13-2022 Article 19.2 includes barrel friction in the full-flow pipe-culvert hydraulic method, with the operating head providing energy to overcome frictional resistance. The applicable friction treatment depends on barrel length, hydraulic radius and roughness.
+
+**Required action:** Incorporate the applicable barrel friction/head-loss methodology into the final headwater/control calculation.
 
 **Do NOT fix yet.**
 
 ---
 
-# 24. Headwater Audit — HW2 — No Inlet/Outlet Control Evaluation
+## HW2 — No Tailwater / Hydraulic Control Evaluation
 
 **Status:** CONFIRMED — HIGH
 
-The current method calculates a simplified expression but does not determine whether inlet control or outlet control governs.
+The current headwater calculation does not evaluate the downstream hydraulic condition.
 
-There is no explicit evaluation of:
+There is no explicit input or calculation for:
 
-- inlet control
-- outlet control
-- tailwater condition
-- governing control regime
+- tail-race HFL / tailwater level,
+- outlet hydraulic condition,
+- operating head based on upstream and downstream levels,
+- governing hydraulic control condition.
 
-**Do NOT fix yet.**
+IRC:SP:13-2022 Article 19.2 requires the tail-race HFL to be known and defines the operating head for full-flow culvert analysis using the upstream water level and the higher of the tail-race water surface or outlet crown.
 
----
+Therefore the current simplified headwater calculation cannot reproduce the governing downstream hydraulic condition required by the adopted methodology.
 
-# 25. Headwater Audit — HW3 — Hard-coded Entrance Coefficient
-
-**Status:** CONFIRMED — HIGH / ENGINEERING BASIS TO VERIFY
-
-The current headwater calculation uses:
-
-```text
-Ke = 0.5
-```
-
-The coefficient is not selected from actual inlet configuration or controlled engineering data.
-
-The correct coefficient/design basis must be verified before implementation.
+**Required action:** Establish the applicable tailwater/outlet and control methodology and incorporate it into the final hydraulic calculation.
 
 **Do NOT fix yet.**
 
 ---
 
-# 26. Headwater Audit — HW5 — Headwater Does Not Participate in Hydraulic PASS/FAIL
+## HW3 — Universal Entrance-Loss Coefficient
+
+**Status:** CONFIRMED — CURRENT DEFAULT NOT GENERALLY SUPPORTED
+
+The current `HeadwaterCalculationService` uses a default entrance-loss coefficient of `Ke = 0.5`.
+
+IRC:SP:13-2022 Article 19.2.5 states that `Ke` principally depends on the shape of the inlet and gives commonly used values including approximately `0.08` for bevelled/bell-mouthed entry and `0.505` for sharp-edged entry. The standard also notes that `Ke` is influenced by inlet size and wetted-surface roughness.
+
+Therefore the current universal `Ke = 0.5` default cannot be treated as a generally applicable culvert inlet coefficient.
+
+**Required action:** Determine `Ke` from the approved inlet configuration and applicable hydraulic methodology.
+
+**Do NOT fix yet.**F
+
+---
+
+## HW5 — Headwater Does Not Participate in Hydraulic PASS/FAIL
 
 **Status:** CONFIRMED — HIGH
 
-The service calculates and stores `HeadwaterDepthM`.
+The hydraulic calculation calculates and stores `HeadwaterDepthM`.
 
-However, the hydraulic adequacy condition is based on:
+However, the current hydraulic adequacy decision does not use the calculated headwater/heading-up condition. The current verdict is based on the existing capacity and velocity criteria.
 
-- full-bore capacity criterion
-- full-flow velocity limits
+IRC:SP:13-2022 Article 19.2.1 establishes permissible heading-up at the inlet as a design safety criterion. The upstream water level must not rise above the predetermined safe level, considering risks such as road overtopping and property damage. Article 19.2.2 also requires the tail-race HFL, and Article 19.2.3 defines the operating head using the upstream level relative to the higher of the tailwater surface or outlet crown.
 
-The calculated headwater is not part of the hydraulic PASS/FAIL decision.
+Therefore the application currently produces a headwater result without incorporating the governing headwater/heading-up condition into hydraulic acceptance.
 
-Therefore the system can display a headwater value without using it as a design acceptance criterion.
+**Required action:** Incorporate the approved headwater/heading-up acceptance methodology into the final hydraulic PASS/FAIL decision.
 
 **Do NOT fix yet.**
 
@@ -698,365 +558,127 @@ Therefore the system can display a headwater value without using it as a design 
 
 **Status:** CONFIRMED — RESULT SEMANTICS ISSUE
 
-The result is labelled:
+The current headwater calculation exposes its result as:
 
 ```text
 HeadwaterDepthM
-```
-
-and presented as "Headwater Depth".
-
-The underlying calculation is a simplified expression rather than a complete culvert headwater/control analysis.
-
-This creates a risk that the displayed result is interpreted as a full engineering headwater determination when it is not.
-
-The eventual model should clearly distinguish a simplified/intermediate estimate from an authoritative headwater result.
-
-**Do NOT fix yet.**
 
 ---
 
-# 28. Next Audit Target
+# 8. Live Load Audit
 
-## Structural Calculation — `CalculateStructural()`
-
-Inspect only the first structural section:
-
-- Fill height `H`
-- Pipe diameter `D`
-- Trench width `Bd`
-- Soil unit weight `γ`
-- Load coefficient `Cd`
-- Earth load
-- Live load input into total load
-
-Determine:
-
-1. Exact current formulas.
-2. Inputs actually used.
-3. Hard-coded assumptions.
-4. Inputs that are ignored.
-5. Confirmed faults vs engineering-basis verification items.
-
-Do not inspect or modify bedding/FOS/pipe selection yet.
-
----
-
-# 29. Structural Audit — S1 — Hard-coded Trench Width
+## LL1 — Invalid Load Class Fallback
 
 **Status:** CONFIRMED — HIGH
 
-The structural calculation uses:
+Current `LiveLoadService` selects the 70R table for `IRC_70R` and otherwise uses the normal table.
 
-```text
-Trench Width = Pipe Diameter + 0.6 m
-```
+Therefore an unsupported/invalid load-class value can potentially fall through to the normal table unless validation prevents it.
 
-The width is not derived from:
-
-- Number of pipes
-- Pipe spacing
-- Actual pipe arrangement
-- Installation condition
-- Construction requirements
-
-This assumption directly affects the structural earth-load calculation.
-
-**Do NOT fix yet.**
+**Required action:** Establish explicit supported load-class validation.
 
 ---
 
-# 30. Structural Audit — S2 — Structural Calculation Does Not Know Number of Pipes
-
-**Status:** CONFIRMED — HIGH
-
-The hydraulic calculation can select multiple pipes, but `CalculateStructural()` does not receive `NumberOfPipes`.
-
-Therefore the structural load calculation does not explicitly represent the multi-pipe configuration selected by the hydraulic calculation.
-
-Current conceptual flow:
-
-```text
-Hydraulic
-  ↓
-1–4 pipes possible
-  ↓
-Structural
-  ↓
-Receives diameter but not pipe count
-```
-
-This creates a mismatch between hydraulic configuration and structural configuration.
-
-**Do NOT fix yet.**
-
----
-
-# 31. Structural Audit — S3 — Soil Type Does Not Affect Calculation
-
-**Status:** CONFIRMED — HIGH
-
-`SoilType` exists as an engineering input, but the structural calculation uses the supplied soil unit weight rather than the selected soil type as a determining engineering configuration.
-
-This reinforces existing fault **P11**.
-
-**Do NOT fix yet.**
-
----
-
-# 32. Structural Audit — S4 — Soil Unit Weight Can Be Silently Defaulted
-
-**Status:** CONFIRMED — HIGH
-
-If soil unit weight is missing, the current calculation path can use:
-
-```text
-18.5 kN/m³
-```
-
-This reinforces existing fault **P2 — Silent Engineering Defaults**.
-
-**Do NOT fix yet.**
-
----
-
-# 33. Structural Audit — S5 — Hard-coded Kμ
-
-**Status:** CONFIRMED — HIGH / ENGINEERING BASIS TO VERIFY
-
-The structural calculation uses:
-
-```text
-Kμ = 0.150
-```
-
-directly inside the calculation.
-
-This reinforces existing fault **P8**.
-
-The applicable engineering basis must be verified before changing the value or formula.
-
-**Do NOT fix yet.**
-
----
-
-# 34. Structural Audit — S6 — Earth Load Depends Directly on Assumed Trench Width
-
-**Status:** CONFIRMED — HIGH
-
-The earth-load calculation uses the trench width:
-
-```text
-We = Cd × γ × Bd²
-```
-
-and `Bd` is currently:
-
-```text
-D + 0.6 m
-```
-
-Therefore the hard-coded trench-width assumption directly changes the calculated earth load.
-
-This is part of **S1**, not a separate independent fault.
-
-**Do NOT fix yet.**
-
----
-
-# 35. Structural Audit — S7 — Fill Height Used as Supplied Input
-
-**Status:** NOT A FAULT BY ITSELF
-
-`FillHeightM` is supplied directly to the structural calculation and used as `H`.
-
-This is consistent with the roadmap treating fill height as an engineering input.
-
-No fault is recorded from this behavior alone.
-
----
-
-# 36. Next Audit Target
-
-## Structural Live Load Calculation
-
-Inspect only:
-
-- `CalculateLiveLoad(...)`
-- Normal load table
-- 70R load table
-- Load-class selection
-- Fill-depth selection
-- Interpolation/clamping behavior
-- Live load returned to `CalculateStructural()`
-
-Determine:
-
-1. Exact current behavior.
-2. Hard-coded engineering assumptions.
-3. Invalid-input/fallback behavior.
-4. Confirmed faults vs engineering-basis verification items.
-
-Do not inspect bedding, crushing load, FOS, or pipe selection yet.
-
----
-
-# 37. Live Load Audit — LL1 — Invalid Load Class Silently Falls Back
-
-**Status:** CONFIRMED — HIGH
-
-Current selection logic effectively treats every load class that does not contain `70R` as the normal live-load table.
-
-Therefore an invalid or unsupported load class can silently continue using the normal table instead of causing validation failure.
-
-Example:
-
-```text
-Invalid LoadClass
-      ↓
-Not 70R
-      ↓
-Normal load table
-      ↓
-Calculation continues
-```
-
-This should eventually be handled by explicit validation and controlled loading-class configuration.
-
-**Do NOT fix yet.**
-
----
-
-# 38. Live Load Audit — LL2 — Live Load Tables Hard-coded in Calculation Service
+## LL2 — Live Load Tables Embedded in Service
 
 **Status:** CONFIRMED — ARCHITECTURAL / ENGINEERING-DATA ISSUE
 
-The normal and 70R live-load tables are embedded directly inside `DesignCalculationService`.
+The normal and 70R tables remain embedded in `LiveLoadService`.
 
-Problem:
+This mixes engineering data with calculation implementation.
 
-- Engineering data is mixed with calculation logic.
-- Values are difficult to centrally manage or update.
-- The applicable standard/basis is not represented as controlled configuration.
-
-This does not by itself prove that the numerical table values are incorrect.
-
-The numerical basis must be verified separately.
-
-**Do NOT fix yet.**
+The numerical basis of the tables must also be independently verified.
 
 ---
 
-# 39. Live Load Audit — LL3 — Out-of-range Fill Depth Silently Clamped
+## LL3 — Out-of-range Fill Depth
 
 **Status:** NEEDS ENGINEERING VERIFICATION — MEDIUM/HIGH
 
-For fill depths outside the tabulated range, the current code returns the nearest table endpoint rather than rejecting, extrapolating, or explicitly flagging the condition.
+Current behavior clamps to the nearest table endpoint.
 
-Example:
+The engineering basis for this behavior must be verified against the applicable standard.
+
+---
+
+# 9. Bedding / Crushing Load
+
+## B3 — Required Crushing Load Formula
+
+**Status:** NEEDS ENGINEERING VERIFICATION
+
+Current calculation:
 
 ```text
-H below minimum
-    ↓
-Minimum table value
-
-H above maximum
-    ↓
-Maximum table value
+Required Crushing Load = Total Field Load / Bedding Factor
 ```
 
-The engineering rule allowing this behavior must be verified against the applicable standard.
-
-**Do NOT fix yet.**
+The implementation is internally consistent, but the engineering basis and applicable standard clause require verification.
 
 ---
 
-# 40. Next Audit Target
+# 10. Factor of Safety
 
-## Bedding Calculation
+## FOS1 — Selected Pipe Crushing Capacity
 
-Inspect only:
+**Status:** VERIFIED BEHAVIOR — ENGINEERING BASIS OPEN
 
-- Bedding class selection
-- Bedding factor
-- `RequiredCrush`
-- How bedding values enter structural results
-
-Do not inspect FOS or pipe selection yet.
-
----
-
-# 41. Structural Audit — Factor of Safety and Final Structural Check
-
-## FOS1 — Factor of Safety uses the selected pipe's ultimate crushing load
-
-**Status:** CONFIRMED — BEHAVIOR, NOT YET A FORMULA FAULT
-
-The current calculation uses the selected pipe catalogue item's ultimate crushing capacity and compares it with the calculated field load through the bedding factor.
+Current calculation uses the selected pipe catalogue ultimate crushing capacity and bedding factor.
 
 Conceptually:
 
 ```text
-FOS = Pipe Ultimate Crushing Load × Bedding Factor
-      -----------------------------------------------
-                 Total Field Load
+FOS =
+Pipe Ultimate Crushing Load × Bedding Factor
+--------------------------------------------
+Total Field Load
 ```
 
-The current implementation is internally consistent with its own selected inputs.
+The implementation is internally coherent.
 
-However, the engineering basis of the pipe ultimate capacity, bedding factor, and applicable design factor must be verified before declaring the formula compliant with the adopted standard.
-
-**Do NOT fix yet.**
+The engineering basis for pipe capacity, bedding factor, and design treatment remains open.
 
 ---
 
-## FOS2 — FOS depends on the fixed bedding factor
+## FOS2 — FOS Depends on Bedding Factor
 
-**Status:** CONFIRMED — HIGH
+**Status:** CONFIRMED DEPENDENCY — ENGINEERING BASIS OPEN
 
-Because the FOS calculation uses the bedding factor and the bedding factor is currently fixed at `1.9`, the FOS is directly affected by the hard-coded bedding assumption.
-
-Therefore:
+Because FOS uses the bedding factor:
 
 ```text
-Fixed Bedding Factor
-        ↓
+Bedding Factor
+      ↓
 Required Crushing Load
-        ↓
+      ↓
 Factor of Safety
-        ↓
+      ↓
 Structural PASS/FAIL
 ```
 
-This reinforces **P9/B2**.
-
-**Do NOT fix yet.**
+The bedding-factor engineering basis therefore directly affects structural adequacy.
 
 ---
 
-## FOS3 — Structural PASS/FAIL threshold is hard-coded
+## FOS3 — Minimum FOS
 
-**Status:** CONFIRMED — HIGH / ENGINEERING BASIS TO VERIFY
+**Status:** NEEDS ENGINEERING VERIFICATION — HIGH
 
-The current structural adequacy condition uses a fixed factor-of-safety threshold:
+Current configuration:
 
 ```text
-FOS >= 1.5
+StructuralFosMinimum = 1.5
 ```
 
-The threshold is embedded in the calculation logic.
-
-The applicable design standard and required factor of safety must be verified before changing the value.
-
-**Do NOT fix yet.**
+The applicable design standard and required minimum factor of safety must be verified.
 
 ---
 
-## FOS4 — Overall verdict is dependent on the current simplified hydraulic and structural models
+## FOS4 — Overall Design Verdict Scope
 
 **Status:** CONFIRMED — SYSTEMIC
 
-The overall verdict is effectively based on:
+The overall verdict is effectively:
 
 ```text
 Hydraulic Pass
@@ -1064,584 +686,345 @@ AND
 Structural Pass
 ```
 
-The structural result can therefore be PASS while important engineering checks are not actually represented, such as:
+The current structural/hydraulic models do not yet include all engineering checks that the overall verdict could be interpreted to represent, including:
 
-- complete bearing/foundation check
-- complete culvert control/headwater analysis
-- complete inlet/outlet control
-- other missing engineering checks identified in the audit
+- complete bearing/foundation verification,
+- complete inlet/outlet control,
+- complete headwater analysis,
+- other open engineering checks.
 
-This does not mean the Boolean combination itself is wrong. The issue is that the verdict can appear more comprehensive than the underlying checks.
-
-**Do NOT fix yet.**
+The Boolean combination itself is not necessarily wrong; the issue is the scope implied by the final verdict.
 
 ---
 
-# 42. Structural Audit — Pipe Selection
+# 11. Pipe Selection
 
-## PS1 — Pipe selection can change diameter after hydraulic sizing
-
-**Status:** CONFIRMED — CRITICAL**
-
-The hydraulic calculation can select a diameter based on hydraulic adequacy.
-
-The structural pipe-selection process can then move to a larger standard diameter if the initially selected diameter has no adequate catalogue pipe.
-
-Example:
-
-```text
-Hydraulic result → Ø600
-        ↓
-No adequate Ø600 catalogue pipe
-        ↓
-Pipe selection → Ø700
-```
-
-The hydraulic calculation is not rerun for Ø700.
-
-This is the already confirmed **Problem 1**.
-
-Potential contradictory state:
-
-```text
-Hydraulic values → Ø600
-Selected pipe    → Ø700
-FOS              → based on Ø700 pipe
-Downstream design → may use Ø600
-```
-
-**Do NOT fix yet.**
-
----
-
-## PS2 — Pipe selection is coupled directly to database access
-
-**Status:** CONFIRMED — ARCHITECTURAL**
-
-The calculation service directly accesses the EF database context to find the appropriate pipe catalogue record.
-
-Therefore pipe-selection engineering logic is coupled to persistence implementation.
-
-Target architecture later:
-
-```text
-StructuralCalculationService
-        ↓
-IPipeCatalogRepository
-        ↓
-PipeCatalogRepository
-        ↓
-Database
-```
-
-This should be refactored without changing selection behavior first.
-
-**Do NOT fix yet.**
-
----
-
-## PS3 — Pipe selection uses the hard-coded diameter list
-
-**Status:** CONFIRMED — ARCHITECTURAL / ENGINEERING-DATA ISSUE
-
-Pipe selection is constrained by the same hard-coded standard diameter list used by the hydraulic trial.
-
-This duplicates engineering master data and can prevent valid catalogue configurations from being considered.
-
-This reinforces **HY3**.
-
-**Do NOT fix yet.**
-
----
-
-## PS4 — Pipe selection is not based on a complete pipe specification
+## PS4 — Completeness of Pipe Specification
 
 **Status:** NEEDS ENGINEERING VERIFICATION — MEDIUM/HIGH
 
-The current selection primarily considers:
+Current pipe selection primarily considers:
 
-- diameter
-- crushing capacity
-- catalogue suitability
+- diameter,
+- required crushing capacity,
+- catalogue suitability.
 
-A complete engineering pipe selection may also require verification of:
+A complete engineering rule may additionally require:
 
-- pipe standard
-- pipe class
-- wall thickness
-- material
-- manufacturing/availability constraints
-- applicable design standard
+- pipe standard,
+- pipe class,
+- wall thickness,
+- material,
+- manufacturing/availability constraints,
+- applicable design standard.
 
-The current implementation should be compared against the intended pipe-selection engineering rule before calling the omission a definite formula fault.
-
-**Do NOT fix yet.**
+The required selection specification must be established before classifying this as a definite omission.
 
 ---
 
-# 43. Structural Audit — Structural Result Consistency
+# 12. Structural Result Scope
 
-## SR1 — Structural result and hydraulic result can represent different pipe configurations
-
-**Status:** CONFIRMED — CRITICAL**
-
-The hydraulic result contains pipe diameter/number information.
-
-The structural calculation receives diameter but not number of pipes.
-
-Therefore:
-
-```text
-Hydraulic:
-    Ø600
-    2 pipes
-
-Structural:
-    Ø600
-    no pipe-count input
-```
-
-The structural result therefore does not explicitly represent the same complete barrel configuration as the hydraulic design.
-
-This reinforces **S2** and contributes to **Problem 1**.
-
-**Do NOT fix yet.**
-
----
-
-## SR2 — Bearing capacity is accepted but not part of structural verdict
-
-**Status:** CONFIRMED — HIGH**
-
-`BearingCapacityKNm2` is an input but is not used in the structural calculation.
-
-Therefore the structural PASS/FAIL does not include bearing capacity.
-
-This reinforces **P10**.
-
-**Do NOT fix yet.**
-
----
-
-## SR3 — Structural result does not represent all structural checks implied by the UI
-
-**Status:** CONFIRMED — HIGH**
-
-The current structural result focuses on:
-
-- earth load
-- live load
-- total field load
-- bedding
-- required crushing load
-- pipe crushing capacity
-- FOS
-
-But the UI/input model also contains structural/geotechnical information such as bearing capacity.
-
-Because some accepted inputs do not participate in the calculation, the structural result is incomplete relative to the apparent input scope.
-
-**Do NOT fix yet.**
-
----
-
-# 44. Structural Audit — Traceability
-
-## TR1 — Fixed structural assumptions are not represented as controlled engineering configuration
-
-**Status:** CONFIRMED — HIGH**
-
-The structural calculation embeds assumptions such as:
-
-```text
-Kμ
-Bedding Class
-Bedding Factor
-FOS threshold
-Trench width relationship
-```
-
-These are not centrally represented as standard/configuration data.
-
-This makes it difficult to establish:
-
-```text
-Input
-→ Formula
-→ Coefficient
-→ Standard
-→ Result
-```
-
-for every important structural output.
-
-**Do NOT fix yet.**
-
----
-
-# 45. Engineering Input Audit
-
-### F-INPUT-01 — Roadway Width Not Used in Core Engineering Calculation
-
-**Status: RECLASSIFIED — USED OUTSIDE CORE ENGINEERING CALCULATION**
-
-`RoadwayWidthM` is captured, persisted, and mapped through the design/revision flow.
-
-Current verified usage includes:
-
-- BOQ generation (`BOQService.cs`) — used for BOQ length/quantity calculation.
-- Drawing generation (`SurveyAndOtherControllers.cs`) — used for longitudinal drawing data.
-
-However, `RoadwayWidthM` is not currently used by the core hydrology, hydraulic, or structural engineering calculation services.
-
-**Conclusion:** The original finding that Roadway Width is completely unused is no longer accurate. The current issue is whether Roadway Width is required as an input to any core engineering calculation and, if so, what engineering methodology requires its use.
-
-**Required next step:** Engineering basis/methodology verification before modifying the calculation.
-
-### F-INPUT-02 — Skew Angle Not Used in Engineering Calculation
-
-**Status: CONFIRMED — HIGH / ENGINEERING METHODOLOGY REQUIRED**
-
-`SkewAngleDeg` is:
-
-- captured as a design input,
-- persisted in the database,
-- mapped through the design/revision flow,
-
-but no current engineering calculation service uses `SkewAngleDeg` in the hydraulic or structural calculation.
-
-**Conclusion:** There is a confirmed input-to-calculation gap.
-
-The correct engineering treatment cannot be implemented safely without first establishing the applicable engineering standard/methodology and determining how skew angle is intended to affect the design.
-
-**Required next step:** Establish the engineering rule/formula for skew before making code changes.
-
-### F-INPUT-03 — Return Period Not Used in Engineering Calculation
-
-**Status: CONFIRMED — HIGH / ENGINEERING METHODOLOGY REQUIRED**
-
-`ReturnPeriodYrs` is:
-
-- captured as a design input,
-- persisted in the database,
-- mapped through the design/revision flow,
-
-but the current hydrology calculation does not use `ReturnPeriodYrs` to determine the design discharge.
-
-**Conclusion:** There is a confirmed input-to-calculation gap.
-
-The appropriate implementation depends on the adopted hydrology methodology and the relationship between return period and design discharge for the applicable design standard/data source.
-
-**Required next step:** Establish the approved hydrology methodology for using return period before modifying the calculation.
-
-# 46. Final DesignCalculationService Audit — Current Responsibility Map
-
-The current service effectively combines:
-
-```text
-Input conversion
-    ↓
-Hydrology
-    ↓
-Hydraulic sizing
-    ↓
-Hydraulic capacity
-    ↓
-Velocity
-    ↓
-Headwater
-    ↓
-Structural earth load
-    ↓
-Live load
-    ↓
-Bedding
-    ↓
-Required crushing load
-    ↓
-Pipe catalogue selection
-    ↓
-Factor of Safety
-    ↓
-Hydraulic PASS/FAIL
-    ↓
-Structural PASS/FAIL
-    ↓
-Overall PASS/FAIL
-    ↓
-Calculation trace
-    ↓
-Database access
-```
-
-This confirms that the service is carrying several responsibilities that should eventually be separated.
-
----
-
-# 47. Complete Current Fault Register
-
-## Critical / High
-
-| ID | Fault | Status |
-| --- | --- | --- |
-| P1 | Hydraulic diameter can differ from structurally selected pipe diameter | Confirmed — Critical |
-| P2 | Silent engineering defaults | Confirmed — High |
-| P3 | Manning `n` hard-coded | Confirmed — High / basis verification |
-| P4 | 75% capacity criterion hard-coded | Confirmed — High / basis verification |
-| P5 | Full-bore/simplified hydraulic model | Confirmed — High |
-| P6 | Simplified headwater model | Confirmed — High |
-| P7 | Hard-coded trench width | Confirmed — High |
-| P8 | Hard-coded structural `Kμ` | Confirmed — High / basis verification |
-| P9 | Hard-coded bedding class/factor | Confirmed — High / basis verification |
-| P10 | Bearing capacity input ignored | Deferred — Engineering basis required |
-| P11 | Soil type not meaningfully used | Deferred — Engineering soil-property basis required |
-| P12 | Design standard does not drive calculation | Deferred — Engineering methodology mapping required |
-| F-INPUT-01 | Roadway Width input is captured but not used by calculation | Confirmed — High |
-| F-INPUT-02 | Skew Angle input is captured but not used by calculation | Confirmed — High |
-| F-INPUT-03 | Return Period input is captured but not used by calculation | Confirmed — High |
-| H1 | Hydrological method selection not honored | Cleared — Rational implemented; unsupported methods explicitly rejected |
-| H2 | Hydrology inputs can be defaulted | Not confirmed — validation requires core hydrology inputs |
-| H3 | Design Q override rule | Cleared — override is explicit and authoritative; result presentation could be improved for traceability
-| HY1 | Stored design capacity can represent per-pipe capacity for multi-pipe designs | Confirmed — High |
-| HY3 | Hard-coded diameter list separate from PipeCatalog | Confirmed — Architecture/Data |
-| HW1 | No barrel friction/length in headwater | Confirmed — High |
-| HW2 | No inlet/outlet control evaluation | Confirmed — High |
-| HW3 | Hard-coded `Ke = 0.5` | Confirmed — High / basis verification |
-| HW5 | Headwater does not participate in hydraulic PASS/FAIL | Confirmed — High |
-| HW6 | Headwater result semantics overstate simplified calculation | Confirmed — Result semantics |
-| S2 | Structural calculation does not know number of pipes | Confirmed — High |
-| LL1 | Invalid load class silently falls back to normal table | Confirmed — High |
-| LL2 | Live-load tables embedded in calculation service | Confirmed — Architecture/Data |
-| B4 | Bedding selection is fixed to Class B / factor 1.9 rather than being controlled by engineering configuration | Confirmed — High / basis verification |
-| FOS3 | FOS threshold hard-coded at 1.5 | Confirmed — High / basis verification |
-| PS1 | Pipe selection can change diameter after hydraulic sizing | Confirmed — Critical |
-| PS2 | Pipe selection directly coupled to EF database | Confirmed — Architecture |
-| SR2 | Bearing capacity not part of structural verdict | Confirmed — High |
-| SR3 | Structural result incomplete relative to accepted structural inputs | Confirmed — High |
-| TR1 | Structural assumptions not controlled engineering configuration | Confirmed — High |
-| TR2 | Calculation trace does not capture final structural selection and verdict | Confirmed — High |
-
----
-
-## Needs Engineering Verification
-
-| ID | Issue |
-| --- | --- |
-| H3 | Design discharge override rule |
-| HY2 | Whether velocity acceptance should use full-flow or design-flow velocity |
-| LL3 | Out-of-range live-load table behavior |
-| B3 | Exact engineering basis for required crushing-load formula |
-| PS4 | Completeness of pipe-selection specification |
-| P10 | Bearing/foundation calculation and acceptance criterion |
-| P11 | Controlled soil types and engineering properties used by calculation |
-| P12 | Design-standard-to-calculation-method mapping and applicable clauses |
-
----
-
-## Not Classified as Faults
-
-| Item | Reason |
-| --- | --- |
-| S7 | Fill height being passed as an input is consistent with the current input model |
-| Hydraulic pipe-count retry itself | Selection strategy requires engineering/product verification |
-| Live-load interpolation itself | Numerical interpolation is not automatically wrong; standard basis needs verification |
-| FOS formula itself | Current formula is internally coherent; engineering basis still needs verification |
-
----
-
-# 48. Calculation Traceability Audit
-
-## TR2 — Calculation Trace Does Not Capture Final Structural Selection and Verdict
+## SR3 — Structural Result Incomplete Relative to Accepted Inputs
 
 **Status:** CONFIRMED — HIGH
 
-The current `DesignCalculationService` records a useful hydraulic and structural calculation trace through `CalcStep`.
+The structural result currently covers:
 
-The hydraulic trace records:
+- earth load,
+- live load,
+- total field load,
+- bedding,
+- required crushing load,
+- pipe crushing capacity,
+- FOS.
 
-- Design discharge
-- Number of pipes
-- Selected hydraulic diameter
-- Pipe area
-- Hydraulic radius
-- Manning's `n`
-- Full-bore capacity
-- Design capacity
-- Full-flow velocity
-- Design-flow velocity
-- Headwater depth
+But accepted structural/geotechnical inputs such as bearing capacity are not yet represented in the structural acceptance calculation.
 
-The structural trace records:
+This remains open until the engineering scope is defined.
 
-- Fill height
-- Trench width
-- Load coefficient
-- Earth load
-- Live load
-- Total load
-- Bedding class
-- Bedding factor
-- Required crushing load
+---
 
-However, the final structural selection and verdict are calculated outside these trace lists.
+# 13. Traceability
 
-The following important engineering operations are therefore not represented as explicit `CalcStep` records:
+## TR1 — Engineering Assumptions / Configuration
 
-- Pipe catalogue selection
-- Selected pipe diameter
-- Selected pipe class
-- Pipe crushing capacity
-- Factor of Safety calculation
-- Structural adequacy threshold/verdict
-- Overall design satisfactory verdict
+**Status:** PARTIALLY RECTIFIED — ENGINEERING BASIS OPEN
 
-Therefore the current traceability chain is incomplete:
+Several assumptions that were previously embedded directly in calculation code are now represented through `EngineeringCalculationSettings`, including:
+
+- Manning `n`,
+- design capacity factor,
+- trench-width clearance,
+- structural `Kμ`,
+- bedding class,
+- bedding factor,
+- minimum structural FOS.
+
+Bedding access is additionally separated through `IBeddingService`.
+
+However, central configuration does not by itself establish:
 
 ```text
 Input
-    ↓
-Hydraulic calculation
-    ↓
-Structural load calculation
-    ↓
-Required crushing load
-    ↓
-[TRACE ENDS]
-    ↓
-Pipe catalogue selection
-    ↓
-Pipe crushing capacity
-    ↓
-Factor of Safety
-    ↓
-Structural PASS/FAIL
-    ↓
-Overall PASS/FAIL 
-
-# 49. Result DTO Completeness Audit
-
-## TR3 — Persisted Calculation Results Not Fully Exposed Through Revision Result DTO
-
-**Status:** RESOLVED — DTO UPDATED
-
-`CalculationResultDocument` stores several engineering values that are calculated and persisted but were not previously exposed through `CalculationResultDto`.
-
-The affected fields are:
-
-```text
-CatchmentAreaHa
-RainfallIntensityMmHr
-RunoffCoefficient
-DesignDischargeQ
-QdesignM3s
-SelectedPipeDiaMm
-
-
-```md
-# 50. Calculation Result Mapping Audit
-
-## TR4 — Calculation Result Mapping Completeness
-
-**Status:** VERIFIED
-
-The complete result mapping has been checked across:
-
-```text
-RevisionEngineeringResultModel
-        ↓
-BuildCalculationResultDocument()
-        ↓
-CalculationResultDocument
-        ↓
-MapRevisionToDto()
-        ↓
-CalculationResultDto
-
-
-## Needs engineering verification
-
-| ID | Issue |
-|---|---|
-| H3 | Design discharge override rule |
-| HY2 | Whether velocity acceptance should use full-flow or design-flow velocity |
-| LL3 | Out-of-range live-load table behavior |
-| B3 | Exact engineering basis for required crushing-load formula |
-| PS4 | Completeness of pipe-selection specification |
-
-## Not classified as faults
-
-| Item | Reason |
-|---|---|
-| S7 | Fill height being passed as an input is consistent with the current input model |
-| Hydraulic pipe-count retry itself | Selection strategy requires engineering/product verification |
-| Live-load interpolation itself | Numerical interpolation is not automatically wrong; standard basis needs verification |
-| FOS formula itself | Current formula is internally coherent; engineering basis still needs verification |
-
----
-
-# 51. Audit Status
-
-The major sections of `DesignCalculationService` have now been audited at a first-pass level:
-
-```text
-Hydrology        ✓
-Hydraulic        ✓
-Headwater        ✓
-Structural Load  ✓
-Live Load        ✓
-Bedding          ✓
-FOS              ✓
-Pipe Selection   ✓
-Result/Trace     ✓
+  ↓
+Formula
+  ↓
+Coefficient
+  ↓
+Standard
+  ↓
+Clause
+  ↓
+Result
 ```
 
-The audit is now sufficiently detailed to begin the next architectural exercise:
-
-**map each responsibility/fault to the target C# service boundary before changing code.**
-
-No engineering correction or destructive refactoring has been performed.
+The engineering basis of the configured values remains open.
 
 ---
 
-# Current Source Snapshot Verification — `CulvertCAD(5).zip`
+# 14. Engineering Input Audit
 
-> **Purpose:** This appendix records the current implementation verification against the existing audit register. It does not replace or silently rewrite the original audit findings.
+## F-INPUT-01 — Roadway Width
 
-## Verified Cleared / Rectified Items
+**Status:** RECLASSIFIED — ENGINEERING DETERMINATION REQUIRED
 
-The current `CulvertCAD(5).zip` source snapshot contains the previously verified implementation changes for:
+`RoadwayWidthM` is captured, persisted, and used outside the core calculation, including BOQ/drawing workflows.
 
-- **P2** — engineering input validation boundary
-- **H2** — missing hydrology inputs rejected before engineering calculation
-- **H4** — hydrology separated behind `IHydrologyCalculationService`
-- **H3** — engineer discharge override is authoritative and source is exposed
-- **S2** — structural calculation receives `NumberOfPipes`
-- **SR1** — structural calculation receives the same pipe-count configuration
-- **PS2** — pipe selection separated behind application service/repository boundaries
-- **P1 / PS1** — hydraulic recalculation and final diameter convergence check
-- **HY1** — per-pipe and total hydraulic capacity are explicitly represented
-- **HY3** — hydraulic diameter candidates are sourced from active `PipeCatalog` data
+It is not currently used by core hydrology, hydraulic, or structural calculations.
 
-These are recorded separately in the companion `Fault_Clear_Status_Updated.md`.
+**Conclusion:** The original claim that the input is completely unused is no longer accurate.
 
-## Headwater Findings Verified in Current Snapshot
+**Required action:** Determine whether roadway width belongs in any core engineering calculation and establish the applicable methodology.
 
-The current source snapshot continues to support the following audit findings:
+---
 
-| Audit ID | Current verification |
+## F-INPUT-02 — Skew Angle
+
+**Status:** CONFIRMED — HIGH / ENGINEERING METHODOLOGY REQUIRED
+
+`SkewAngleDeg` is:
+
+- captured,
+- persisted,
+- mapped,
+
+but is not currently used by the hydraulic or structural calculation.
+
+**Required action:** Establish the engineering treatment of skew before implementing it.
+
+---
+
+### F-INPUT-03 — ReturnPeriodYrs Not Used in Design Discharge Determination
+
+**Status:** CONFIRMED GAP — OPEN / ENGINEERING DATA DEPENDENCY
+
+**Finding:**  
+`ReturnPeriodYrs` is captured in `RevisionEngineeringInput`, persisted with the revision input snapshot, and editable through the revision workflow. However, it is not used by `DesignCalculationService` or `HydrologyCalculationService` to determine design rainfall intensity or design discharge.
+
+**Verified execution path:**
+
+`ReturnPeriodYrs`
+→ persisted in revision input  
+→ passed within `RevisionEngineeringInput`  
+→ NOT used to determine rainfall intensity  
+→ NOT passed to `HydrologyCalculationService.CalculateQ()`  
+→ therefore does not currently affect calculated `Q`.
+
+**Engineering requirement:**  
+For culvert design, the approved design return period must be connected to the appropriate rainfall/IDF data and methodology before determining design rainfall intensity and design discharge.
+
+**Current engineering basis:**  
+IRC:SP:13-2022 specifies a 50-year return period for culverts.
+
+**Required future chain:**
+
+`ReturnPeriodYrs`
+→ approved rainfall/IDF source
+→ design rainfall intensity
+→ hydrology calculation
+→ design discharge `Q`
+
+**Implementation status:**  
+No calculation change approved at this stage. The application currently has no identified rainfall/IDF data source from which return-period-specific rainfall intensity can be derived.
+
+**Additional traceability finding:**  
+`UpdateRevisionInputsAsync()` currently does not record changes to `ReturnPeriodYrs` in revision status-history remarks.
+
+**Required action:**
+
+1. Define and approve the rainfall/IDF data source and methodology.
+2. Define how `ReturnPeriodYrs` determines design rainfall intensity.
+3. Implement the approved methodology.
+4. Add `ReturnPeriodYrs` change tracking to revision history.
+
+---
+
+# 15. Items Not Classified as Faults
+
+| Item | Reason |
 | --- | --- |
-| **HW1** | **CONFIRMED — HIGH** — headwater calculation has no barrel-length/friction input |
-| **HW2** | **CONFIRMED — HIGH** — no inlet/outlet control or tailwater regime evaluation |
-| **HW3** | **CONFIRMED — HIGH / ENGINEERING BASIS VERIFY** — entrance-loss coefficient defaults to `Ke = 0.5` |
-| **HW5** | **CONFIRMED — HIGH** — headwater is not part of hydraulic PASS/FAIL adequacy |
-| **HW6** | **CONFIRMED — RESULT SEMANTICS** — simplified headwater result is exposed as `HeadwaterDepthM` / “Headwater Depth” |
+| S7 — Fill height passed as input | Consistent with current engineering input model |
+| Hydraulic pipe-count retry itself | Selection strategy requires engineering/product verification |
+| Live-load interpolation itself | Interpolation is not automatically incorrect; engineering basis requires verification |
+| FOS formula itself | Current formula is internally coherent; engineering basis remains open |
+| Existing calculation-service boundaries | Services inspected are sufficiently cohesive; further micro-service extraction would be premature |
 
-**No engineering calculation changes are made by this audit verification.**
+---
 
-## Audit Rule
+# 16. Final Current Status Matrix
 
-The audit determines what the current application does.
+## Cleared
 
-The clear-status document records only faults that have subsequently been rectified and verified.
+```text
+P1 / PS1
+P2
+H1
+H2
+H3
+H4
+HY1
+HY3
+S2
+S4
+PS2
+SR1
+TR2
+TR3
+TR4
+Bedding architecture extraction
+```
 
-Engineering verification items remain open until their engineering basis has been established.
+## Confirmed / Open
+
+```text
+P5
+P6
+P7 / S1
+P8 / S5
+P9 / B4
+P10 / SR2
+P11 / S3
+P12
+LL1
+LL2
+HW1
+HW2
+HW3
+HW5
+HW6
+SR3
+FOS2
+FOS4
+F-INPUT-02
+F-INPUT-03
+```
+
+## Needs Engineering Verification
+
+F-INPUT-03
+
+```text
+P3
+P4
+HY2
+LL3
+B3
+PS4
+FOS1
+FOS3
+F-INPUT-01
+TR1
+```
+
+---
+
+# 17. Architecture Status
+
+The architecture refactor should now be considered **sufficiently complete for the current calculation scope**.
+
+Current target structure:
+
+```text
+DesignCalculationService
+        │
+        ├── HydrologyCalculationService
+        ├── HydraulicCalculationService
+        │       └── HeadwaterCalculationService
+        │
+        ├── StructuralCalculationService
+        │       ├── LiveLoadService
+        │       └── BeddingService
+        │
+        ├── PipeSelectionService
+        ├── FOSCalculationService
+        └── EngineeringInputValidationService
+```
+
+Persistence boundaries:
+
+```text
+Application
+    ↓
+Core repository interfaces
+    ↓
+Infrastructure repository implementations
+```
+
+No direct Application → Infrastructure dependency remains.
+
+**No further service extraction should be performed solely for structural cleanliness unless a genuinely mixed responsibility is identified.**
+
+---
+
+# 18. Engineering-Basis Phase
+
+The next phase should not be another broad refactor.
+
+It should establish the engineering basis for the open items, especially:
+
+1. Hydraulic design methodology
+2. Headwater/control methodology
+3. Velocity acceptance criterion
+4. Manning roughness
+5. Capacity criterion
+6. Structural trench/load methodology
+7. Bedding factors
+8. Live-load tables and limits
+9. Pipe crushing/FOS methodology
+10. Bearing/foundation checks
+11. Soil-property methodology
+12. Skew treatment
+13. Return-period/hydrology methodology
+14. Design-standard mapping
+
+Only after these are established should the corresponding code changes be made.
+
+---
+
+# 19. Audit Governance Rule
+
+The audit determines what the software currently does.
+
+The clear-status document records only items that have subsequently been rectified and regression-tested.
+
+Engineering verification items must remain open until their engineering basis has been established.
+
+Architecture improvements must not be interpreted as engineering approval.
+
+---
+
+# 20. Current Audit Conclusion
+
+The first-pass audit and architecture exercise are complete enough to proceed to engineering-basis verification.
+
+The application architecture has improved materially:
+
+- calculation responsibilities are separated at appropriate boundaries,
+- persistence is abstracted behind Core repository interfaces,
+- Application has no direct Infrastructure dependency,
+- hydraulic/structural configuration convergence is enforced,
+- calculation traceability has been improved,
+- engineering input validation is established,
+- bedding has been extracted as an independent application service.
+
+The remaining work is primarily **engineering methodology and acceptance criteria**, not further mechanical service extraction.

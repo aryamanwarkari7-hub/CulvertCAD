@@ -5,10 +5,22 @@
 > The original audit MD remains the source of truth for the complete fault register. Any fault not listed here is **not considered cleared**.
 >
 > **Current source snapshot verified:** `CulvertCAD(5).zip`
+>
+> **Reconciled:** 07-09-2026
 
 ---
 
-## 1. P2 — Silent Engineering Defaults
+## Rule for This Document
+
+Only add a fault from the original audit MD here when its implementation and relevant verification have actually been completed.
+
+Architecture improvements, configuration extraction, or refactoring **do not by themselves constitute engineering approval**.
+
+All other audit faults remain in the original audit document and are **not cleared** until separately resolved and verified.
+
+---
+
+# 1. P2 — Silent Engineering Defaults
 
 **Original audit status:** CONFIRMED — HIGH
 
@@ -32,7 +44,7 @@ The original silent-default fault has been cleared at the calculation input boun
 
 ---
 
-## 2. H2 — Hydrology Inputs Can Be Defaulted
+# 2. H2 — Hydrology Inputs Can Be Defaulted
 
 **Original audit status:** CONFIRMED — HIGH
 
@@ -56,7 +68,7 @@ The original H2 fault — silent defaulting of missing hydrology inputs during e
 
 ---
 
-## 3. H4 — Hydrology Calculation Embedded in the Design Orchestrator
+# 3. H4 — Hydrology Calculation Embedded in the Design Orchestrator
 
 **Original audit status:** CONFIRMED — ARCHITECTURAL
 
@@ -88,7 +100,7 @@ The architectural separation of hydrology calculation from the design orchestrat
 
 ---
 
-## 4. H3 — Design Discharge Override Rule
+# 4. H3 — Design Discharge Override Rule
 
 **Original audit status:** CONFIRMED
 
@@ -118,7 +130,7 @@ The override is authoritative and its source is traceable in the engineering res
 
 ---
 
-## 5. S2 — Structural Calculation Does Not Know Number of Pipes
+# 5. S2 — Structural Calculation Does Not Know Number of Pipes
 
 **Original audit status:** CONFIRMED — HIGH
 
@@ -148,7 +160,7 @@ The structural calculation boundary now explicitly receives the pipe-count confi
 
 ---
 
-## 6. SR1 — Structural Result and Hydraulic Result Can Represent Different Pipe Configurations
+# 6. SR1 — Structural Result and Hydraulic Result Can Represent Different Pipe Configurations
 
 **Original audit status:** CONFIRMED — CRITICAL
 
@@ -172,7 +184,7 @@ The specific configuration mismatch caused by missing structural pipe-count inpu
 
 ---
 
-## 7. PS2 — Pipe Selection Directly Coupled to Database Access
+# 7. PS2 — Pipe Selection Directly Coupled to Database Access
 
 **Original audit status:** CONFIRMED — ARCHITECTURAL
 
@@ -210,7 +222,7 @@ The direct EF/database coupling of pipe-selection logic has been removed from th
 
 ---
 
-## 8. P1 / PS1 — Hydraulic Diameter vs Selected Pipe Diameter
+# 8. P1 / PS1 — Hydraulic Diameter vs Selected Pipe Diameter
 
 **Original audit status:** CONFIRMED — CRITICAL
 
@@ -240,7 +252,7 @@ The hydraulic and structural pipe-diameter configuration is now kept consistent 
 
 ---
 
-## 9. HY1 — Multi-Pipe Hydraulic Capacity Semantics
+# 9. HY1 — Multi-Pipe Hydraulic Capacity Semantics
 
 **Original audit status:** CONFIRMED
 
@@ -271,7 +283,7 @@ Multi-pipe hydraulic capacity is now explicitly represented as both per-pipe and
 
 ---
 
-## 10. HY3 — Hard-coded Diameter List vs PipeCatalog
+# 10. HY3 / PS3 — Hard-coded Hydraulic Diameter List vs PipeCatalog
 
 **Original audit status:** CONFIRMED — ARCHITECTURAL / ENGINEERING-DATA ISSUE
 
@@ -280,6 +292,8 @@ Multi-pipe hydraulic capacity is now explicitly represented as both per-pipe and
 ### Original Fault
 
 `HydraulicCalculationService` previously maintained its own hard-coded hydraulic diameter list.
+
+This was also the underlying issue represented by PS3 where pipe-diameter candidates were maintained separately from the active pipe catalogue.
 
 ### Rectification
 
@@ -297,6 +311,8 @@ HydraulicCalculationService
 
 The repository returns active, distinct, ordered catalogue diameters.
 
+Pipe selection also uses the repository abstraction rather than maintaining a separate hard-coded diameter source.
+
 ### Verification
 
 The complete project build and complete test suite were executed successfully.
@@ -305,9 +321,11 @@ The complete project build and complete test suite were executed successfully.
 
 ### Cleared Conclusion
 
-The duplicated hard-coded hydraulic diameter source has been removed from the calculation service and replaced with active `PipeCatalog` data through `IPipeCatalogRepository`.
+The duplicated hard-coded hydraulic diameter source has been removed from the calculation/selection path and replaced with active `PipeCatalog` data through `IPipeCatalogRepository`.
 
-## 11. S4 — Soil Unit Weight Engineering Default
+---
+
+# 11. S4 — Soil Unit Weight Engineering Default
 
 **Original audit status:** CONFIRMED — HIGH
 
@@ -343,7 +361,9 @@ The engineering input validation path was traced and the project/test suite pass
 
 The original S4 silent soil-unit-weight default is cleared at the engineering input validation boundary.
 
-## 12. TR2 — Calculation Trace Does Not Capture Final Engineering Decision
+---
+
+# 12. TR2 — Calculation Trace Does Not Capture Final Engineering Decision
 
 **Original audit status:** CONFIRMED — HIGH
 
@@ -353,13 +373,36 @@ The original S4 silent soil-unit-weight default is cleared at the engineering in
 
 The existing calculation trace has been extended so that the final engineering decision is explicitly recorded.
 
-The hydraulic trace now records the final hydraulic assessment:
+The hydraulic trace records the final hydraulic assessment:
 
 ```text
 Hydraulic Result → PASS / FAIL
+```
+
+The structural trace records final structural-decision information including:
+
+```text
+Selected Pipe
+Pipe Crushing Capacity
+Factor of Safety
+Structural Verdict
+```
+
+The final calculation result also carries the resulting engineering decision.
+
+### Verification
+
+The final trace construction was reviewed and the project/test suite passed.
+
+**Result: PASS**
+
+### Cleared Conclusion
+
+The calculation trace now captures the final engineering decision rather than ending only at intermediate calculation steps.
+
 ---
 
-# Cleared Fault Summary
+# 13. Cleared Fault Summary
 
 | Audit ID | Fault | Status |
 | --- | --- | --- |
@@ -372,16 +415,99 @@ Hydraulic Result → PASS / FAIL
 | **PS2** | Pipe selection directly coupled to database access | **CLEARED — IMPLEMENTATION AND REGRESSION VERIFIED** |
 | **P1 / PS1** | Hydraulic diameter can differ from selected structural pipe diameter | **CLEARED — IMPLEMENTATION AND REGRESSION VERIFIED** |
 | **HY1** | Multi-pipe hydraulic capacity semantics | **CLEARED — IMPLEMENTATION AND REGRESSION VERIFIED** |
-| **HY3** | Hard-coded hydraulic diameter list separate from PipeCatalog | **CLEARED — IMPLEMENTATION AND REGRESSION VERIFIED** |
+| **HY3 / PS3** | Hard-coded hydraulic diameter list separate from PipeCatalog | **CLEARED — IMPLEMENTATION AND REGRESSION VERIFIED** |
 | **S4** | Soil unit weight engineering default | **CLEARED — IMPLEMENTATION AND REGRESSION VERIFIED** |
 | **TR2** | Calculation trace does not capture final engineering decision | **CLEARED — IMPLEMENTATION AND REGRESSION VERIFIED** |
 
 ---
 
-## Rule for This Document
+# 14. What Is Deliberately NOT Cleared
 
-Only add a fault from the original audit MD here when its implementation and relevant verification have actually been completed.
+The following remain outside this document because they have not been fully resolved and verified as engineering faults:
 
-All other audit faults remain in the original audit document and are **not cleared** until separately resolved and verified.
+- Manning roughness basis
+- 75% hydraulic capacity criterion
+- Full-bore/partial-flow hydraulic methodology
+- Simplified headwater methodology
+- Trench-width assumption
+- Structural `Kμ`
+- Bedding class/factor engineering basis
+- Bearing-capacity treatment
+- Soil-type treatment
+- Design-standard-driven calculation methodology
+- Velocity acceptance criterion
+- Barrel friction
+- Inlet/outlet control
+- Tailwater
+- Entrance-loss coefficient
+- Headwater participation in PASS/FAIL
+- Headwater result semantics
+- Live-load validation/data basis
+- Live-load out-of-range behavior
+- Crushing-load engineering basis
+- FOS engineering basis and threshold
+- Overall verdict scope
+- Complete pipe specification/selection methodology
+- Structural result scope
+- Roadway-width engineering role
+- Skew-angle treatment
+- Return-period/hydrology methodology
 
-**Headwater findings HW1, HW2, HW3, HW5 and HW6 are therefore intentionally NOT listed here: they remain audit findings and have not been fixed.**
+### Explicitly unchanged
+
+The following are **not treated as cleared merely because their values are now configuration-controlled**:
+
+```text
+ManningN
+DesignCapacityFactor
+TrenchWidthClearanceM
+StructuralKmu
+BeddingFactor
+StructuralFosMinimum
+```
+
+Configuration control improves software architecture and traceability, but it does not establish engineering validity.
+
+---
+
+# 15. Headwater Findings Remain Open
+
+The following original audit findings are intentionally **NOT listed as cleared**:
+
+```text
+HW1 — No barrel friction / length
+HW2 — No inlet/outlet control evaluation
+HW3 — Entrance loss coefficient
+HW5 — Headwater not in hydraulic PASS/FAIL
+HW6 — Headwater result semantics
+```
+
+They remain active audit findings until the engineering methodology is established, implemented, and regression-verified.
+
+---
+
+# 16. Document Governance
+
+This document is a **cleared-fault register**, not the complete audit.
+
+The complete audit remains the source of truth for all findings.
+
+A fault may be moved into this document only when:
+
+```text
+Original fault identified
+        ↓
+Implementation completed
+        ↓
+Current source verified
+        ↓
+Relevant tests/regression verified
+        ↓
+Fault genuinely cleared
+        ↓
+Added here
+```
+
+Engineering-basis verification must be completed separately where required.
+
+**Architecture refactoring alone must never be interpreted as engineering approval.**

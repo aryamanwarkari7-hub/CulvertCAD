@@ -400,6 +400,82 @@
 
                 </div>
 
+                <div class="fg">
+
+                    <label asp-for="BarrelLengthM">
+                        Barrel Length (m)
+                    </label>
+
+                    <input asp-for="BarrelLengthM"
+                           type="number"
+                           step="0.01"
+                           class="fi" />
+
+                    <span asp-validation-for="BarrelLengthM"
+                          class="field-validation">
+                    </span>
+
+                </div>
+
+
+                <div class="fg">
+
+                    <label asp-for="TailwaterLevelM">
+                        Tailwater Level / Tail Race HFL (m)
+                    </label>
+
+                    <input asp-for="TailwaterLevelM"
+                           type="number"
+                           step="0.01"
+                           class="fi" />
+
+                    <span asp-validation-for="TailwaterLevelM"
+                          class="field-validation">
+                    </span>
+
+                </div>
+
+                <div class="fg">
+                    <label asp-for="ExitInvertLevelM">Exit Invert Level (m)</label>
+                    <input asp-for="ExitInvertLevelM" type="number" step="0.01" class="fi" />
+                    <span asp-validation-for="ExitInvertLevelM" class="field-validation"></span>
+                </div>
+
+
+                <div class="fg">
+
+                    <label asp-for="InletConfiguration">
+                        Inlet Configuration
+                    </label>
+
+                    <input asp-for="InletConfiguration"
+                           class="fi"
+                           placeholder="e.g. Bevelled / Bell-mouthed / Sharp-edged" />
+
+                    <span asp-validation-for="InletConfiguration"
+                          class="field-validation">
+                    </span>
+
+                </div>
+
+
+                <div class="fg">
+
+                    <label asp-for="PermissibleHeadwaterM">
+                        Permissible Headwater / Heading-up (m)
+                    </label>
+
+                    <input asp-for="PermissibleHeadwaterM"
+                           type="number"
+                           step="0.01"
+                           class="fi" />
+
+                    <span asp-validation-for="PermissibleHeadwaterM"
+                          class="field-validation">
+                    </span>
+
+                </div>
+
             </div>
 
         </div>

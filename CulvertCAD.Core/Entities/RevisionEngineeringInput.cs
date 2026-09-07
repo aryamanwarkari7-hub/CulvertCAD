@@ -22,6 +22,11 @@ namespace CulvertCAD.Core.Entities
         public decimal? RoadwayWidthM { get; set; }
         public decimal? SlopePercent { get; set; }
         public decimal? SkewAngleDeg { get; set; }
+        public decimal? BarrelLengthM { get; set; }
+        public decimal? TailwaterLevelM { get; set; }
+        public decimal? ExitInvertLevelM { get; set; }
+        public string? InletConfiguration { get; set; }
+        public decimal? PermissibleHeadwaterM { get; set; }
 
         // Structural / geotechnical
         public string? SoilType { get; set; }
@@ -31,7 +36,6 @@ namespace CulvertCAD.Core.Entities
 
         // Design basis
 
-        
         public string? DesignStandard { get; set; }
     }
 }

@@ -1,9 +1,7 @@
 // CulvertCAD.Application/Services/RevisionService.cs
 using CulvertCAD.Core.Entities;
 using CulvertCAD.Core.Enums;
-using CulvertCAD.Infrastructure.MongoDB.Repositories;
-using CulvertCAD.Infrastructure.MySQL.Data;
-using Microsoft.EntityFrameworkCore;
+using CulvertCAD.Core.Repositories;
 
 namespace CulvertCAD.Application.Services;
 
@@ -30,20 +28,20 @@ public interface IRevisionService
 
 public class RevisionService : IRevisionService
 {
-    private readonly AppDbContext _db;
+    private readonly IRevisionRepository _revisionRepo;
     private readonly IDesignCalculationService _calc;
     private readonly ICalcResultRepository _calcRepo;
 
     private readonly IRevisionInputRepository _revisionInputRepo;
 
     public RevisionService(
-        AppDbContext db,
+        IRevisionRepository revisionRepo,
         IDesignCalculationService calc,
         ICalcResultRepository calcRepo,
         IRevisionInputRepository revisionInputRepo
     )
     {
-        _db = db;
+        _revisionRepo = revisionRepo;
         _calc = calc;
         _calcRepo = calcRepo;
         _revisionInputRepo = revisionInputRepo;
@@ -55,7 +53,7 @@ public class RevisionService : IRevisionService
         int userId
     )
     {
-        var existing = await _db.DesignRevisions.Where(r => r.DesignId == design.Id).ToListAsync();
+        var existing = await _revisionRepo.GetRevisionsByDesignIdAsync(design.Id);
 
         int nextIdx = existing.Count;
 
@@ -78,8 +76,8 @@ public class RevisionService : IRevisionService
             IsLatest = true,
         };
 
-        _db.DesignRevisions.Add(revision);
-        await _db.SaveChangesAsync();
+        await _revisionRepo.AddRevisionAsync(revision);
+        await _revisionRepo.SaveChangesAsync();
 
         // Capture the engineering inputs used by this revision.
         var input = new RevisionEngineeringInput
@@ -134,7 +132,7 @@ public class RevisionService : IRevisionService
 
         revision.ResultSnapshotId = resultSnapshotId;
 
-        _db.RevisionStatusHistory.Add(
+        await _revisionRepo.AddStatusHistoryAsync(
             new RevisionStatusHistory
             {
                 RevisionId = revision.Id,
@@ -145,7 +143,7 @@ public class RevisionService : IRevisionService
             }
         );
 
-        await _db.SaveChangesAsync();
+        await _revisionRepo.SaveChangesAsync();
 
         return revision;
     }
@@ -158,7 +156,7 @@ public class RevisionService : IRevisionService
     )
     {
         var rev =
-            await _db.DesignRevisions.FindAsync(revisionId)
+            await _revisionRepo.GetByIdAsync(revisionId)
             ?? throw new KeyNotFoundException($"Revision {revisionId} not found.");
 
         if (rev.IsLocked)
@@ -189,7 +187,7 @@ public class RevisionService : IRevisionService
                 break;
         }
 
-        _db.RevisionStatusHistory.Add(
+        await _revisionRepo.AddStatusHistoryAsync(
             new RevisionStatusHistory
             {
                 RevisionId = revisionId,
@@ -201,7 +199,7 @@ public class RevisionService : IRevisionService
             }
         );
 
-        _db.AuditLogs.Add(
+        await _revisionRepo.AddAuditLogAsync(
             new AuditLog
             {
                 UserId = userId,
@@ -214,7 +212,7 @@ public class RevisionService : IRevisionService
             }
         );
 
-        await _db.SaveChangesAsync();
+        await _revisionRepo.SaveChangesAsync();
     }
 
     public async Task<bool> CanTransitionAsync(
@@ -224,7 +222,7 @@ public class RevisionService : IRevisionService
         IList<string> roles
     )
     {
-        var rev = await _db.DesignRevisions.FindAsync(revisionId);
+        var rev = await _revisionRepo.GetByIdAsync(revisionId);
         if (rev == null || rev.IsLocked)
             return false;
 
@@ -251,7 +249,7 @@ public class RevisionService : IRevisionService
         int userId
     )
     {
-        _db.RevisionComments.Add(
+        await _revisionRepo.AddCommentAsync(
             new RevisionComment
             {
                 RevisionId = revisionId,
@@ -262,18 +260,18 @@ public class RevisionService : IRevisionService
                 CreatedAt = DateTime.UtcNow,
             }
         );
-        await _db.SaveChangesAsync();
+        await _revisionRepo.SaveChangesAsync();
     }
 
     public async Task ResolveCommentAsync(int commentId, int userId)
     {
         var c =
-            await _db.RevisionComments.FindAsync(commentId)
+            await _revisionRepo.GetCommentByIdAsync(commentId)
             ?? throw new KeyNotFoundException("Comment not found.");
         c.Status = CommentStatus.Resolved;
         c.ResolvedAt = DateTime.UtcNow;
         c.ResolvedByUserId = userId;
-        await _db.SaveChangesAsync();
+        await _revisionRepo.SaveChangesAsync();
     }
 
     public async Task UpdateRevisionInputsAsync(
@@ -282,7 +280,7 @@ public class RevisionService : IRevisionService
         int userId
     )
     {
-        var revision = await _db.DesignRevisions.FirstOrDefaultAsync(r => r.Id == revisionId);
+        var revision = await _revisionRepo.GetByIdAsync(revisionId);
 
         if (revision == null)
             throw new KeyNotFoundException($"Revision {revisionId} not found.");
@@ -339,6 +337,41 @@ public class RevisionService : IRevisionService
             changes.Add($"Slope: {oldInput.SlopePercent:0.###}% → {input.SlopePercent:0.###}%");
         }
 
+        if (oldInput.BarrelLengthM != input.BarrelLengthM)
+        {
+            changes.Add(
+                $"Barrel Length: {oldInput.BarrelLengthM:0.###} m → {input.BarrelLengthM:0.###} m"
+            );
+        }
+
+        if (oldInput.TailwaterLevelM != input.TailwaterLevelM)
+        {
+            changes.Add(
+                $"Tailwater Level: {oldInput.TailwaterLevelM:0.###} m → {input.TailwaterLevelM:0.###} m"
+            );
+        }
+
+        if (oldInput.ExitInvertLevelM != input.ExitInvertLevelM)
+        {
+            changes.Add(
+                $"Exit Invert Level: {oldInput.ExitInvertLevelM:0.###} m → {input.ExitInvertLevelM:0.###} m"
+            );
+        }
+
+        if (oldInput.InletConfiguration != input.InletConfiguration)
+        {
+            changes.Add(
+                $"Inlet Configuration: {oldInput.InletConfiguration ?? "(none)"} → {input.InletConfiguration ?? "(none)"}"
+            );
+        }
+
+        if (oldInput.PermissibleHeadwaterM != input.PermissibleHeadwaterM)
+        {
+            changes.Add(
+                $"Permissible Headwater: {oldInput.PermissibleHeadwaterM:0.###} m → {input.PermissibleHeadwaterM:0.###} m"
+            );
+        }
+
         if (oldInput.SoilUnitWeightKNm3 != input.SoilUnitWeightKNm3)
         {
             changes.Add(
@@ -386,7 +419,7 @@ public class RevisionService : IRevisionService
 
         if (changes.Count > 0)
         {
-            _db.RevisionStatusHistory.Add(
+            await _revisionRepo.AddStatusHistoryAsync(
                 new RevisionStatusHistory
                 {
                     RevisionId = revision.Id,
@@ -401,7 +434,7 @@ public class RevisionService : IRevisionService
             );
         }
 
-        await _db.SaveChangesAsync();
+        await _revisionRepo.SaveChangesAsync();
     }
 
     private static CalculationResultDocument BuildCalculationResultDocument(

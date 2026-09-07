@@ -1,6 +1,6 @@
-﻿using CulvertCAD.Core.Entities;
+using CulvertCAD.Core.Entities;
 
-namespace CulvertCAD.Infrastructure.MySQL.Repositories;
+namespace CulvertCAD.Core.Repositories;
 
 public interface IPipeCatalogRepository
 {

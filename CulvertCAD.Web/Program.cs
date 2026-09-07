@@ -1,6 +1,7 @@
 // CulvertCAD.Web/Program.cs
 using CulvertCAD.Application.Services;
 using CulvertCAD.Core.Entities;
+using CulvertCAD.Core.Repositories;
 using CulvertCAD.Infrastructure.Drawing;
 using CulvertCAD.Infrastructure.MongoDB.Repositories;
 using CulvertCAD.Infrastructure.MySQL.Data;
@@ -69,6 +70,7 @@ builder.Services.AddScoped<IDrawingRepository, DrawingRepository>();
 builder.Services.AddScoped<IAlignmentRepository, AlignmentRepository>();
 builder.Services.AddScoped<IBatchRunRepository, BatchRunRepository>();
 builder.Services.AddScoped<IPipeCatalogRepository, PipeCatalogRepository>();
+builder.Services.AddScoped<IRevisionRepository, RevisionRepository>();
 
 // ── Application Services ──────────────────────────────────────────────────────
 builder.Services.AddScoped<IHydrologyCalculationService, HydrologyCalculationService>();
@@ -78,6 +80,8 @@ builder.Services.AddScoped<IStructuralCalculationService, StructuralCalculationS
 builder.Services.AddScoped<IPipeSelectionService, PipeSelectionService>();
 builder.Services.AddScoped<IDesignCalculationService, DesignCalculationService>();
 builder.Services.AddScoped<IFOSCalculationService, FOSCalculationService>();
+builder.Services.AddScoped<ILiveLoadService, LiveLoadService>();
+builder.Services.AddScoped<IBeddingService, BeddingService>();
 builder.Services.AddScoped<IRevisionService, RevisionService>();
 builder.Services.AddScoped<ISurveyImportService, SurveyImportService>();
 builder.Services.AddScoped<IBOQService, BOQService>();

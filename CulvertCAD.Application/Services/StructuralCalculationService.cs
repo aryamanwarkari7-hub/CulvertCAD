@@ -9,14 +9,17 @@ public class StructuralCalculationService : IStructuralCalculationService
 {
     private readonly EngineeringCalculationSettings _settings;
     private readonly ILiveLoadService _liveLoadService;
+    private readonly IBeddingService _beddingService;
 
     public StructuralCalculationService(
         EngineeringCalculationSettings settings,
-        ILiveLoadService liveLoadService
+        ILiveLoadService liveLoadService,
+        IBeddingService beddingService
     )
     {
         _settings = settings;
         _liveLoadService = liveLoadService;
+        _beddingService = beddingService;
     }
 
     public StructuralResult CalculateStructural(
@@ -38,8 +41,10 @@ public class StructuralCalculationService : IStructuralCalculationService
         double Wl = _liveLoadService.GetLiveLoad(H, loadClass);
         double Wt = We + Wl;
 
-        string beddingClass = _settings.BeddingClass;
-        double Bf = _settings.BeddingFactor;
+        var bedding = _beddingService.GetBedding();
+
+        string beddingClass = bedding.BeddingClass;
+        double Bf = bedding.BeddingFactor;
 
         double reqCrush = Wt / Bf;
 

@@ -62,7 +62,18 @@ public class DesignCalculationService : IDesignCalculationService
         double H = (double)input.FillHeightM!.Value;
         double gamma = (double)input.SoilUnitWeightKNm3!.Value;
 
-        var hyd = await _hydraulicCalculationService.CalculateHydraulic(Q, slope);
+        var hydraulicInput = new HydraulicCalculationInputModel
+        {
+            DischargeM3s = Q,
+            SlopePercent = slope,
+            BarrelLengthM = (double)input.BarrelLengthM!.Value,
+            TailwaterLevelM = (double)input.TailwaterLevelM!.Value,
+            ExitInvertLevelM = (double)input.ExitInvertLevelM!.Value,
+            InletConfiguration = input.InletConfiguration,
+            PermissibleHeadwaterM = (double)input.PermissibleHeadwaterM!.Value,
+        };
+
+        var hyd = await _hydraulicCalculationService.CalculateHydraulic(hydraulicInput);
 
         var str = _structuralCalculationService.CalculateStructural(
             H,
@@ -80,8 +91,7 @@ public class DesignCalculationService : IDesignCalculationService
         if (pipe != null && pipe.DiameterMm != hyd.DiameterMm)
         {
             hyd = _hydraulicCalculationService.CalculateHydraulicForDiameter(
-                Q,
-                slope,
+                hydraulicInput,
                 pipe.DiameterMm,
                 hyd.NPipes
             );

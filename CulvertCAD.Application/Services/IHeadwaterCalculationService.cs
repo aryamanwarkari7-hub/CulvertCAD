@@ -1,6 +1,12 @@
-﻿namespace CulvertCAD.Application.Services;
+﻿using CulvertCAD.Core.Entities;
+
+namespace CulvertCAD.Application.Services;
 
 public interface IHeadwaterCalculationService
 {
-    double CalculateHeadwater(double q, double diameterM, double entranceLossCoefficient = 0.5);
+    double CalculateHeadwater(
+        HydraulicCalculationInputModel input,
+        double diameterM,
+        int nPipes = 1
+    );
 }

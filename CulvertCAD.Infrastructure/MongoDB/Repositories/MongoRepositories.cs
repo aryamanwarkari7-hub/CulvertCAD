@@ -1,100 +1,79 @@
 // CulvertCAD.Infrastructure/MongoDB/Repositories/MongoRepositories.cs
-using MongoDB.Driver;
 using CulvertCAD.Core.Entities;
+using CulvertCAD.Core.Repositories;
+using MongoDB.Driver;
 
 namespace CulvertCAD.Infrastructure.MongoDB.Repositories;
-
-public interface ISurveyRepository
-{
-    Task<SurveyDocument?> GetByProjectAsync(int projectId);
-    Task<SurveyDocument?> GetByIdAsync(string id);
-    Task<string> InsertAsync(SurveyDocument doc);
-    Task UpdateAsync(SurveyDocument doc);
-    Task DeleteAsync(string id);
-}
-
-public interface ICalcResultRepository
-{
-    Task<CalculationResultDocument?> GetByRevisionAsync(int revisionId);
-    Task<CalculationResultDocument?> GetByIdAsync(string id);
-    Task<string> InsertAsync(CalculationResultDocument doc);
-    Task UpdateAsync(CalculationResultDocument doc);
-}
-
-public interface IRevisionInputRepository
-{
-    Task<string> InsertAsync(RevisionInputDocument document);
-    Task<RevisionInputDocument?> GetByIdAsync(string id);
-    Task UpdateAsync(RevisionInputDocument document);
-}
-
-public interface IDrawingRepository
-{
-    Task<DrawingDocument?> GetByRevisionAsync(int revisionId);
-    Task<DrawingDocument?> GetByIdAsync(string id);
-    Task<string> InsertAsync(DrawingDocument doc);
-    Task UpdateAsync(DrawingDocument doc);
-    Task DeleteAsync(string id);
-}
-
-public interface IAlignmentRepository
-{
-    Task<AlignmentDocument?> GetByProjectAsync(int projectId);
-    Task<string> InsertAsync(AlignmentDocument doc);
-    Task UpdateAsync(AlignmentDocument doc);
-}
-
-public interface IBatchRunRepository
-{
-    Task<List<BatchDesignRunDocument>> GetByProjectAsync(int projectId);
-    Task<BatchDesignRunDocument?> GetByIdAsync(string id);
-    Task<string> InsertAsync(BatchDesignRunDocument doc);
-    Task UpdateAsync(BatchDesignRunDocument doc);
-}
 
 public class MongoDbContext
 {
     private readonly IMongoDatabase _db;
+
     public MongoDbContext(IMongoClient client, string dbName) => _db = client.GetDatabase(dbName);
 
-    public IMongoCollection<SurveyDocument>            Surveys     => _db.GetCollection<SurveyDocument>("surveys");
-    public IMongoCollection<CalculationResultDocument> CalcResults => _db.GetCollection<CalculationResultDocument>("calc_results");
-    public IMongoCollection<RevisionInputDocument> RevisionInputs => _db.GetCollection<RevisionInputDocument>("revision_inputs");
-    public IMongoCollection<DrawingDocument>           Drawings    => _db.GetCollection<DrawingDocument>("drawings");
-    public IMongoCollection<AlignmentDocument>         Alignments  => _db.GetCollection<AlignmentDocument>("alignments");
-    public IMongoCollection<BatchDesignRunDocument>    BatchRuns   => _db.GetCollection<BatchDesignRunDocument>("batch_runs");
+    public IMongoCollection<SurveyDocument> Surveys => _db.GetCollection<SurveyDocument>("surveys");
+    public IMongoCollection<CalculationResultDocument> CalcResults =>
+        _db.GetCollection<CalculationResultDocument>("calc_results");
+    public IMongoCollection<RevisionInputDocument> RevisionInputs =>
+        _db.GetCollection<RevisionInputDocument>("revision_inputs");
+    public IMongoCollection<DrawingDocument> Drawings =>
+        _db.GetCollection<DrawingDocument>("drawings");
+    public IMongoCollection<AlignmentDocument> Alignments =>
+        _db.GetCollection<AlignmentDocument>("alignments");
+    public IMongoCollection<BatchDesignRunDocument> BatchRuns =>
+        _db.GetCollection<BatchDesignRunDocument>("batch_runs");
 }
 
 public class SurveyRepository : ISurveyRepository
 {
     private readonly MongoDbContext _ctx;
+
     public SurveyRepository(MongoDbContext ctx) => _ctx = ctx;
 
-    public async Task<SurveyDocument?> GetByProjectAsync(int projectId)
-        => await _ctx.Surveys.Find(s => s.ProjectId == projectId).SortByDescending(s => s.UploadedAt).FirstOrDefaultAsync();
-    public async Task<SurveyDocument?> GetByIdAsync(string id)
-        => await _ctx.Surveys.Find(s => s.Id == id).FirstOrDefaultAsync();
+    public async Task<SurveyDocument?> GetByProjectAsync(int projectId) =>
+        await _ctx
+            .Surveys.Find(s => s.ProjectId == projectId)
+            .SortByDescending(s => s.UploadedAt)
+            .FirstOrDefaultAsync();
+
+    public async Task<SurveyDocument?> GetByIdAsync(string id) =>
+        await _ctx.Surveys.Find(s => s.Id == id).FirstOrDefaultAsync();
+
     public async Task<string> InsertAsync(SurveyDocument doc)
-    { await _ctx.Surveys.InsertOneAsync(doc); return doc.Id; }
-    public async Task UpdateAsync(SurveyDocument doc)
-        => await _ctx.Surveys.ReplaceOneAsync(s => s.Id == doc.Id, doc);
-    public async Task DeleteAsync(string id)
-        => await _ctx.Surveys.DeleteOneAsync(s => s.Id == id);
+    {
+        await _ctx.Surveys.InsertOneAsync(doc);
+        return doc.Id;
+    }
+
+    public async Task UpdateAsync(SurveyDocument doc) =>
+        await _ctx.Surveys.ReplaceOneAsync(s => s.Id == doc.Id, doc);
+
+    public async Task DeleteAsync(string id) => await _ctx.Surveys.DeleteOneAsync(s => s.Id == id);
 }
 
 public class CalcResultRepository : ICalcResultRepository
 {
     private readonly MongoDbContext _ctx;
+
     public CalcResultRepository(MongoDbContext ctx) => _ctx = ctx;
 
-    public async Task<CalculationResultDocument?> GetByRevisionAsync(int revisionId)
-        => await _ctx.CalcResults.Find(r => r.RevisionId == revisionId).SortByDescending(r => r.CalculatedAt).FirstOrDefaultAsync();
-    public async Task<CalculationResultDocument?> GetByIdAsync(string id)
-        => await _ctx.CalcResults.Find(r => r.Id == id).FirstOrDefaultAsync();
+    public async Task<CalculationResultDocument?> GetByRevisionAsync(int revisionId) =>
+        await _ctx
+            .CalcResults.Find(r => r.RevisionId == revisionId)
+            .SortByDescending(r => r.CalculatedAt)
+            .FirstOrDefaultAsync();
+
+    public async Task<CalculationResultDocument?> GetByIdAsync(string id) =>
+        await _ctx.CalcResults.Find(r => r.Id == id).FirstOrDefaultAsync();
+
     public async Task<string> InsertAsync(CalculationResultDocument doc)
-    { await _ctx.CalcResults.InsertOneAsync(doc); return doc.Id; }
-    public async Task UpdateAsync(CalculationResultDocument doc)
-        => await _ctx.CalcResults.ReplaceOneAsync(r => r.Id == doc.Id, doc);
+    {
+        await _ctx.CalcResults.InsertOneAsync(doc);
+        return doc.Id;
+    }
+
+    public async Task UpdateAsync(CalculationResultDocument doc) =>
+        await _ctx.CalcResults.ReplaceOneAsync(r => r.Id == doc.Id, doc);
 }
 
 public class RevisionInputRepository : IRevisionInputRepository
@@ -109,57 +88,80 @@ public class RevisionInputRepository : IRevisionInputRepository
         return document.Id;
     }
 
-    public async Task<RevisionInputDocument?> GetByIdAsync(string id)
-        => await _ctx.RevisionInputs
-            .Find(r => r.Id == id)
-            .FirstOrDefaultAsync();
+    public async Task<RevisionInputDocument?> GetByIdAsync(string id) =>
+        await _ctx.RevisionInputs.Find(r => r.Id == id).FirstOrDefaultAsync();
 
-    public async Task UpdateAsync(RevisionInputDocument document)
-        => await _ctx.RevisionInputs
-            .ReplaceOneAsync(r => r.Id == document.Id, document);
+    public async Task UpdateAsync(RevisionInputDocument document) =>
+        await _ctx.RevisionInputs.ReplaceOneAsync(r => r.Id == document.Id, document);
 }
 
 public class DrawingRepository : IDrawingRepository
 {
     private readonly MongoDbContext _ctx;
+
     public DrawingRepository(MongoDbContext ctx) => _ctx = ctx;
 
-    public async Task<DrawingDocument?> GetByRevisionAsync(int revisionId)
-        => await _ctx.Drawings.Find(d => d.RevisionId == revisionId).FirstOrDefaultAsync();
-    public async Task<DrawingDocument?> GetByIdAsync(string id)
-        => await _ctx.Drawings.Find(d => d.Id == id).FirstOrDefaultAsync();
+    public async Task<DrawingDocument?> GetByRevisionAsync(int revisionId) =>
+        await _ctx.Drawings.Find(d => d.RevisionId == revisionId).FirstOrDefaultAsync();
+
+    public async Task<DrawingDocument?> GetByIdAsync(string id) =>
+        await _ctx.Drawings.Find(d => d.Id == id).FirstOrDefaultAsync();
+
     public async Task<string> InsertAsync(DrawingDocument doc)
-    { await _ctx.Drawings.InsertOneAsync(doc); return doc.Id; }
-    public async Task UpdateAsync(DrawingDocument doc)
-        => await _ctx.Drawings.ReplaceOneAsync(d => d.Id == doc.Id, doc);
-    public async Task DeleteAsync(string id)
-        => await _ctx.Drawings.DeleteOneAsync(d => d.Id == id);
+    {
+        await _ctx.Drawings.InsertOneAsync(doc);
+        return doc.Id;
+    }
+
+    public async Task UpdateAsync(DrawingDocument doc) =>
+        await _ctx.Drawings.ReplaceOneAsync(d => d.Id == doc.Id, doc);
+
+    public async Task DeleteAsync(string id) => await _ctx.Drawings.DeleteOneAsync(d => d.Id == id);
 }
 
 public class AlignmentRepository : IAlignmentRepository
 {
     private readonly MongoDbContext _ctx;
+
     public AlignmentRepository(MongoDbContext ctx) => _ctx = ctx;
 
-    public async Task<AlignmentDocument?> GetByProjectAsync(int projectId)
-        => await _ctx.Alignments.Find(a => a.ProjectId == projectId).SortByDescending(a => a.ImportedAt).FirstOrDefaultAsync();
+    public async Task<AlignmentDocument?> GetByProjectAsync(int projectId) =>
+        await _ctx
+            .Alignments.Find(a => a.ProjectId == projectId)
+            .SortByDescending(a => a.ImportedAt)
+            .FirstOrDefaultAsync();
+
     public async Task<string> InsertAsync(AlignmentDocument doc)
-    { await _ctx.Alignments.InsertOneAsync(doc); return doc.Id; }
-    public async Task UpdateAsync(AlignmentDocument doc)
-        => await _ctx.Alignments.ReplaceOneAsync(a => a.Id == doc.Id, doc);
+    {
+        await _ctx.Alignments.InsertOneAsync(doc);
+        return doc.Id;
+    }
+
+    public async Task UpdateAsync(AlignmentDocument doc) =>
+        await _ctx.Alignments.ReplaceOneAsync(a => a.Id == doc.Id, doc);
 }
 
 public class BatchRunRepository : IBatchRunRepository
 {
     private readonly MongoDbContext _ctx;
+
     public BatchRunRepository(MongoDbContext ctx) => _ctx = ctx;
 
-    public async Task<List<BatchDesignRunDocument>> GetByProjectAsync(int projectId)
-        => await _ctx.BatchRuns.Find(b => b.ProjectId == projectId).SortByDescending(b => b.StartedAt).ToListAsync();
-    public async Task<BatchDesignRunDocument?> GetByIdAsync(string id)
-        => await _ctx.BatchRuns.Find(b => b.Id == id).FirstOrDefaultAsync();
+    public async Task<List<BatchDesignRunDocument>> GetByProjectAsync(int projectId) =>
+        await _ctx
+            .BatchRuns.Find(b => b.ProjectId == projectId)
+            .SortByDescending(b => b.StartedAt)
+            .ToListAsync();
+
+    public async Task<BatchDesignRunDocument?> GetByIdAsync(string id) =>
+        await _ctx.BatchRuns.Find(b => b.Id == id).FirstOrDefaultAsync();
+
     public async Task<string> InsertAsync(BatchDesignRunDocument doc)
-    { await _ctx.BatchRuns.InsertOneAsync(doc); return doc.Id; }
-    public async Task UpdateAsync(BatchDesignRunDocument doc)
-        => await _ctx.BatchRuns.ReplaceOneAsync(b => b.Id == doc.Id, doc);
+    {
+        await _ctx.BatchRuns.InsertOneAsync(doc);
+        return doc.Id;
+    }
+
+    public async Task UpdateAsync(BatchDesignRunDocument doc) =>
+        await _ctx.BatchRuns.ReplaceOneAsync(b => b.Id == doc.Id, doc);
 }

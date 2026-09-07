@@ -1,5 +1,5 @@
 ﻿using CulvertCAD.Core.Entities;
-using CulvertCAD.Infrastructure.MySQL.Repositories;
+using CulvertCAD.Core.Repositories;
 
 namespace CulvertCAD.Application.Services;
 
