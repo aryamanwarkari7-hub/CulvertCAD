@@ -252,9 +252,15 @@ public class DesignCalculationServiceTests
             CatchmentAreaHa = 15m,
             RainfallIntensityMmHr = 80m,
             RunoffCoefficient = 0.55m,
+            HydroMethod = HydrologicalMethod.Rational,
 
             FillHeightM = 0.5m,
             SlopePercent = 1.5m,
+            BarrelLengthM = 10m,
+            TailwaterLevelM = 0m,
+            ExitInvertLevelM = 100m,
+            InletConfiguration = "SquareEdge",
+            PermissibleHeadwaterM = 2m,
 
             SoilUnitWeightKNm3 = 18.5m,
             LoadClass = CulvertCAD.Core.Enums.LoadClass.IRC_ClassA,
@@ -380,9 +386,15 @@ public class DesignCalculationServiceTests
             CatchmentAreaHa = 15m,
             RainfallIntensityMmHr = 80m,
             RunoffCoefficient = 0.55m,
+            HydroMethod = HydrologicalMethod.Rational,
 
             FillHeightM = 0.5m,
             SlopePercent = 1.5m,
+            BarrelLengthM = 10m,
+            TailwaterLevelM = 0m,
+            ExitInvertLevelM = 100m,
+            InletConfiguration = "SquareEdge",
+            PermissibleHeadwaterM = 2m,
 
             SoilUnitWeightKNm3 = 18.5m,
             LoadClass = CulvertCAD.Core.Enums.LoadClass.IRC_ClassA,
@@ -463,9 +475,15 @@ public class DesignCalculationServiceTests
             CatchmentAreaHa = 15m,
             RainfallIntensityMmHr = 80m,
             RunoffCoefficient = 0.55m,
+            HydroMethod = HydrologicalMethod.Rational,
 
             FillHeightM = 0.5m,
             SlopePercent = 1.5m,
+            BarrelLengthM = 10m,
+            TailwaterLevelM = 0m,
+            ExitInvertLevelM = 100m,
+            InletConfiguration = "SquareEdge",
+            PermissibleHeadwaterM = 2m,
 
             SoilUnitWeightKNm3 = 18.5m,
             LoadClass = CulvertCAD.Core.Enums.LoadClass.IRC_ClassA,

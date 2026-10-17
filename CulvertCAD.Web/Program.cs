@@ -89,6 +89,10 @@ builder.Services.AddScoped<IDxfDrawingEngine, DxfDrawingEngine>();
 
 builder.Services.AddScoped<IEngineeringInputValidationService, EngineeringInputValidationService>();
 
+builder.Services.AddScoped<
+    IChannelSequenceEvaluationService,
+    ChannelSequenceEvaluationService>();
+
 // ── MVC ───────────────────────────────────────────────────────────────────────
 builder.Services.AddControllersWithViews();
 builder.Services.AddHttpContextAccessor();

@@ -19,10 +19,12 @@ public class SurveyDocument
 
     // Coordinate system selected during import
     public string InputCoordinateType { get; set; } = "EastingNorthing";
+
     public string InputCrs { get; set; } = string.Empty;
 
     // Working coordinate system used by survey calculations
     public string WorkingCrs { get; set; } = string.Empty;
+
     public int? UTMZone { get; set; }
 
     public double MinNorthing { get; set; }
@@ -35,18 +37,20 @@ public class SurveyDocument
     public List<SurveyPoint> Points { get; set; } = new();
     public List<DetectedCulvertLocation> DetectedCulverts { get; set; } = new();
     public List<TBMPoint> TBMs { get; set; } = new();
+
+    public List<ChannelSequenceReview> ChannelSequenceReviews { get; set; } = new();
 }
 
-    public class SurveyPoint
-    {
-        public int PointNo { get; set; }
-        public double Northing { get; set; }
-        public double Easting { get; set; }
-        public double RL { get; set; }
-        public string Code { get; set; } = string.Empty;
-        public SurveyCodeType CodeType { get; set; }
-        public double? Chainage { get; set; }
-    }
+public class SurveyPoint
+{
+    public int PointNo { get; set; }
+    public double Northing { get; set; }
+    public double Easting { get; set; }
+    public double RL { get; set; }
+    public string Code { get; set; } = string.Empty;
+    public SurveyCodeType CodeType { get; set; }
+    public double? Chainage { get; set; }
+}
 
 public class TBMPoint
 {
@@ -68,7 +72,7 @@ public class DetectedCulvertLocation
     public double? BedSlopePct { get; set; }
     public double DistToAlignment { get; set; }
     public int SurveyPointCount { get; set; }
-    public bool IsConfirmed { get; set; }
+    public bool IsConfirmed { get; set; } // Review Status of the detected culvert location
     public bool IsManual { get; set; }
     public List<int> SurveyPointNos { get; set; } = new();
     public int? DesignId { get; set; }

@@ -1,5 +1,4 @@
-﻿
-(() => {
+﻿(() => {
     "use strict";
 
     const canvas = document.getElementById("survey-map-canvas");
@@ -21,7 +20,7 @@
         };
 
         const surveyPoints = readJson("survey-map-points-data") || [];
-        
+
         if (!window.L || !leafletContainer || !window.proj4) {
             status.textContent = "Leaflet or coordinate conversion library could not be loaded.";
         } else {
@@ -29,16 +28,16 @@
                 "EPSG:32643",
                 "+proj=utm +zone=43 +datum=WGS84 +units=m +no_defs"
             );
-        
+
             const leafletMap = L.map(leafletContainer);
             leafletContainer.style.display = "none";
-        
+
             L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
                 attribution: "&copy; OpenStreetMap contributors"
             }).addTo(leafletMap);
-        
+
             window.surveyLeafletMap = leafletMap;
-     
+
             window.setSurveyMapMode = function (mode) {
                 const leaflet = document.getElementById("survey-leaflet-map");
                 const surveyCanvas = document.getElementById("survey-map-canvas");
@@ -58,7 +57,6 @@
                     surveyCanvas.style.display = show2D ? "none" : "block";
                 }
             };
-
         }
 
         const alignmentPoints = readJson("survey-map-alignment-data") || [];
@@ -81,15 +79,13 @@
             1000000
         );
 
-
         const renderer = new THREE.WebGLRenderer({
             canvas,
             antialias: true,
             alpha: true
         });
-        
-        renderer.setClearColor(0x000000, 0);
 
+        renderer.setClearColor(0x000000, 0);
 
         renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
 
@@ -105,35 +101,32 @@
             Number.isFinite(Number(p.RL))
         );
 
-         if (window.surveyLeafletMap && validSurvey.length > 0) {
-             const geographicPoints = validSurvey
-                 .map(p => {
-                     const easting = Number(p.Easting);
-                     const northing = Number(p.Northing);
-         
-                     if (!Number.isFinite(easting) || !Number.isFinite(northing)) {
-                         return null;
-                     }
-         
-                     const [longitude, latitude] = proj4(
-                         "EPSG:32643",
-                         "EPSG:4326",
-                         [easting, northing]
-                     );
-         
-                     return [latitude, longitude];
-                 })
-                 .filter(p => p !== null);
-         
-             if (geographicPoints.length > 0) {
-                 window.surveyLeafletMap.fitBounds(geographicPoints, {
-                     padding: [20, 20]
-                 });
-             }
-         }
+        if (window.surveyLeafletMap && validSurvey.length > 0) {
+            const geographicPoints = validSurvey
+                .map(p => {
+                    const easting = Number(p.Easting);
+                    const northing = Number(p.Northing);
 
+                    if (!Number.isFinite(easting) || !Number.isFinite(northing)) {
+                        return null;
+                    }
 
+                    const [longitude, latitude] = proj4(
+                        "EPSG:32643",
+                        "EPSG:4326",
+                        [easting, northing]
+                    );
 
+                    return [latitude, longitude];
+                })
+                .filter(p => p !== null);
+
+            if (geographicPoints.length > 0) {
+                window.surveyLeafletMap.fitBounds(geographicPoints, {
+                    padding: [20, 20]
+                });
+            }
+        }
 
         const validAlignment = alignmentPoints.filter(p =>
             Number.isFinite(Number(p.Easting)) &&
@@ -257,7 +250,6 @@
                 : '<i class="bi bi-grid-3x3"></i> Ground Grid: Off';
         });
 
-
         // Survey points: observed survey locations and elevations.
         const surveyGeometry = new THREE.BufferGeometry();
         const surveyPositions = [];
@@ -277,7 +269,6 @@
             size: 6,
             sizeAttenuation: true
         });
-
 
         // Terrain surface generated from actual surveyed Easting, Northing and RL.
 
@@ -403,7 +394,6 @@
             });
         }
 
-
         // Keep surveyed points visible above the terrain.
         const surveyLayer = new THREE.Points(surveyGeometry, surveyMaterial);
         scene.add(surveyLayer);
@@ -423,10 +413,6 @@
                 ? '<i class="bi bi-geo"></i> Survey Data: On'
                 : '<i class="bi bi-geo"></i> Survey Data: Off';
         });
-
-        
-
-
 
         /// Imported road alignment: continuous 7 m visual road surface.
         // Display geometry only; does not change engineering data.
@@ -635,8 +621,6 @@
             });
         }
 
-
-
         // Detected culvert groups: locate markers using SurveyPointNos.
         const culvertPoints = [];
         const culvertMarkerData = [];
@@ -745,7 +729,6 @@
 
                 const data = markerData.data;
 
-
                 const formatValue = (value, decimals = 3) =>
                     Number.isFinite(Number(value))
                         ? Number(value).toFixed(decimals)
@@ -779,7 +762,6 @@
                     ["Fill Height (m)", formatValue(data.FillHeightM)],
                     ["Bed Slope (%)", `${formatValue(data.BedSlopePct)}%`]
                 ];
-
 
                 infoBox.replaceChildren();
 
@@ -854,7 +836,6 @@
                     infoBox.appendChild(row);
                 });
 
-
                 infoBox.style.display = "block";
 
                 if (event) {
@@ -928,7 +909,6 @@
                 }
             });
         }
-
 
         const span = Math.max(maxE - minE, maxN - minN, 10);
         const target = new THREE.Vector3(
@@ -1084,7 +1064,6 @@
             });
         });
 
-
         // Survey map navigation buttons
         document.getElementById("survey-map-recenter")?.addEventListener("click", () => {
             window.setSurveyMapMode?.("3d");
@@ -1116,7 +1095,6 @@
             renderer.render(scene, camera);
         };
 
-
         animate();
 
         status.textContent = "";
@@ -1129,8 +1107,6 @@
 
         document.getElementById("survey-map-culvert-count").textContent =
             culverts.length.toLocaleString();
-
-
     } catch (error) {
         console.error("Survey map error:", error);
         status.textContent =

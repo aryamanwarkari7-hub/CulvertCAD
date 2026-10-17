@@ -25,6 +25,14 @@ public interface ISurveyImportService
 
 public class SurveyImportService : ISurveyImportService
 {
+    private readonly IChannelSequenceEvaluationService _channelSequenceEvaluator;
+
+    public SurveyImportService(
+        IChannelSequenceEvaluationService channelSequenceEvaluator)
+    {
+        _channelSequenceEvaluator = channelSequenceEvaluator;
+    }
+
     private static readonly Dictionary<string, SurveyCodeType> CodeMap =
     new(StringComparer.OrdinalIgnoreCase)
     {
@@ -408,8 +416,6 @@ public class SurveyImportService : ISurveyImportService
             streamBedPoints.Count(p => !p.Chainage.HasValue));
     }
 
-
-
     public List<DetectedCulvertLocation> DetectCulvertLocations(
         SurveyDocument survey,
         AlignmentDocument alignment)
@@ -470,8 +476,6 @@ public class SurveyImportService : ISurveyImportService
                     Math.Pow(nearest.Easting - centroidE, 2))
                 : 0;
 
-            Serilog.Log.Warning("TEST: Updated DetectCulvertLocations code is running.");
-
             var nearbyStreamPoints = survey.Points
     .Where(p => p.CodeType == SurveyCodeType.StreamBed &&
                 p.Chainage.HasValue &&
@@ -510,12 +514,83 @@ public class SurveyImportService : ISurveyImportService
                     $"P{x.Point.PointNo}: Distance={x.Distance:F2}m, " +
                     $"Ch={x.Point.Chainage:F1}, RL={x.Point.RL:F3}")));
 
-            double? bedSlope = ComputeLocalSlope(
-    survey.Points
-        .Where(p => p.CodeType == SurveyCodeType.StreamBed && p.Chainage.HasValue)
-        .ToList(),
-    chainage,
-    100);
+            var localStreamPoints = survey.Points
+    .Where(p =>
+        p.CodeType == SurveyCodeType.StreamBed ||
+        string.Equals(p.Code, "JR", StringComparison.OrdinalIgnoreCase))
+    .Where(p =>
+    {
+        double northingDifference = p.Northing - centroidN;
+        double eastingDifference = p.Easting - centroidE;
+
+        return Math.Sqrt(
+            northingDifference * northingDifference +
+            eastingDifference * eastingDifference) <= 50.0;
+    })
+    .ToList();
+
+            Serilog.Log.Information(
+    "Culvert {Index}: local stream-bed candidate count = {Count}",
+    idx + 1,
+    localStreamPoints.Count);
+
+            var sequenceResult = _channelSequenceEvaluator.Evaluate(
+                localStreamPoints,
+                idx + 1,
+                centroidN,
+                centroidE);
+
+            Serilog.Log.Information(
+                "Culvert {Index} channel sequence: Status={Status}, " +
+                "Points=[{PointNumbers}], DuplicateCoordinates={Duplicates}, " +
+                "PossibleBranch={Branch}, PossibleDiscontinuity={Discontinuity}, " +
+                "Explanation={Explanation}",
+                idx + 1,
+                sequenceResult.Status,
+                string.Join(", ", sequenceResult.PointNumbers),
+                sequenceResult.HasDuplicateCoordinates,
+                sequenceResult.HasPossibleBranch,
+                sequenceResult.HasPossibleDiscontinuity,
+                sequenceResult.Explanation);
+
+            survey.ChannelSequenceReviews ??= new List<ChannelSequenceReview>();
+
+            var locationIndex = idx + 1;
+
+            var existingReview = survey.ChannelSequenceReviews
+                .FirstOrDefault(r => r.LocationIndex == locationIndex);
+
+            if (existingReview == null)
+            {
+                existingReview = new ChannelSequenceReview
+                {
+                    LocationIndex = locationIndex
+                };
+
+                survey.ChannelSequenceReviews.Add(existingReview);
+            }
+
+            if (!existingReview.IsSequenceConfirmed)
+            {
+                existingReview.CandidatePointNos =
+                    sequenceResult.PointNumbers.ToList();
+
+                existingReview.EvaluationStatus =
+                    sequenceResult.Status.ToString();
+
+                existingReview.HasPossibleBranch =
+                    sequenceResult.HasPossibleBranch;
+
+                existingReview.HasDiscontinuity =
+                    sequenceResult.HasPossibleDiscontinuity;
+
+                existingReview.HasDuplicateCoordinates =
+                    sequenceResult.HasDuplicateCoordinates;
+            }
+
+            // Channel sequence reconstruction is not yet integrated.
+            // Do not expose the road-chainage-based estimate as a design slope.
+            double? bedSlope = null;
 
             Serilog.Log.Information(
                 "Culvert candidate {Index}: Chainage={Chainage:F1}, Points=[{PointNos}], Coordinates=[{Coordinates}]",
@@ -546,32 +621,6 @@ public class SurveyImportService : ISurveyImportService
 
     private static SurveyPoint? FindNearestCentrelinePoint(IList<SurveyPoint> cl, double n, double e)
         => cl.MinBy(p => Math.Sqrt(Math.Pow(p.Northing - n, 2) + Math.Pow(p.Easting - e, 2)));
-
-    private static double? ComputeLocalSlope(
-    IList<SurveyPoint> points,
-    double chainage,
-    double rangeM)
-    {
-        var segment = points
-            .Where(p => p.Chainage.HasValue &&
-                        p.Chainage.Value >= chainage - rangeM &&
-                        p.Chainage.Value <= chainage + rangeM)
-            .OrderBy(p => p.Chainage!.Value)
-            .ToList();
-
-        if (segment.Count < 2)
-            return null;
-
-        double dRL = segment.Last().RL - segment.First().RL;
-
-        double dCh = segment.Last().Chainage!.Value
-                   - segment.First().Chainage!.Value;
-
-        if (dCh <= 0)
-            return null;
-
-        return Math.Round(Math.Abs(dRL / dCh * 100), 3);
-    }
 
     private static SurveyCodeType ClassifyCode(string code)
     {
