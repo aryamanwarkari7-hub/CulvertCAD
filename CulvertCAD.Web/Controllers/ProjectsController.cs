@@ -19,11 +19,11 @@ public class ProjectsController : Controller
     private readonly AppDbContext _db;
     private readonly UserManager<ApplicationUser> _um;
     private readonly ISurveyRepository _surveyRepo;
-    private readonly IAlignmentRepository _alignRepo;
+    private readonly IAlignmentRepository _alignmentRepo;
 
     public ProjectsController(AppDbContext db, UserManager<ApplicationUser> um,
         ISurveyRepository surveyRepo, IAlignmentRepository alignRepo)
-    { _db = db; _um = um; _surveyRepo = surveyRepo; _alignRepo = alignRepo; }
+    { _db = db; _um = um; _surveyRepo = surveyRepo; _alignmentRepo = alignRepo; }
 
     private int CurrentUserId => int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
@@ -104,16 +104,24 @@ public class ProjectsController : Controller
                 .FirstOrDefault()?.Status.ToString()
         }).ToList() ?? new();
 
+
+        var alignment = survey == null
+            ? null
+            : await _alignmentRepo.GetByProjectAsync(id);
+
         ViewBag.SurveySummary = survey == null ? null : new SurveySummaryDto
         {
             TotalPoints = survey.TotalPoints,
             CentrelinePoints = survey.Points.Count(p => p.CodeType == SurveyCodeType.Centreline),
-            ExCdPoints  = survey.Points.Count(p => p.CodeType == SurveyCodeType.ExistingCulvert),
+            ExCdPoints = survey.Points.Count(p => p.CodeType == SurveyCodeType.ExistingCulvert),
             BridgePoints = survey.Points.Count(p => p.CodeType == SurveyCodeType.Bridge),
-            TBMCount    = survey.TBMs.Count,
-            MinRL = survey.MinRL, MaxRL = survey.MaxRL,
-            DetectedCulverts = survey.DetectedCulverts.Count
+            TBMCount = survey.TBMs.Count,
+            MinRL = survey.MinRL,
+            MaxRL = survey.MaxRL,
+            DetectedCulverts = survey.DetectedCulverts.Count,
+            AlignmentLengthM = alignment?.TotalLengthM ?? 0
         };
+
 
         return View(dto);
     }

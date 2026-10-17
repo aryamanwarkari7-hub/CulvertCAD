@@ -17,6 +17,14 @@ public class SurveyDocument
     public DateTime UploadedAt { get; set; } = DateTime.UtcNow;
     public int UploadedBy { get; set; }
 
+    // Coordinate system selected during import
+    public string InputCoordinateType { get; set; } = "EastingNorthing";
+    public string InputCrs { get; set; } = string.Empty;
+
+    // Working coordinate system used by survey calculations
+    public string WorkingCrs { get; set; } = string.Empty;
+    public int? UTMZone { get; set; }
+
     public double MinNorthing { get; set; }
     public double MaxNorthing { get; set; }
     public double MinEasting { get; set; }
@@ -29,16 +37,16 @@ public class SurveyDocument
     public List<TBMPoint> TBMs { get; set; } = new();
 }
 
-public class SurveyPoint
-{
-    public int PointNo { get; set; }
-    public double Northing { get; set; }
-    public double Easting { get; set; }
-    public double RL { get; set; }
-    public string Code { get; set; } = string.Empty;
-    public SurveyCodeType CodeType { get; set; }
-    public double? Chainage { get; set; }
-}
+    public class SurveyPoint
+    {
+        public int PointNo { get; set; }
+        public double Northing { get; set; }
+        public double Easting { get; set; }
+        public double RL { get; set; }
+        public string Code { get; set; } = string.Empty;
+        public SurveyCodeType CodeType { get; set; }
+        public double? Chainage { get; set; }
+    }
 
 public class TBMPoint
 {
@@ -57,7 +65,7 @@ public class DetectedCulvertLocation
     public double InvertRL { get; set; }
     public double RoadRL { get; set; }
     public double FillHeightM { get; set; }
-    public double BedSlopePct { get; set; }
+    public double? BedSlopePct { get; set; }
     public double DistToAlignment { get; set; }
     public int SurveyPointCount { get; set; }
     public bool IsConfirmed { get; set; }
@@ -76,6 +84,8 @@ public class AlignmentDocument
     public string AlignmentName { get; set; } = string.Empty;
     public double TotalLengthM { get; set; }
     public string InputFormat { get; set; } = string.Empty;
+    public string InputCrs { get; set; } = string.Empty;
+    public string WorkingCrs { get; set; } = string.Empty;
     public DateTime ImportedAt { get; set; } = DateTime.UtcNow;
     public bool HasVerticalAlignment { get; set; }
 

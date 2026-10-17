@@ -15,6 +15,7 @@ logs/
 Thumbs.db
 
 ## Secrets
+/CulvertCAD.Web/appsettings.json
 appsettings.Development.json
 appsettings.Production.json
 *.pfx

@@ -12,6 +12,22 @@ public enum CommentType        { General, TechnicalQuery, Correction, Clarificat
 public enum CommentStatus      { Open, Addressed, Resolved, Closed }
 public enum DrawingType        { Plan, LongitudinalSection, CrossSection, DetailBedding, Composite }
 public enum PipeClass          { NP1, NP2, NP3, NP4 }
-public enum SurveyCodeType     { Centreline, LeftEdge, RightEdge, Tree, JunctionRoad,
-                                 ExistingCulvert, Structure, Drain, Fence, TBM, Bridge,
-                                 EdgePavement, Other }
+public enum SurveyCodeType
+{
+    Centreline,
+    LeftEdge,
+    RightEdge,
+    Tree,
+    JunctionRoad,
+    ExistingCulvert,
+    Structure,
+    Drain,
+    Fence,
+    TBM,
+    Bridge,
+    EdgePavement,
+    Trench,
+    ReturnWall,
+    StreamBed,
+    Other
+}

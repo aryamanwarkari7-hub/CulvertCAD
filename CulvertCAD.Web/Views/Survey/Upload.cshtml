@@ -1,33 +1,202 @@
-@* Views/Survey/Upload.cshtml *@
-@{ ViewData["Title"] = "Upload Survey Data"; }
+@{
+    ViewData["Title"] = "Project Survey Analysis";
+}
 
 <div class="page">
     <div class="page-header">
         <div>
-            <div class="breadcrumb"><a asp-controller="Projects" asp-action="Details" asp-route-id="@ViewBag.ProjectId">@ViewBag.ProjectName</a> / Survey Upload</div>
-            <h1 class="page-title">Upload Survey Data</h1>
-            <p class="page-sub">CSV format: PointNo, Northing, Easting, RL, Code</p>
+            <div class="breadcrumb">
+                <a asp-controller="Projects"
+                   asp-action="Details"
+                   asp-route-id="@ViewBag.ProjectId">
+                    @ViewBag.ProjectName
+                </a>
+                / Survey Analysis
+            </div>
+
+            <h1 class="page-title">Project Survey Analysis</h1>
+
+            <p class="page-sub">
+                Upload the survey data and prescribed road alignment
+                to prepare the project for combined analysis.
+            </p>
         </div>
     </div>
 
-    <div class="card" style="padding:1.5rem;max-width:600px">
-        @if (!ViewData.ModelState.IsValid)
+    <div class="card" style="padding:1.5rem;max-width:700px">
+
+        <div asp-validation-summary="All"
+             class="alert-error"
+             role="alert"></div>
+
+        @if (TempData["Error"] != null)
         {
-            <div class="alert-error" asp-validation-summary="All"></div>
+            <div class="alert-error" role="alert">
+                @TempData["Error"]
+            </div>
         }
-        <form asp-action="Upload" asp-route-projectId="@ViewBag.ProjectId" method="post" enctype="multipart/form-data">
+
+        <form asp-controller="Survey"
+              asp-action="UploadAndAnalyze"
+              asp-route-projectId="@ViewBag.ProjectId"
+              method="post"
+              enctype="multipart/form-data">
+
             @Html.AntiForgeryToken()
+
+            <h2 style="font-size:1.15rem">
+                1. Survey Data
+            </h2>
+
             <div class="fg">
-                <label>Survey CSV File *</label>
-                <input type="file" name="csvFile" accept=".csv" class="fi" required />
+                <label for="csvFile">Survey CSV File *</label>
+
+                <input type="file"
+                       id="csvFile"
+                       name="csvFile"
+                       accept=".csv"
+                       class="fi"
+                       required />
+
+                <small>
+                    Include point number, coordinates, elevation
+                    and feature code.
+                </small>
             </div>
+
+            <div class="fg" style="margin-top:1.25rem">
+                <label>Coordinate Type *</label>
+
+                <label style="display:block;margin-top:.5rem">
+                    <input type="radio"
+                           name="coordinateType"
+                           value="LatitudeLongitude"
+                           id="coordinateLatLong" />
+                    Latitude / Longitude
+                </label>
+
+                <label style="display:block;margin-top:.5rem">
+                    <input type="radio"
+                           name="coordinateType"
+                           value="EastingNorthing"
+                           id="coordinateGrid"
+                           checked />
+                    Easting / Northing
+                </label>
+            </div>
+
+            <div id="utmSettings"
+                 class="fg"
+                 style="margin-top:1.25rem">
+
+                <label for="utmZone">UTM Zone *</label>
+
+                <select id="utmZone"
+                        name="utmZone"
+                        class="fi">
+                    <option value="42">Zone 42N</option>
+                    <option value="43" selected>Zone 43N</option>
+                    <option value="44">Zone 44N</option>
+                    <option value="45">Zone 45N</option>
+                    <option value="46">Zone 46N</option>
+                    <option value="47">Zone 47N</option>
+                </select>
+            </div>
+
+            <hr style="margin:1.5rem 0" />
+
+            <h2 style="font-size:1.15rem">
+                2. Prescribed Road Alignment
+            </h2>
+
+            <p>
+                Upload the existing road alignment DXF.
+                The system will use the specified centreline;
+                it will not generate or optimize the road.
+            </p>
+
+            <div class="fg">
+                <label for="dxfFile">Road Alignment DXF File *</label>
+
+                <input type="file"
+                       id="dxfFile"
+                       name="dxfFile"
+                       accept=".dxf"
+                       class="fi"
+                       required />
+            </div>
+
+            <div class="fg" style="margin-top:1rem">
+                <label for="centrelineHandle">Centreline Handle</label>
+
+                <input type="text"
+                       id="centrelineHandle"
+                       name="centrelineHandle"
+                       class="fi"
+                       value="4E2F"
+                       readonly />
+            </div>
+
+            <div class="fg" style="margin-top:1rem">
+                <label for="dxfInputCrs">DXF Source Coordinate System *</label>
+
+                <select id="dxfInputCrs"
+                        name="dxfInputCrs"
+                        class="fi"
+                        required>
+                    <option value="">Select the DXF source CRS</option>
+                    <option value="EPSG:32642">WGS 84 / UTM Zone 42N</option>
+                    <option value="EPSG:32643">WGS 84 / UTM Zone 43N</option>
+                    <option value="EPSG:32644">WGS 84 / UTM Zone 44N</option>
+                    <option value="EPSG:32645">WGS 84 / UTM Zone 45N</option>
+                    <option value="EPSG:32646">WGS 84 / UTM Zone 46N</option>
+                    <option value="EPSG:32647">WGS 84 / UTM Zone 47N</option>
+                </select>
+
+                <small>
+                    Select the actual CRS used by the DXF drawing, not merely
+                    the zone selected for the survey.
+                </small>
+            </div>
+
             <div class="info-pill" style="margin-top:1rem">
-                ℹ️ Supported feature codes: C (centreline), L/R (edges), ex cd (existing culverts), TBM, Bridge, Str, FN, Tr, JR
+                Both files are required for this combined analysis request.
             </div>
+
             <div class="modal-actions" style="margin-top:1.5rem">
-                <a asp-controller="Projects" asp-action="Details" asp-route-id="@ViewBag.ProjectId" class="btn-ghost">Cancel</a>
-                <button type="submit" class="btn-primary">Upload &amp; Process</button>
+                <a asp-controller="Projects"
+                   asp-action="Details"
+                   asp-route-id="@ViewBag.ProjectId"
+                   class="btn-ghost">
+                    Cancel
+                </a>
+
+                <button type="submit" class="btn-primary">
+                    Upload Files &amp; Analyze
+                </button>
             </div>
         </form>
     </div>
 </div>
+
+<script>
+    (() => {
+        const latLong = document.getElementById("coordinateLatLong");
+        const grid = document.getElementById("coordinateGrid");
+        const utmSettings = document.getElementById("utmSettings");
+        const utmZone = document.getElementById("utmZone");
+
+        function updateCoordinateOptions() {
+            const isGrid = grid.checked;
+
+            utmSettings.style.display = isGrid ? "" : "none";
+            utmZone.required = isGrid;
+            utmZone.disabled = !isGrid;
+        }
+
+        latLong.addEventListener("change", updateCoordinateOptions);
+        grid.addEventListener("change", updateCoordinateOptions);
+
+        updateCoordinateOptions();
+    })();
+</script>

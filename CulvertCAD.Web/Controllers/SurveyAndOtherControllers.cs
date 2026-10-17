@@ -1,15 +1,21 @@
+using CulvertCAD.Application.Services;
+using CulvertCAD.Core.DTOs;
+using CulvertCAD.Core.Entities;
+using CulvertCAD.Core.Enums;
 using CulvertCAD.Core.Repositories;
-// CulvertCAD.Web/Controllers/SurveyController.cs
-using Microsoft.AspNetCore.Mvc;
+using CulvertCAD.Infrastructure.MySQL.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
+
+// CulvertCAD.Web/Controllers/SurveyController.cs
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using CulvertCAD.Core.Entities;
-using CulvertCAD.Core.DTOs;
-using CulvertCAD.Core.Enums;
-using CulvertCAD.Infrastructure.MySQL.Data;
-using CulvertCAD.Application.Services;
+using netDxf;
+using netDxf.Entities;
 using System.Security.Claims;
+using static netDxf.Entities.HatchBoundaryPath;
+using ProjNet.CoordinateSystems;
+using ProjNet.CoordinateSystems.Transformations;
 
 namespace CulvertCAD.Web.Controllers;
 
@@ -19,9 +25,19 @@ public class SurveyController : Controller
     private readonly AppDbContext _db;
     private readonly ISurveyImportService _importSvc;
     private readonly ISurveyRepository _surveyRepo;
+    private readonly IAlignmentRepository _alignmentRepo;
 
-    public SurveyController(AppDbContext db, ISurveyImportService importSvc, ISurveyRepository surveyRepo)
-    { _db = db; _importSvc = importSvc; _surveyRepo = surveyRepo; }
+    public SurveyController(
+        AppDbContext db,
+        ISurveyImportService importSvc,
+        ISurveyRepository surveyRepo,
+        IAlignmentRepository alignmentRepo)
+    {
+        _db = db;
+        _importSvc = importSvc;
+        _surveyRepo = surveyRepo;
+        _alignmentRepo = alignmentRepo;
+    }
 
     private int CurrentUserId => int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
@@ -38,32 +54,519 @@ public class SurveyController : Controller
     [HttpPost]
     [ValidateAntiForgeryToken]
     [RequestSizeLimit(50_000_000)]
-    public async Task<IActionResult> Upload(int projectId, IFormFile csvFile)
+    public async Task<IActionResult> Upload(
+    int projectId,
+    IFormFile? csvFile,
+    string coordinateType,
+    int? utmZone)
     {
+        var project = await _db.Projects.FindAsync(projectId);
+
+        if (project == null)
+            return NotFound();
+
+        ViewBag.ProjectId = projectId;
+        ViewBag.ProjectName = project.ProjectName;
+
         if (csvFile == null || csvFile.Length == 0)
         {
             ModelState.AddModelError("", "Please select a CSV file.");
-            ViewBag.ProjectId = projectId;
-            return View();
+            return View("Upload");
         }
 
-        using var stream = csvFile.OpenReadStream();
-        var survey = await _importSvc.ParseCsvAsync(stream, csvFile.FileName, projectId, CurrentUserId);
-        var docId  = await _surveyRepo.InsertAsync(survey);
-
-        var project = await _db.Projects.FindAsync(projectId);
-        if (project != null)
+        if (!string.Equals(
+                Path.GetExtension(csvFile.FileName),
+                ".csv",
+                StringComparison.OrdinalIgnoreCase))
         {
+            ModelState.AddModelError("", "Only CSV files are supported in this import step.");
+            return View("Upload");
+        }
+
+        bool isGrid = coordinateType == "EastingNorthing";
+        bool isLatLong = coordinateType == "LatitudeLongitude";
+
+        if (!isGrid && !isLatLong)
+        {
+            ModelState.AddModelError("", "Select a valid coordinate type.");
+            return View("Upload");
+        }
+
+        if (isGrid && (utmZone == null || utmZone < 42 || utmZone > 47))
+        {
+            ModelState.AddModelError(
+                "",
+                "Select a UTM zone between 42 and 47 for this India-only workflow.");
+
+            return View("Upload");
+        }
+
+        try
+        {
+            using var stream = csvFile.OpenReadStream();
+
+            var survey = await _importSvc.ParseCsvAsync(
+                stream,
+                csvFile.FileName,
+                projectId,
+                CurrentUserId,
+                coordinateType,
+                isGrid ? utmZone : null);
+
+            var docId = await _surveyRepo.InsertAsync(survey);
+
             project.SurveyCollectionId = docId;
             await _db.SaveChangesAsync();
-        }
 
-        TempData["Success"] = $"Survey imported: {survey.TotalPoints} points, {survey.DetectedCulverts.Count} culvert locations detected.";
-        return RedirectToAction("Review", new { projectId });
+            TempData["Success"] =
+                $"Survey imported: {survey.TotalPoints} points. " +
+                $"Working CRS: {survey.WorkingCrs}.";
+
+            return RedirectToAction("Review", new { projectId });
+        }
+        catch (InvalidDataException ex)
+        {
+            ModelState.AddModelError("", ex.Message);
+            return View("Upload");
+        }
     }
 
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [RequestSizeLimit(50_000_000)]
+    public async Task<IActionResult> UploadAndAnalyze(
+        int projectId,
+        IFormFile? csvFile,
+        IFormFile? dxfFile,
+        string coordinateType,
+        int? utmZone,
+        string dxfInputCrs,
+        string centrelineHandle = "4E2F")
+    {
+        var project = await _db.Projects.FindAsync(projectId);
+
+        if (project == null)
+            return NotFound();
+
+        ViewBag.ProjectId = projectId;
+        ViewBag.ProjectName = project.ProjectName;
+
+        // Validate both uploaded files.
+        if (csvFile == null || csvFile.Length == 0)
+            ModelState.AddModelError("", "Please select a survey CSV file.");
+
+        if (dxfFile == null || dxfFile.Length == 0)
+            ModelState.AddModelError("", "Please select a road alignment DXF file.");
+
+        if (csvFile != null &&
+            !string.Equals(Path.GetExtension(csvFile.FileName), ".csv",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            ModelState.AddModelError("", "The survey file must be a CSV file.");
+        }
+
+        if (dxfFile != null &&
+            !string.Equals(Path.GetExtension(dxfFile.FileName), ".dxf",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            ModelState.AddModelError("", "The alignment file must be a DXF file.");
+        }
+
+        bool isGrid = coordinateType == "EastingNorthing";
+        bool isLatLong = coordinateType == "LatitudeLongitude";
+
+        if (!isGrid && !isLatLong)
+            ModelState.AddModelError("", "Select a valid coordinate type.");
+
+        if (isGrid && (utmZone == null || utmZone < 42 || utmZone > 47))
+        {
+            ModelState.AddModelError("",
+                "Select a UTM zone between 42 and 47.");
+        }
+
+        if (!string.Equals(centrelineHandle, "4E2F",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            ModelState.AddModelError("",
+                "The selected centreline must be handle 4E2F.");
+        }
+
+        if (!ModelState.IsValid)
+            return View("Upload");
+
+        // Import the CSV using the existing survey import service.
+        try
+        {
+            using var csvStream = csvFile!.OpenReadStream();
+
+            var survey = await _importSvc.ParseCsvAsync(
+                csvStream,
+                csvFile.FileName,
+                projectId,
+                CurrentUserId,
+                coordinateType,
+                isGrid ? utmZone : null);
+
+            // Save the survey so the existing DXF import workflow can find it.
+            var surveyId = await _surveyRepo.InsertAsync(survey);
+
+            project.SurveyCollectionId = surveyId;
+            await _db.SaveChangesAsync();
+
+            // Reuse the existing DXF import action.
+            // This action expects the survey to have been saved first.
+            return await ImportDxfAlignment(
+    projectId,
+    dxfFile,
+    dxfInputCrs,
+    centrelineHandle);
+        }
+        catch (InvalidDataException ex)
+        {
+            ModelState.AddModelError("", ex.Message);
+            return View("Upload");
+        }
+    }
+
+    private static double[] TransformUtmCoordinates(
+    double easting,
+    double northing,
+    string sourceCrs,
+    string targetCrs)
+    {
+        static int GetUtmZone(string? crs)
+        {
+            string value = crs ?? string.Empty;
+
+            if (!System.Text.RegularExpressions.Regex.IsMatch(
+                    value,
+                    @"^EPSG:3264[2-7]$"))
+            {
+                throw new ArgumentException(
+                    $"Unsupported UTM CRS: {crs}");
+            }
+
+            return int.Parse(value.Substring(8));
+        }
+
+        int sourceZone = GetUtmZone(sourceCrs);
+        int targetZone = GetUtmZone(targetCrs);
+
+        var sourceSystem =
+            ProjectedCoordinateSystem.WGS84_UTM(sourceZone, true);
+
+        var targetSystem =
+            ProjectedCoordinateSystem.WGS84_UTM(targetZone, true);
+
+        var factory = new CoordinateTransformationFactory();
+
+        var transformation = factory.CreateFromCoordinateSystems(
+            sourceSystem,
+            targetSystem);
+
+        return transformation.MathTransform.Transform(
+            new[] { easting, northing });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [RequestSizeLimit(50_000_000)]
+    public async Task<IActionResult> ImportDxfAlignment(
+    int projectId,
+    IFormFile? dxfFile,
+    string dxfInputCrs,
+    string centrelineHandle = "4E2F")
+    {
+        var project = await _db.Projects.FindAsync(projectId);
+
+        if (project == null)
+            return NotFound();
+
+        if (dxfFile == null || dxfFile.Length == 0)
+        {
+            TempData["Error"] = "Please select a DXF file.";
+            return RedirectToAction("Upload", new { projectId });
+        }
+
+        if (!string.Equals(
+                Path.GetExtension(dxfFile.FileName),
+                ".dxf",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            TempData["Error"] = "Only DXF files are supported.";
+            return RedirectToAction("Upload", new { projectId });
+        }
+
+        if (!string.Equals(
+                centrelineHandle,
+                "4E2F",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            TempData["Error"] =
+                "For this survey, the selected centreline must be handle 4E2F.";
+
+            return RedirectToAction("Upload", new { projectId });
+        }
+
+        if (string.IsNullOrWhiteSpace(dxfInputCrs) ||
+    !System.Text.RegularExpressions.Regex.IsMatch(
+        dxfInputCrs,
+        @"^EPSG:3264[2-7]$"))
+        {
+            TempData["Error"] =
+                "Select a valid DXF source CRS (WGS 84 / UTM Zone 42N–47N).";
+
+            return RedirectToAction("Upload", new { projectId });
+        }
+
+        var survey = await _surveyRepo.GetByProjectAsync(projectId);
+
+        if (survey == null)
+        {
+            TempData["Error"] =
+                "Import the survey CSV before importing its road alignment.";
+
+            return RedirectToAction("Upload", new { projectId });
+        }
+
+        var tempPath = Path.Combine(
+            Path.GetTempPath(),
+            $"{Guid.NewGuid():N}.dxf");
+
+        try
+        {
+            await using (var fileStream = System.IO.File.Create(tempPath))
+            {
+                await dxfFile.CopyToAsync(fileStream);
+            }
+
+            var document = DxfDocument.Load(tempPath);
+
+            var centreline = document.Entities.All
+            .OfType<Polyline2D>()
+            .FirstOrDefault(entity =>
+                string.Equals(
+                    entity.Handle,
+                    centrelineHandle,
+                    StringComparison.OrdinalIgnoreCase));
+
+            if (centreline == null)
+            {
+                TempData["Error"] =
+                    $"DXF polyline handle {centrelineHandle} was not found.";
+
+                return RedirectToAction("Upload", new { projectId });
+            }
+
+            if (centreline.IsClosed || centreline.Vertexes.Count < 2)
+            {
+                TempData["Error"] =
+                    "The selected alignment must be an open polyline with at least two vertices.";
+
+                return RedirectToAction("Upload", new { projectId });
+            }
+
+            // Convert straight and curved segments into ordered points.
+            // Arc segments are sampled at approximately 1 metre intervals.
+            var coordinates = new List<(double Easting, double Northing)>();
+            var vertices = centreline.Vertexes;
+
+            for (var i = 0; i < vertices.Count - 1; i++)
+            {
+                var start = vertices[i];
+                var end = vertices[i + 1];
+
+                var p1 = (X: start.Position.X, Y: start.Position.Y);
+                var p2 = (X: end.Position.X, Y: end.Position.Y);
+
+                if (coordinates.Count == 0)
+                    coordinates.Add((p1.X, p1.Y));
+
+                var bulge = start.Bulge;
+
+                if (Math.Abs(bulge) < 1e-10)
+                {
+                    coordinates.Add((p2.X, p2.Y));
+                    continue;
+                }
+
+                var dx = p2.X - p1.X;
+                var dy = p2.Y - p1.Y;
+                var chord = Math.Sqrt(dx * dx + dy * dy);
+
+                if (chord < 1e-8)
+                    continue;
+
+                var theta = 4.0 * Math.Atan(bulge);
+                var radius = chord /
+                    (2.0 * Math.Sin(Math.Abs(theta) / 2.0));
+
+                var midpointX = (p1.X + p2.X) / 2.0;
+                var midpointY = (p1.Y + p2.Y) / 2.0;
+
+                var offset = chord * (1.0 - bulge * bulge) /
+                             (4.0 * bulge);
+
+                var centerX = midpointX - dy / chord * offset;
+                var centerY = midpointY + dx / chord * offset;
+
+                var startAngle = Math.Atan2(
+                    p1.Y - centerY,
+                    p1.X - centerX);
+
+                var arcLength = Math.Abs(theta) * radius;
+                var segments = Math.Max(
+                    1,
+                    (int)Math.Ceiling(arcLength / 1.0));
+
+                for (var j = 1; j <= segments; j++)
+                {
+                    var angle = startAngle + theta * j / segments;
+
+                    var x = centerX + radius * Math.Cos(angle);
+                    var y = centerY + radius * Math.Sin(angle);
+
+                    coordinates.Add((x, y));
+                }
+            }
+
+            // Ensure the survey has a supported working CRS.
+            if (string.IsNullOrWhiteSpace(survey.WorkingCrs) ||
+                !System.Text.RegularExpressions.Regex.IsMatch(
+                    survey.WorkingCrs,
+                    @"^EPSG:3264[2-7]$"))
+            {
+                TempData["Error"] =
+                    "The survey has no valid working CRS. Re-import the survey with a supported coordinate system.";
+
+                return RedirectToAction("Upload", new { projectId });
+            }
+
+            // Transform sampled DXF coordinates into the survey's working CRS.
+            var transformedCoordinates =
+                new List<(double Easting, double Northing)>(coordinates.Count);
+
+            foreach (var point in coordinates)
+            {
+                var transformed = TransformUtmCoordinates(
+                    point.Easting,
+                    point.Northing,
+                    dxfInputCrs,
+                    survey.WorkingCrs);
+
+                transformedCoordinates.Add((
+                    transformed[0],
+                    transformed[1]));
+            }
+
+            coordinates = transformedCoordinates;
+
+            if (coordinates.Count < 2)
+            {
+                TempData["Error"] =
+                    "The selected centreline did not produce enough alignment points.";
+
+                return RedirectToAction("Upload", new { projectId });
+            }
+
+            double chainage = 0;
+
+            var alignmentPoints = new List<AlignmentPoint>
+        {
+            new()
+            {
+                Chainage = 0,
+                Easting = coordinates[0].Easting,
+                Northing = coordinates[0].Northing
+            }
+        };
+
+            for (var i = 1; i < coordinates.Count; i++)
+            {
+                var previous = coordinates[i - 1];
+                var current = coordinates[i];
+
+                var dx = current.Easting - previous.Easting;
+                var dy = current.Northing - previous.Northing;
+
+                chainage += Math.Sqrt(dx * dx + dy * dy);
+
+                alignmentPoints.Add(new AlignmentPoint
+                {
+                    Chainage = chainage,
+                    Easting = current.Easting,
+                    Northing = current.Northing
+                });
+            }
+
+            var alignment = new AlignmentDocument
+            {
+                ProjectId = projectId,
+                AlignmentName = $"DXF Centreline {centrelineHandle}",
+                InputFormat = "DXF",
+                InputCrs = dxfInputCrs,
+                WorkingCrs = survey.WorkingCrs,
+                TotalLengthM = chainage,
+                HasVerticalAlignment = false,
+                HorizontalPoints = alignmentPoints,
+                VerticalPoints = new List<VerticalPoint>()
+            };
+
+            await _alignmentRepo.InsertAsync(alignment);
+
+            var firstAlignmentPoint = alignmentPoints.First();
+            var middleAlignmentPoint = alignmentPoints[alignmentPoints.Count / 2];
+            var lastAlignmentPoint = alignmentPoints.Last();
+
+            System.Diagnostics.Debug.WriteLine(
+                $"CRS Check | Survey: {survey.WorkingCrs} | " +
+                $"Alignment: {alignment.WorkingCrs} | " +
+                $"First: E={firstAlignmentPoint.Easting:F3}, N={firstAlignmentPoint.Northing:F3} | " +
+                $"Middle: E={middleAlignmentPoint.Easting:F3}, N={middleAlignmentPoint.Northing:F3} | " +
+                $"Last: E={lastAlignmentPoint.Easting:F3}, N={lastAlignmentPoint.Northing:F3}");
+
+            // Calculate survey chainages against the imported road alignment.
+            _importSvc.ComputeChainages(survey, alignment);
+
+            // Detect existing culvert candidates from "ex cd" survey points.
+            survey.DetectedCulverts =
+                _importSvc.DetectCulvertLocations(survey, alignment);
+
+            // Persist the updated survey in MongoDB.
+            await _surveyRepo.UpdateAsync(survey);
+
+            TempData["Success"] =
+                $"Alignment imported. Handle: {centrelineHandle}; " +
+                $"points: {alignmentPoints.Count}; " +
+                $"length: {chainage:N2} drawing units.";
+
+            return RedirectToAction("Review", new { projectId });
+        }
+        catch (Exception ex) when (
+            ex is IOException ||
+            ex is InvalidOperationException ||
+            ex is ArgumentException ||
+            ex is FormatException)
+        {
+            TempData["Error"] =
+                $"DXF import failed: {ex.Message}";
+
+            return RedirectToAction("Upload", new { projectId });
+        }
+        finally
+        {
+            if (System.IO.File.Exists(tempPath))
+                System.IO.File.Delete(tempPath);
+        }
+    }
+
+    [HttpGet]
     public async Task<IActionResult> Review(int projectId)
     {
+        var project = await _db.Projects.FindAsync(projectId);
+        if (project == null)
+            return NotFound();
+
         var survey = await _surveyRepo.GetByProjectAsync(projectId);
         if (survey == null)
         {
@@ -71,26 +574,53 @@ public class SurveyController : Controller
             return RedirectToAction("Upload", new { projectId });
         }
 
-        var project = await _db.Projects.FindAsync(projectId);
+        // Load the road alignment independently, then show its status
+        // alongside the survey on the same analysis page.
+        var alignment = await _alignmentRepo.GetByProjectAsync(projectId);
+
         ViewBag.ProjectId = projectId;
-        ViewBag.ProjectName = project?.ProjectName ?? "";
+        ViewBag.ProjectName = project.ProjectName;
+        ViewBag.Alignment = alignment;
+        ViewBag.HasAlignment = alignment != null;
 
         var summary = new SurveySummaryDto
         {
-            TotalPoints      = survey.TotalPoints,
-            CentrelinePoints = survey.Points.Count(p => p.CodeType == SurveyCodeType.Centreline),
-            ExCdPoints       = survey.Points.Count(p => p.CodeType == SurveyCodeType.ExistingCulvert),
-            BridgePoints     = survey.Points.Count(p => p.CodeType == SurveyCodeType.Bridge),
-            TBMCount         = survey.TBMs.Count,
-            AlignmentLengthM = survey.Points.Where(p => p.CodeType == SurveyCodeType.Centreline && p.Chainage.HasValue)
-                                            .Select(p => p.Chainage!.Value).DefaultIfEmpty(0).Max(),
-            MinRL = survey.MinRL, MaxRL = survey.MaxRL,
+            TotalPoints = survey.TotalPoints,
+            CentrelinePoints = survey.Points.Count(
+                p => p.CodeType == SurveyCodeType.Centreline),
+
+            ExCdPoints = survey.Points.Count(
+                p => p.CodeType == SurveyCodeType.ExistingCulvert),
+
+            BridgePoints = survey.Points.Count(
+                p => p.CodeType == SurveyCodeType.Bridge),
+
+            TBMCount = survey.TBMs.Count,
+
+            // Prefer the imported DXF alignment length when available.
+            // Otherwise retain the existing survey-based fallback.
+            AlignmentLengthM = alignment != null
+                ? alignment.TotalLengthM
+                : survey.Points
+                    .Where(p => p.CodeType == SurveyCodeType.Centreline
+                             && p.Chainage.HasValue)
+                    .Select(p => p.Chainage!.Value)
+                    .DefaultIfEmpty(0)
+                    .Max(),
+
+            MinRL = survey.MinRL,
+            MaxRL = survey.MaxRL,
             DetectedCulverts = survey.DetectedCulverts.Count
         };
 
         ViewBag.Summary = summary;
         ViewBag.Locations = survey.DetectedCulverts;
         ViewBag.TBMs = survey.TBMs;
+
+        // Data for the Survey Terrain Map
+        ViewBag.SurveyMapPoints = survey.Points;
+        ViewBag.SurveyMapAlignment = alignment?.HorizontalPoints;
+        ViewBag.SurveyMapCulverts = survey.DetectedCulverts;
 
         return View(survey);
     }
@@ -122,22 +652,22 @@ public class SurveyController : Controller
         if (loc == null) return NotFound();
 
         int chKm = (int)(loc.Chainage / 1000);
-        int chM  = (int)(loc.Chainage % 1000);
+        int chM = (int)(loc.Chainage % 1000);
         string chFmt = $"{chKm}+{chM:D3}";
 
         var design = new CulvertDesign
         {
-            ProjectId       = projectId,
-            DesignName      = $"Culvert at Ch. {chFmt}",
-            DesignCode      = $"CUL-{locationIndex:D3}",
+            ProjectId = projectId,
+            DesignName = $"Culvert at Ch. {chFmt}",
+            DesignCode = $"CUL-{locationIndex:D3}",
             CulvertLocation = $"Survey-detected location {locationIndex}",
-            Chainage        = chFmt,
-            CulvertType     = CulvertType.SinglePipe,
-            FillHeightM     = (decimal)loc.FillHeightM,
-            SlopePercent    = (decimal)loc.BedSlopePct,
+            Chainage = chFmt,
+            CulvertType = CulvertType.SinglePipe,
+            FillHeightM = (decimal)loc.FillHeightM,
+            SlopePercent = (decimal)loc.BedSlopePct,
             SoilUnitWeightKNm3 = 18.5m,
-            DesignStandard  = "IRC 89:1997",
-            LoadClass       = LoadClass.IRC_ClassA,
+            DesignStandard = "IRC 89:1997",
+            LoadClass = LoadClass.IRC_ClassA,
             CreatedByUserId = CurrentUserId,
         };
 
@@ -150,7 +680,6 @@ public class SurveyController : Controller
         return RedirectToAction("Create", "Designs", new { projectId, prefillFromSurvey = locationIndex });
     }
 }
-
 
 // ============================================================
 // CulvertCAD.Web/Controllers/DrawingsController.cs
@@ -184,19 +713,27 @@ public class DrawingsController : Controller
         double D = calc.SelectedDiameterMm;
         var xsData = new CrossSectionDataDto
         {
-            DiameterMm = D, WallThicknessMm = GetWallThickness(calc.SelectedDiameterMm, calc.SelectedPipeClass),
-            TrenchWidthMm = D + 600, TrenchDepthMm = D + 300, BeddingDepthMm = 150,
+            DiameterMm = D,
+            WallThicknessMm = GetWallThickness(calc.SelectedDiameterMm, calc.SelectedPipeClass),
+            TrenchWidthMm = D + 600,
+            TrenchDepthMm = D + 300,
+            BeddingDepthMm = 150,
             FillHeightMm = (double)(rev.Design.FillHeightM ?? 0.5m) * 1000,
-            BeddingClass = calc.BeddingClass, NumberOfPipes = calc.NumberOfPipes, PipeSpacingMm = 100
+            BeddingClass = calc.BeddingClass,
+            NumberOfPipes = calc.NumberOfPipes,
+            PipeSpacingMm = 100
         };
 
         var lsData = new LongitudinalDataDto
         {
             TotalLengthM = (double)(rev.Design.RoadwayWidthM ?? 7.5m) + 1.0,
-            InvertRLStart = 100.0, InvertRLEnd = 100.0 - (double)(rev.Design.SlopePercent ?? 0.5m)/100 * 8.5,
-            RoadRLStart = 100.0 + (double)(rev.Design.FillHeightM ?? 0.5m) + D/1000,
-            RoadRLEnd = 100.0 + (double)(rev.Design.FillHeightM ?? 0.5m) + D/1000 - (double)(rev.Design.SlopePercent ?? 0.5m)/100*8.5,
-            PipeDiameterMm = D, RoadwayWidthM = (double)(rev.Design.RoadwayWidthM ?? 7.5m), WingwallAngle = 30
+            InvertRLStart = 100.0,
+            InvertRLEnd = 100.0 - (double)(rev.Design.SlopePercent ?? 0.5m) / 100 * 8.5,
+            RoadRLStart = 100.0 + (double)(rev.Design.FillHeightM ?? 0.5m) + D / 1000,
+            RoadRLEnd = 100.0 + (double)(rev.Design.FillHeightM ?? 0.5m) + D / 1000 - (double)(rev.Design.SlopePercent ?? 0.5m) / 100 * 8.5,
+            PipeDiameterMm = D,
+            RoadwayWidthM = (double)(rev.Design.RoadwayWidthM ?? 7.5m),
+            WingwallAngle = 30
         };
 
         ViewBag.XsData = xsData;
@@ -223,15 +760,15 @@ public class DrawingsController : Controller
 
         var titleBlock = new TitleBlockData
         {
-            ProjectName   = rev.Design.Project?.ProjectName ?? "",
+            ProjectName = rev.Design.Project?.ProjectName ?? "",
             DrawingNumber = $"{rev.Design.DesignCode ?? "CUL"}-{drawingType.ToUpper()}-{rev.RevisionCode}",
-            DrawingTitle  = drawingType == "CrossSection" ? "Cross-Section of Pipe Culvert" : "Longitudinal Section",
-            Scale         = "1:50",
-            RevisionCode  = rev.RevisionCode,
-            DrawnBy       = rev.CreatedBy?.FullName ?? "",
-            CheckedBy     = rev.CheckedBy?.FullName ?? "",
-            ApprovedBy    = rev.ApprovedBy?.FullName ?? "",
-            Date          = rev.RevisionDate,
+            DrawingTitle = drawingType == "CrossSection" ? "Cross-Section of Pipe Culvert" : "Longitudinal Section",
+            Scale = "1:50",
+            RevisionCode = rev.RevisionCode,
+            DrawnBy = rev.CreatedBy?.FullName ?? "",
+            CheckedBy = rev.CheckedBy?.FullName ?? "",
+            ApprovedBy = rev.ApprovedBy?.FullName ?? "",
+            Date = rev.RevisionDate,
         };
 
         byte[] dxfBytes;
@@ -243,10 +780,14 @@ public class DrawingsController : Controller
         {
             var xs = new CrossSectionDataDto
             {
-                DiameterMm = D, WallThicknessMm = GetWallThickness(calc.SelectedDiameterMm, calc.SelectedPipeClass),
-                TrenchWidthMm = D + 600, TrenchDepthMm = D + 300, BeddingDepthMm = 150,
+                DiameterMm = D,
+                WallThicknessMm = GetWallThickness(calc.SelectedDiameterMm, calc.SelectedPipeClass),
+                TrenchWidthMm = D + 600,
+                TrenchDepthMm = D + 300,
+                BeddingDepthMm = 150,
                 FillHeightMm = (double)(rev.Design.FillHeightM ?? 0.5m) * 1000,
-                BeddingClass = calc.BeddingClass, NumberOfPipes = calc.NumberOfPipes
+                BeddingClass = calc.BeddingClass,
+                NumberOfPipes = calc.NumberOfPipes
             };
             dxfBytes = _dxfEngine.GenerateCrossSection(xs, titleBlock);
             fileName = $"{titleBlock.DrawingNumber}_CrossSection.dxf";
@@ -256,9 +797,11 @@ public class DrawingsController : Controller
             var ls = new LongitudinalDataDto
             {
                 TotalLengthM = (double)(rev.Design.RoadwayWidthM ?? 7.5m) + 1.0,
-                InvertRLStart = 100.0, InvertRLEnd = 99.5,
-                RoadRLStart = 100.0 + (double)(rev.Design.FillHeightM ?? 0.5m) + D/1000,
-                RoadRLEnd = 99.9, PipeDiameterMm = D,
+                InvertRLStart = 100.0,
+                InvertRLEnd = 99.5,
+                RoadRLStart = 100.0 + (double)(rev.Design.FillHeightM ?? 0.5m) + D / 1000,
+                RoadRLEnd = 99.9,
+                PipeDiameterMm = D,
                 RoadwayWidthM = (double)(rev.Design.RoadwayWidthM ?? 7.5m)
             };
             dxfBytes = _dxfEngine.GenerateLongitudinalSection(ls, titleBlock);
@@ -268,13 +811,13 @@ public class DrawingsController : Controller
         // Save to MongoDB
         var drawingDoc = new DrawingDocument
         {
-            DesignId      = rev.DesignId,
-            RevisionId    = revisionId,
+            DesignId = rev.DesignId,
+            RevisionId = revisionId,
             DrawingNumber = titleBlock.DrawingNumber,
-            DrawingTitle  = titleBlock.DrawingTitle,
-            GeneratedBy   = CurrentUserId,
-            DxfBase64     = Convert.ToBase64String(dxfBytes),
-            TitleBlock    = titleBlock,
+            DrawingTitle = titleBlock.DrawingTitle,
+            GeneratedBy = CurrentUserId,
+            DxfBase64 = Convert.ToBase64String(dxfBytes),
+            TitleBlock = titleBlock,
         };
         await _drawingRepo.InsertAsync(drawingDoc);
 
@@ -286,19 +829,26 @@ public class DrawingsController : Controller
         bool isNP3 = pipeClassStr.Contains("NP3");
         return (diaMm, isNP3) switch
         {
-            (300, true)  => 44,  (300, false) => 38,
-            (400, true)  => 50,  (400, false) => 43,
-            (500, true)  => 56,  (500, false) => 47,
-            (600, true)  => 62,  (600, false) => 52,
-            (700, true)  => 68,  (700, false) => 57,
-            (800, true)  => 74,  (800, false) => 62,
-            (900, true)  => 80,  (900, false) => 67,
-            (1000, true) => 86,  (1000, false) => 72,
+            (300, true) => 44,
+            (300, false) => 38,
+            (400, true) => 50,
+            (400, false) => 43,
+            (500, true) => 56,
+            (500, false) => 47,
+            (600, true) => 62,
+            (600, false) => 52,
+            (700, true) => 68,
+            (700, false) => 57,
+            (800, true) => 74,
+            (800, false) => 62,
+            (900, true) => 80,
+            (900, false) => 67,
+            (1000, true) => 86,
+            (1000, false) => 72,
             _ => 50
         };
     }
 }
-
 
 // ============================================================
 // CulvertCAD.Web/Controllers/BOQController.cs
@@ -329,7 +879,6 @@ public class BOQController : Controller
     }
 }
 
-
 // ============================================================
 // CulvertCAD.Web/Controllers/HomeController.cs
 // ============================================================
@@ -347,14 +896,14 @@ public class HomeController : Controller
 
     public async Task<IActionResult> Index()
     {
-        var user  = await _um.GetUserAsync(User);
+        var user = await _um.GetUserAsync(User);
         var roles = await _um.GetRolesAsync(user!);
         bool isAdmin = roles.Contains("SuperAdmin") || roles.Contains("Admin");
 
         var projectQuery = _db.Projects.AsQueryable();
         if (!isAdmin) projectQuery = projectQuery.Where(p => p.Members.Any(m => m.UserId == CurrentUserId));
 
-        int totalProjects  = await projectQuery.CountAsync();
+        int totalProjects = await projectQuery.CountAsync();
         int activeProjects = await projectQuery.CountAsync(p => p.Status == ProjectStatus.Active);
 
         var designQuery = _db.CulvertDesigns.Where(d => d.IsActive);
@@ -374,7 +923,8 @@ public class HomeController : Controller
             {
                 Type = h.ToStatus.ToString(),
                 Description = $"{h.Revision.Design.DesignName} → {h.Revision.RevisionNumber} {h.ToStatus}",
-                UserName = h.ChangedBy.FullName, Timestamp = h.ChangedAt
+                UserName = h.ChangedBy.FullName,
+                Timestamp = h.ChangedAt
             }).ToListAsync();
 
         var myProjects = await projectQuery
@@ -382,15 +932,22 @@ public class HomeController : Controller
             .OrderByDescending(p => p.CreatedAt).Take(6)
             .Select(p => new ProjectSummaryDto
             {
-                Id = p.Id, ProjectName = p.ProjectName, ProjectCode = p.ProjectCode,
-                DesignCount = p.Designs.Count(d => d.IsActive), Status = p.Status.ToString()
+                Id = p.Id,
+                ProjectName = p.ProjectName,
+                ProjectCode = p.ProjectCode,
+                DesignCount = p.Designs.Count(d => d.IsActive),
+                Status = p.Status.ToString()
             }).ToListAsync();
 
         return View(new DashboardDto
         {
-            TotalProjects = totalProjects, ActiveProjects = activeProjects,
-            TotalDesigns = totalDesigns, PendingReviews = pendingReviews,
-            ApprovedDesigns = approvedDesigns, RecentActivity = activity, MyProjects = myProjects
+            TotalProjects = totalProjects,
+            ActiveProjects = activeProjects,
+            TotalDesigns = totalDesigns,
+            PendingReviews = pendingReviews,
+            ApprovedDesigns = approvedDesigns,
+            RecentActivity = activity,
+            MyProjects = myProjects
         });
     }
 
@@ -399,5 +956,3 @@ public class HomeController : Controller
     [AllowAnonymous]
     public IActionResult Error() => View();
 }
-
-

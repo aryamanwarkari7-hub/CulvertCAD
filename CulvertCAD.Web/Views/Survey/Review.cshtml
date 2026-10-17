@@ -1,12 +1,24 @@
 @* Views/Survey/Review.cshtml *@
+
+@using System.Text.Json
 @using CulvertCAD.Core.DTOs
 @using CulvertCAD.Core.Entities
+
 @model SurveyDocument
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
 @{
     ViewData["Title"] = "Survey Analysis";
+
     var summary = ViewBag.Summary as SurveySummaryDto;
     var locations = ViewBag.Locations as List<DetectedCulvertLocation> ?? new();
     var tbms = ViewBag.TBMs as List<TBMPoint> ?? new();
+
+    // Survey map data
+    var surveyMapPointsJson = JsonSerializer.Serialize(ViewBag.SurveyMapPoints);
+    var surveyMapAlignmentJson = JsonSerializer.Serialize(ViewBag.SurveyMapAlignment);
+    var surveyMapCulvertsJson = JsonSerializer.Serialize(ViewBag.SurveyMapCulverts);
 }
 
 <div class="page">
@@ -26,6 +38,165 @@
         <div class="stat-card"><div class="stat-icon" style="background:#bc8cff22;color:#bc8cff">🌉</div><div class="stat-body"><div class="stat-val">@summary?.BridgePoints</div><div class="stat-lbl">Bridge Points</div></div></div>
     </div>
 
+    
+    <!-- Survey Terrain Map -->
+    <!-- Survey Terrain Map -->
+    <div class="card survey-map-card">
+
+        <div class="survey-map-header">
+            <div>
+                <h3>Survey Terrain &amp; Drainage Map</h3>
+                <p>
+                    Visualise surveyed elevations, road alignment and
+                    detected culvert locations.
+                </p>
+            </div>
+        </div>
+
+        <div class="survey-map-body">
+
+            <div class="survey-map-toolbar">
+                <button type="button"
+                        id="survey-map-recenter"
+                        class="btn-primary">
+                    <i class="bi bi-arrows-fullscreen"></i>
+                    Recenter
+                </button>
+
+                <button type="button"
+                        id="survey-map-fullscreen"
+                        class="btn-ghost">
+                    <i class="bi bi-arrows-angle-expand"></i>
+                    Expand Map
+                </button>
+
+
+                <button type="button"
+                        id="survey-map-top-view"
+                        class="btn-ghost">
+                    <i class="bi bi-map"></i>
+                    Top View
+                </button>
+
+                <button type="button"
+                        id="survey-map-3d-view"
+                        class="btn-ghost">
+                    <i class="bi bi-box"></i>
+                    3D View
+                </button>
+
+                <button type="button"
+                        id="survey-map-north-up"
+                        class="btn-ghost">
+                    <i class="bi bi-compass"></i>
+                    North Up
+                </button>
+
+                <button type="button"
+                        id="survey-map-toggle-terrain"
+                        class="btn-ghost"
+                        aria-pressed="true">
+                    <i class="bi bi-layers"></i>
+                    Terrain: On
+                </button>
+
+                <button type="button"
+                        id="survey-map-toggle-alignment"
+                        class="btn-ghost"
+                        aria-pressed="true">
+                    <i class="bi bi-signpost-split"></i>
+                    Alignment: On
+                </button>
+
+                <button type="button"
+                        id="survey-map-toggle-survey"
+                        class="btn-ghost"
+                        aria-pressed="true">
+                    <i class="bi bi-geo"></i>
+                    Survey Data: On
+                </button>
+                <button type="button"
+                        id="survey-map-toggle-ground-sheet"
+                        class="btn-ghost"
+                        aria-pressed="true">
+                    <i class="bi bi-square"></i>
+                    Ground Sheet: On
+                </button>
+            </div>
+
+            
+            <div class="survey-map-summary">
+                <div class="survey-map-summary-item">
+                    <span class="survey-map-summary-label">Survey Points</span>
+                    <strong id="survey-map-point-count">0</strong>
+                </div>
+
+                <div class="survey-map-summary-item">
+                    <span class="survey-map-summary-label">Alignment Points</span>
+                    <strong id="survey-map-alignment-count">0</strong>
+                </div>
+
+                <div class="survey-map-summary-item">
+                    <span class="survey-map-summary-label">Culvert Groups</span>
+                    <strong id="survey-map-culvert-count">0</strong>
+                </div>
+            </div>
+
+            <div id="survey-map-container">
+                <div id="survey-leaflet-map"></div>
+                <canvas id="survey-map-canvas"></canvas>
+            </div>
+
+            <div class="survey-map-legend">
+                <div class="survey-map-legend-item">
+                    <span class="survey-map-legend-dot survey-point-dot"></span>
+                    <span>Survey points</span>
+                </div>
+
+                <div class="survey-map-legend-item">
+                    <span class="survey-map-legend-line alignment-line"></span>
+                    <span>Road alignment</span>
+                </div>
+
+                <div class="survey-map-legend-item">
+                    <span class="survey-map-legend-dot culvert-point-dot"></span>
+                    <span>Detected culvert locations</span>
+                </div>
+
+                <div class="survey-map-legend-item">
+                    <span class="survey-map-legend-dot terrain-point-dot"></span>
+                    <span>Inferred terrain</span>
+                </div>
+            </div>
+
+            
+            <div id="survey-map-status" role="status" aria-live="polite">
+                Preparing survey map...
+            </div>
+
+            <p class="survey-map-note">
+                Survey elevations represent observed data.
+                Interpolated terrain and inferred drainage features,
+                when available, will be identified separately.
+            </p>
+
+        </div>
+    </div>
+
+
+    <script id="survey-map-points-data" type="application/json">
+            @Html.Raw(surveyMapPointsJson)
+    </script>
+
+    <script id="survey-map-alignment-data" type="application/json">
+            @Html.Raw(surveyMapAlignmentJson ?? "null")
+    </script>
+
+    <script id="survey-map-culverts-data" type="application/json">
+            @Html.Raw(surveyMapCulvertsJson)
+    </script>
+    
+
     <div class="card">
         <div class="card-hd"><h3>Detected Culvert Locations</h3><span class="badge badge-gray">@locations.Count locations</span></div>
         <table class="dt">
@@ -40,9 +211,22 @@
                     <td>@loc.InvertRL.ToString("0.000")</td>
                     <td>@loc.RoadRL.ToString("0.000")</td>
                     <td>@loc.FillHeightM.ToString("0.000")</td>
-                    <td>@loc.BedSlopePct.ToString("0.000")%
-                        @if (loc.BedSlopePct < 0.2) { <span class="badge badge-yellow badge-xs">flat</span> }
-                    </td>
+                        <td>
+                            @if (loc.BedSlopePct.HasValue)
+                            {
+                                @loc.BedSlopePct.Value.ToString("0.000")
+                                <text>%</text>
+
+                                @if (loc.BedSlopePct.Value < 0.2)
+                                {
+                                    <span class="badge badge-yellow badge-xs">flat</span>
+                                }
+                            }
+                            else
+                            {
+                                <span>N/A</span>
+                            }
+                        </td>
                     <td>@loc.SurveyPointCount</td>
                     <td>
                         @if (loc.DesignId.HasValue)
@@ -85,3 +269,18 @@
         </table>
     </div>
 </div>
+
+@section Scripts {
+    
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="~/lib/three/three.min.js"></script>
+    <script src="~/lib/three/OrbitControls.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.9.2/proj4.js"></script>
+
+    <script src="~/lib/delaunator/delaunator.min.js"></script>
+    <script>
+        console.log("Delaunator loaded:", typeof Delaunator);
+    </script>
+
+    <script src="~/js/survey/survey-map.js" asp-append-version="true"></script>
+}

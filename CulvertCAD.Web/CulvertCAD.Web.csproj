@@ -9,11 +9,15 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="8.0.0" />
     <PackageReference Include="FluentValidation.AspNetCore" Version="11.3.0" />
+    <PackageReference Include="ProjNET" Version="2.1.0" />
     <PackageReference Include="Serilog.AspNetCore" Version="8.0.0" />
     <PackageReference Include="Serilog.Sinks.Console" Version="5.0.0" />
     <PackageReference Include="Serilog.Sinks.File" Version="5.0.0" />
     <ProjectReference Include="..\CulvertCAD.Core\CulvertCAD.Core.csproj" />
     <ProjectReference Include="..\CulvertCAD.Application\CulvertCAD.Application.csproj" />
     <ProjectReference Include="..\CulvertCAD.Infrastructure\CulvertCAD.Infrastructure.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="wwwroot\lib\delaunator\" />
   </ItemGroup>
 </Project>
