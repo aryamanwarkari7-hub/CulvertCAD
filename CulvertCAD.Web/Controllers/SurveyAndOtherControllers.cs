@@ -512,27 +512,20 @@ public class SurveyController : Controller
                 VerticalPoints = new List<VerticalPoint>()
             };
 
-            await _alignmentRepo.InsertAsync(alignment);
-
-            var firstAlignmentPoint = alignmentPoints.First();
-            var middleAlignmentPoint = alignmentPoints[alignmentPoints.Count / 2];
-            var lastAlignmentPoint = alignmentPoints.Last();
-
-            System.Diagnostics.Debug.WriteLine(
-                $"CRS Check | Survey: {survey.WorkingCrs} | " +
-                $"Alignment: {alignment.WorkingCrs} | " +
-                $"First: E={firstAlignmentPoint.Easting:F3}, N={firstAlignmentPoint.Northing:F3} | " +
-                $"Middle: E={middleAlignmentPoint.Easting:F3}, N={middleAlignmentPoint.Northing:F3} | " +
-                $"Last: E={lastAlignmentPoint.Easting:F3}, N={lastAlignmentPoint.Northing:F3}");
-
-            // Calculate survey chainages against the imported road alignment.
+            // Assign survey chainages against the imported horizontal alignment.
             _importSvc.ComputeChainages(survey, alignment);
 
-            // Detect existing culvert candidates from "ex cd" survey points.
+            // Populate ExistingRL from surveyed C/CL observations only.
+            PopulateExistingRLFromCentreline(survey, alignment);
+
+            // Save the alignment with its existing-ground elevations.
+            await _alignmentRepo.InsertAsync(alignment);
+
+            // Detect existing culvert candidates.
             survey.DetectedCulverts =
                 _importSvc.DetectCulvertLocations(survey, alignment);
 
-            // Persist the updated survey in MongoDB.
+            // Persist the updated survey.
             await _surveyRepo.UpdateAsync(survey);
 
             TempData["Success"] =
@@ -560,6 +553,133 @@ public class SurveyController : Controller
         }
     }
 
+    private static void PopulateExistingRLFromCentreline(
+    SurveyDocument survey,
+    AlignmentDocument alignment)
+    {
+        const double maxOffsetM = 3.0;
+        const double maxInterpolationGapM = 50.0;
+
+        var alignmentPoints = alignment.HorizontalPoints
+            .OrderBy(p => p.Chainage)
+            .ToList();
+
+        var observations = survey.Points
+            .Where(p =>
+                p.CodeType == SurveyCodeType.Centreline &&
+                p.Chainage.HasValue &&
+                double.IsFinite(p.RL) &&
+                double.IsFinite(p.Easting) &&
+                double.IsFinite(p.Northing))
+            .Select(p => new
+            {
+                Point = p,
+                Chainage = p.Chainage!.Value
+            })
+            .Where(p => p.Chainage >= 0 &&
+                        p.Chainage <= alignment.TotalLengthM)
+            .Where(p => GetAlignmentOffset(
+                p.Point.Easting,
+                p.Point.Northing,
+                alignmentPoints) <= maxOffsetM)
+            .OrderBy(p => p.Chainage)
+            .ToList();
+
+        // Avoid ambiguous duplicate observations at effectively the same chainage.
+        var uniqueObservations = observations
+            .GroupBy(p => Math.Round(p.Chainage, 2))
+            .Select(g => new
+            {
+                Chainage = g.Average(p => p.Chainage),
+                RL = g.Average(p => p.Point.RL)
+            })
+            .OrderBy(p => p.Chainage)
+            .ToList();
+
+        foreach (var point in alignmentPoints)
+        {
+            point.ExistingRL = null;
+
+            var exact = uniqueObservations
+                .FirstOrDefault(o =>
+                    Math.Abs(o.Chainage - point.Chainage) < 0.01);
+
+            if (exact != null)
+            {
+                point.ExistingRL = exact.RL;
+                continue;
+            }
+
+            var lower = uniqueObservations
+                .LastOrDefault(o => o.Chainage < point.Chainage);
+
+            var upper = uniqueObservations
+                .FirstOrDefault(o => o.Chainage > point.Chainage);
+
+            // Never extrapolate beyond surveyed centreline coverage.
+            if (lower == null || upper == null)
+                continue;
+
+            var gap = upper.Chainage - lower.Chainage;
+
+            // Leave unsupported gaps without an invented elevation.
+            if (gap <= 0 || gap > maxInterpolationGapM)
+                continue;
+
+            var t = (point.Chainage - lower.Chainage) / gap;
+
+            point.ExistingRL =
+                lower.RL + t * (upper.RL - lower.RL);
+        }
+
+        Serilog.Log.Information(
+            "ExistingRL assignment: Observations={Observations}, " +
+            "AlignmentPoints={AlignmentPoints}, Assigned={Assigned}, Unassigned={Unassigned}",
+            uniqueObservations.Count,
+            alignmentPoints.Count,
+            alignmentPoints.Count(p => p.ExistingRL.HasValue),
+            alignmentPoints.Count(p => !p.ExistingRL.HasValue));
+    }
+
+    private static double GetAlignmentOffset(
+        double easting,
+        double northing,
+        IReadOnlyList<AlignmentPoint> points)
+    {
+        double bestDistanceSquared = double.PositiveInfinity;
+
+        for (int i = 0; i < points.Count - 1; i++)
+        {
+            var a = points[i];
+            var b = points[i + 1];
+
+            double dx = b.Easting - a.Easting;
+            double dy = b.Northing - a.Northing;
+            double lengthSquared = dx * dx + dy * dy;
+
+            if (lengthSquared < 1e-12)
+                continue;
+
+            double t = Math.Clamp(
+                ((easting - a.Easting) * dx +
+                 (northing - a.Northing) * dy) / lengthSquared,
+                0.0,
+                1.0);
+
+            double offsetE = easting - (a.Easting + t * dx);
+            double offsetN = northing - (a.Northing + t * dy);
+
+            double distanceSquared =
+                offsetE * offsetE + offsetN * offsetN;
+
+            bestDistanceSquared = Math.Min(
+                bestDistanceSquared,
+                distanceSquared);
+        }
+
+        return Math.Sqrt(bestDistanceSquared);
+    }
+
     [HttpGet]
     public async Task<IActionResult> Review(int projectId)
     {
@@ -577,6 +697,8 @@ public class SurveyController : Controller
         // Load the road alignment independently, then show its status
         // alongside the survey on the same analysis page.
         var alignment = await _alignmentRepo.GetByProjectAsync(projectId);
+
+
 
         ViewBag.ProjectId = projectId;
         ViewBag.ProjectName = project.ProjectName;

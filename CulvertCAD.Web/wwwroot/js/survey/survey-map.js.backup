@@ -1,0 +1,2017 @@
+﻿(() => {
+    "use strict";
+
+    const canvas = document.getElementById("survey-map-canvas");
+    const leafletContainer = document.getElementById("survey-leaflet-map");
+    const status = document.getElementById("survey-map-status");
+
+    if (!canvas || !status) return;
+
+    if (!window.THREE) {
+        status.textContent =
+            "Map unavailable: Three.js could not be loaded.";
+        return;
+    }
+
+    try {
+        const readJson = (id) => {
+            const element = document.getElementById(id);
+            return element ? JSON.parse(element.textContent || "null") : null;
+        };
+
+        const surveyPoints = readJson("survey-map-points-data") || [];
+
+        if (!window.L || !leafletContainer || !window.proj4) {
+            status.textContent = "Leaflet or coordinate conversion library could not be loaded.";
+        } else {
+            proj4.defs(
+                "EPSG:32643",
+                "+proj=utm +zone=43 +datum=WGS84 +units=m +no_defs"
+            );
+
+            const leafletMap = L.map(leafletContainer);
+            leafletContainer.style.display = "none";
+
+            L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+                attribution: "&copy; OpenStreetMap contributors"
+            }).addTo(leafletMap);
+
+            window.surveyLeafletMap = leafletMap;
+
+            window.setSurveyMapMode = function (mode) {
+                const leaflet = document.getElementById("survey-leaflet-map");
+                const surveyCanvas = document.getElementById("survey-map-canvas");
+                const show2D = mode === "2d";
+
+                if (leaflet) {
+                    leaflet.style.display = show2D ? "block" : "none";
+                    leaflet.style.visibility = show2D ? "visible" : "hidden";
+                    leaflet.style.pointerEvents = show2D ? "auto" : "none";
+
+                    if (show2D && window.surveyLeafletMap) {
+                        window.surveyLeafletMap.invalidateSize();
+                    }
+                }
+
+                if (surveyCanvas) {
+                    surveyCanvas.style.display = show2D ? "none" : "block";
+                }
+            };
+        }
+
+        const alignmentPoints = readJson("survey-map-alignment-data") || [];
+        const culverts = readJson("survey-map-culverts-data") || [];
+
+        if (!surveyPoints.length && !alignmentPoints.length) {
+            status.textContent = "No survey or alignment points are available.";
+            return;
+        }
+
+        const THREE = window.THREE;
+
+        const scene = new THREE.Scene();
+        scene.background = null;
+
+        const camera = new THREE.PerspectiveCamera(
+            50,
+            1,
+            0.1,
+            1000000
+        );
+
+        const renderer = new THREE.WebGLRenderer({
+            canvas,
+            antialias: true,
+            alpha: true
+        });
+
+        renderer.setClearColor(0x000000, 0);
+
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+
+        scene.add(new THREE.AmbientLight(0xffffff, 1.4));
+
+        const light = new THREE.DirectionalLight(0xffffff, 1.2);
+        light.position.set(100, 200, 150);
+        scene.add(light);
+
+        const validSurvey = surveyPoints.filter(p =>
+            Number.isFinite(Number(p.Easting)) &&
+            Number.isFinite(Number(p.Northing)) &&
+            Number.isFinite(Number(p.RL))
+        );
+
+        if (window.surveyLeafletMap && validSurvey.length > 0) {
+            const geographicPoints = validSurvey
+                .map(p => {
+                    const easting = Number(p.Easting);
+                    const northing = Number(p.Northing);
+
+                    if (!Number.isFinite(easting) || !Number.isFinite(northing)) {
+                        return null;
+                    }
+
+                    const [longitude, latitude] = proj4(
+                        "EPSG:32643",
+                        "EPSG:4326",
+                        [easting, northing]
+                    );
+
+                    return [latitude, longitude];
+                })
+                .filter(p => p !== null);
+
+            if (geographicPoints.length > 0) {
+                window.surveyLeafletMap.fitBounds(geographicPoints, {
+                    padding: [20, 20]
+                });
+            }
+        }
+
+        const validAlignment = alignmentPoints.filter(p =>
+            Number.isFinite(Number(p.Easting)) &&
+            Number.isFinite(Number(p.Northing))
+        );
+
+        // Horizontal bounds use both survey and alignment coordinates.
+        // Elevation bounds use only actual surveyed RL values.
+        const horizontalPoints = [
+            ...validSurvey.map(p => ({
+                x: Number(p.Easting),
+                z: Number(p.Northing)
+            })),
+            ...validAlignment.map(p => ({
+                x: Number(p.Easting),
+                z: Number(p.Northing)
+            }))
+        ];
+
+        const elevations = validSurvey.map(p => Number(p.RL));
+
+        if (!horizontalPoints.length || !elevations.length) {
+            status.textContent = "Insufficient valid survey data to render terrain.";
+            return;
+        }
+
+        const minE = Math.min(...horizontalPoints.map(p => p.x));
+        const maxE = Math.max(...horizontalPoints.map(p => p.x));
+        const minN = Math.min(...horizontalPoints.map(p => p.z));
+        const maxN = Math.max(...horizontalPoints.map(p => p.z));
+        const minRL = Math.min(...elevations);
+        const maxRL = Math.max(...elevations);
+        console.log("Survey coordinate bounds:", {
+            minE: Math.min(...validSurvey.map(p => Number(p.Easting))),
+            maxE: Math.max(...validSurvey.map(p => Number(p.Easting))),
+            minN: Math.min(...validSurvey.map(p => Number(p.Northing))),
+            maxN: Math.max(...validSurvey.map(p => Number(p.Northing)))
+        });
+
+        console.log("Alignment coordinate bounds:", {
+            minE: validAlignment.length
+                ? Math.min(...validAlignment.map(p => Number(p.Easting)))
+                : null,
+            maxE: validAlignment.length
+                ? Math.max(...validAlignment.map(p => Number(p.Easting)))
+                : null,
+            minN: validAlignment.length
+                ? Math.min(...validAlignment.map(p => Number(p.Northing)))
+                : null,
+            maxN: validAlignment.length
+                ? Math.max(...validAlignment.map(p => Number(p.Northing)))
+                : null
+        });
+
+        // Local origin keeps large UTM coordinates numerically manageable.
+        const centerE = (minE + maxE) / 2;
+        const centerN = (minN + maxN) / 2;
+        const baseRL = minRL;
+
+        const terrainScale = 1;
+        const verticalExaggeration = 3;
+
+        const toWorld = (easting, northing, rl) => new THREE.Vector3(
+            (Number(easting) - centerE) * terrainScale,
+            (Number(rl) - baseRL) * verticalExaggeration,
+            (Number(northing) - centerN) * terrainScale
+        );
+
+        // Simple rectangular grid below the survey terrain.
+        const gridWidth = Math.max(maxE - minE, 10);
+        const gridLength = Math.max(maxN - minN, 10);
+        const gridSpacing = 50;
+        const gridY = -20;
+
+        const gridVertices = [];
+
+        for (let x = -gridWidth / 2; x <= gridWidth / 2; x += gridSpacing) {
+            gridVertices.push(
+                x, gridY, -gridLength / 2,
+                x, gridY, gridLength / 2
+            );
+        }
+
+        for (let z = -gridLength / 2; z <= gridLength / 2; z += gridSpacing) {
+            gridVertices.push(
+                -gridWidth / 2, gridY, z,
+                gridWidth / 2, gridY, z
+            );
+        }
+
+        const gridGeometry = new THREE.BufferGeometry();
+        gridGeometry.setAttribute(
+            "position",
+            new THREE.Float32BufferAttribute(gridVertices, 3)
+        );
+
+        const groundGrid = new THREE.LineSegments(
+            gridGeometry,
+            new THREE.LineBasicMaterial({
+                color: 0x939e88,
+                transparent: true,
+                opacity: 0.65
+            })
+        );
+
+        scene.add(groundGrid);
+
+        // Ground grid on/off control.
+        const groundSheetToggle = document.getElementById(
+            "survey-map-toggle-ground-sheet"
+        );
+
+        groundSheetToggle?.addEventListener("click", () => {
+            groundGrid.visible = !groundGrid.visible;
+
+            const isVisible = groundGrid.visible;
+
+            groundSheetToggle.setAttribute("aria-pressed", String(isVisible));
+            groundSheetToggle.innerHTML = isVisible
+                ? '<i class="bi bi-grid-3x3"></i> Ground Grid: On'
+                : '<i class="bi bi-grid-3x3"></i> Ground Grid: Off';
+        });
+
+        // Transparent datum reference sheet.
+        // Default datum RL: median of the actual surveyed elevations.
+        const sortedElevations = [...elevations].sort((a, b) => a - b);
+        const middleIndex = Math.floor(sortedElevations.length / 2);
+
+        const datumRL = sortedElevations.length % 2 === 0
+            ? (sortedElevations[middleIndex - 1] +
+                sortedElevations[middleIndex]) / 2
+            : sortedElevations[middleIndex];
+
+        // Use the same world-coordinate transformation as survey terrain.
+        const datumY = (datumRL - baseRL) * verticalExaggeration;
+
+        const datumGeometry = new THREE.PlaneGeometry(
+            gridWidth,
+            gridLength
+        );
+
+        // Rotate the plane horizontally into the X-Z ground plane.
+        datumGeometry.rotateX(-Math.PI / 2);
+
+        const datumMaterial = new THREE.MeshBasicMaterial({
+            color: 0xA98262,
+            transparent: true,
+            opacity: 0.22,
+            side: THREE.DoubleSide,
+            depthWrite: false
+        });
+
+        const datumSheet = new THREE.Mesh(
+            datumGeometry,
+            datumMaterial
+        );
+
+        datumSheet.position.set(0, datumY, 0);
+        datumSheet.renderOrder = 0;
+        scene.add(datumSheet);
+
+        // Independent datum visibility control.
+        const datumToggle = document.getElementById(
+            "survey-map-toggle-datum"
+        );
+
+        datumToggle?.addEventListener("click", () => {
+            datumSheet.visible = !datumSheet.visible;
+
+            const isVisible = datumSheet.visible;
+
+            datumToggle.setAttribute(
+                "aria-pressed",
+                String(isVisible)
+            );
+
+            datumToggle.innerHTML = isVisible
+                ? '<i class="bi bi-layers"></i> Datum Sheet: On'
+                : '<i class="bi bi-layers"></i> Datum Sheet: Off';
+        });
+
+        console.info("[Survey Terrain] Datum sheet created:", {
+            datumRL: Number(datumRL.toFixed(3)),
+            datumWorldY: Number(datumY.toFixed(3)),
+            widthM: Number(gridWidth.toFixed(2)),
+            lengthM: Number(gridLength.toFixed(2))
+        });
+
+        const DATUM_ELEVATION_TOLERANCE_M = 0.10;
+
+        // Survey points: observed survey locations and elevations.
+        const surveyGeometry = new THREE.BufferGeometry();
+        const surveyPositions = [];
+
+        validSurvey.forEach(p => {
+            const v = toWorld(p.Easting, p.Northing, p.RL);
+            surveyPositions.push(v.x, v.y, v.z);
+        });
+
+        surveyGeometry.setAttribute(
+            "position",
+            new THREE.Float32BufferAttribute(surveyPositions, 3)
+        );
+
+        const surveyMaterial = new THREE.PointsMaterial({
+            color: 0x2f81f7,
+            size: 6,
+            sizeAttenuation: true
+        });
+
+        // Terrain surface generated from actual surveyed Easting, Northing and RL.
+
+        if (window.Delaunator && validSurvey.length >= 3) {
+
+            const terrainPoints = validSurvey.map(p => ({
+                easting: Number(p.Easting),
+                northing: Number(p.Northing),
+                rl: Number(p.RL)
+            }));
+
+            window.__terrainPointsDebug = terrainPoints;
+
+            const diagnosticTriangleIndices = [2027, 2016, 2013];
+
+            const diagnosticTriangle = diagnosticTriangleIndices.map(index => ({
+                index,
+                point: terrainPoints[index] ?? null
+            }));
+
+            if (diagnosticTriangle.every(item => item.point)) {
+                const [a, b] = [
+                    diagnosticTriangle[0].point,
+                    diagnosticTriangle[1].point
+                ];
+
+                const midpoint = {
+                    easting: (a.easting + b.easting) / 2,
+                    northing: (a.northing + b.northing) / 2
+                };
+
+                const nearbyPoints = terrainPoints
+                    .map((p, index) => ({
+                        index,
+                        ...p,
+                        distanceM: Math.hypot(
+                            p.easting - midpoint.easting,
+                            p.northing - midpoint.northing
+                        )
+                    }))
+                    .filter(p => !diagnosticTriangleIndices.includes(p.index))
+                    .sort((a, b) => a.distanceM - b.distanceM)
+                    .slice(0, 10);
+
+                console.table(
+                    terrainPoints
+                        .map((p, index) => ({
+                            index,
+                            easting: p.easting,
+                            northing: p.northing,
+                            rl: p.rl,
+                            distanceM: Math.hypot(
+                                p.easting - midpoint.easting,
+                                p.northing - midpoint.northing
+                            )
+                        }))
+                        .filter(p => p.distanceM <= 25)
+                        .sort((a, b) => a.distanceM - b.distanceM)
+                );
+
+                console.info(
+                    "[Survey Terrain] Local triangle investigation:",
+                    {
+                        target: diagnosticTriangleIndices,
+                        nearbyIndices: nearbyPoints.map(p => p.index),
+                        note: "Keep current triangle acceptance unchanged."
+                    }
+                );
+
+                console.info("[Survey Terrain] Triangle midpoint neighbours:", {
+                    triangleIndices: diagnosticTriangleIndices,
+                    midpoint,
+                    nearbyPoints
+                });
+            } else {
+                console.warn(
+                    "[Survey Terrain] Diagnostic triangle indices were not found.",
+                    diagnosticTriangle
+                );
+            }
+
+
+
+            // Read-only nearest-neighbour spacing diagnostic.
+            // Does not modify triangulation or terrain acceptance.
+            const nearestNeighbourDistancesM = terrainPoints.map(
+                (point, index) => {
+                    let nearestDistance = Infinity;
+
+                    for (let j = 0; j < terrainPoints.length; j++) {
+                        if (j === index) continue;
+
+                        const other = terrainPoints[j];
+
+                        const distance = Math.hypot(
+                            point.easting - other.easting,
+                            point.northing - other.northing
+                        );
+
+                        if (distance > 0 && distance < nearestDistance) {
+                            nearestDistance = distance;
+                        }
+                    }
+
+                    return nearestDistance;
+                }
+            ).filter(Number.isFinite).sort((a, b) => a - b);
+
+            const percentile = (values, p) =>
+                values[Math.min(
+                    values.length - 1,
+                    Math.floor((values.length - 1) * p)
+                )];
+
+            console.info(
+                "[Survey Terrain] Nearest-neighbour spacing:",
+                {
+                    pointCount: nearestNeighbourDistancesM.length,
+                    p50M: Number(percentile(nearestNeighbourDistancesM, 0.50).toFixed(3)),
+                    p75M: Number(percentile(nearestNeighbourDistancesM, 0.75).toFixed(3)),
+                    p90M: Number(percentile(nearestNeighbourDistancesM, 0.90).toFixed(3)),
+                    p95M: Number(percentile(nearestNeighbourDistancesM, 0.95).toFixed(3)),
+                    p99M: Number(percentile(nearestNeighbourDistancesM, 0.99).toFixed(3))
+                }
+            );
+
+
+            const triangulation = window.Delaunator.from(
+                terrainPoints,
+                p => (p.easting - centerE) * terrainScale,
+                p => (p.northing - centerN) * terrainScale
+            );
+
+            const terrainGeometry = new THREE.BufferGeometry();
+            const terrainPositions = [];
+            const terrainColors = [];
+
+            const naturalColor = new THREE.Color(0x90EE90); // Light green terrain
+            const fallColor = new THREE.Color(0xA98262);    // Light earthy brown slopes
+
+            // Classify triangles by slope, but only render triangles
+            // whose horizontal circumradius is within the supported scale.
+            const triangles = triangulation.triangles;
+            const FALL_SLOPE_THRESHOLD = 30; // degrees
+
+            // Survey dataset: approximately 3 x the measured 95th-percentile
+            // nearest-neighbour spacing (5.154 m).
+            const MAX_TERRAIN_CIRCUMRADIUS_M = 15.5;
+            const MIN_TWICE_AREA_M2 = 0.001;
+
+            let acceptedTriangles = 0;
+            let rejectedTriangles = 0;
+            let rejectedLargeCircumradius = 0;
+            let rejectedDegenerate = 0;
+            // Keep the accepted triangle indices so we can draw a separate
+            // coverage-edge guide without creating or extrapolating terrain.
+            const acceptedTriangleIndices = [];
+
+            const rejectedTriangleIndices = [];
+            const SHOW_REJECTED_TRIANGLES = true;
+
+            // Full diagnostic collection. Does not affect terrain filtering.
+            const rejectedTriangleDiagnostics = [];
+
+            function horizontalCircumradius(a, b, c) {
+                const ab = Math.hypot(
+                    b.easting - a.easting,
+                    b.northing - a.northing
+                );
+                const bc = Math.hypot(
+                    c.easting - b.easting,
+                    c.northing - b.northing
+                );
+                const ca = Math.hypot(
+                    a.easting - c.easting,
+                    a.northing - c.northing
+                );
+
+                // Twice the horizontal triangle area.
+                const twiceArea = Math.abs(
+                    (b.easting - a.easting) * (c.northing - a.northing) -
+                    (b.northing - a.northing) * (c.easting - a.easting)
+                );
+
+                // Degenerate or nearly collinear triangles do not define
+                // a reliable terrain facet.
+                if (twiceArea < MIN_TWICE_AREA_M2) {
+                    return Infinity;
+                }
+
+                // R = abc / (4A) = abc / (2 * twiceArea).
+                return (ab * bc * ca) / (2 * twiceArea);
+            }
+
+            for (let i = 0; i < triangles.length; i += 3) {
+                const ia = triangles[i];
+                const ib = triangles[i + 1];
+                const ic = triangles[i + 2];
+
+                const a = terrainPoints[ia];
+                const b = terrainPoints[ib];
+                const c = terrainPoints[ic];
+
+                const circumradius = horizontalCircumradius(a, b, c);
+
+                // Do not create terrain facets across unsupported gaps
+                // or from nearly collinear points.
+                if (!Number.isFinite(circumradius)) {
+                    rejectedTriangles++;
+                    rejectedDegenerate++;
+                    continue;
+                }
+
+
+                if (circumradius > MAX_TERRAIN_CIRCUMRADIUS_M) {
+                    rejectedTriangles++;
+                    rejectedLargeCircumradius++;
+
+                    const edgeAB = Math.hypot(
+                        a.easting - b.easting,
+                        a.northing - b.northing
+                    );
+
+                    const edgeBC = Math.hypot(
+                        b.easting - c.easting,
+                        b.northing - c.northing
+                    );
+
+                    const edgeCA = Math.hypot(
+                        c.easting - a.easting,
+                        c.northing - a.northing
+                    );
+
+                    const twiceArea = Math.abs(
+                        (b.easting - a.easting) * (c.northing - a.northing) -
+                        (b.northing - a.northing) * (c.easting - a.easting)
+                    );
+
+                    rejectedTriangleDiagnostics.push({
+                        indices: [ia, ib, ic],
+                        circumradiusM: Number(circumradius.toFixed(3)),
+                        edgeAB_M: Number(edgeAB.toFixed(3)),
+                        edgeBC_M: Number(edgeBC.toFixed(3)),
+                        edgeCA_M: Number(edgeCA.toFixed(3)),
+                        maxEdgeM: Number(Math.max(edgeAB, edgeBC, edgeCA).toFixed(3)),
+                        horizontalAreaM2: Number((twiceArea / 2).toFixed(3)),
+                        vertices: [a, b, c].map(p => ({
+                            easting: p.easting,
+                            northing: p.northing,
+                            rl: p.rl
+                        }))
+                    });
+
+                    if (SHOW_REJECTED_TRIANGLES) {
+                        rejectedTriangleIndices.push(ia, ib, ic);
+                    }
+
+                    // Diagnostic only: record a small sample of rejected triangles.
+                    if (window.__rejectedTriangleSamples === undefined) {
+                        window.__rejectedTriangleSamples = [];
+                    }
+
+                    if (window.__rejectedTriangleSamples.length < 30) {
+                        window.__rejectedTriangleSamples.push({
+                            triangleIndices: [ia, ib, ic],
+                            edgeLengthsM: [
+                                Math.hypot(a.easting - b.easting, a.northing - b.northing),
+                                Math.hypot(b.easting - c.easting, b.northing - c.northing),
+                                Math.hypot(c.easting - a.easting, c.northing - a.northing)
+                            ].map(d => Number(d.toFixed(3))),
+                            shapeQuality: (() => {
+                                const sideA = Math.hypot(
+                                    a.easting - b.easting,
+                                    a.northing - b.northing
+                                );
+                                const sideB = Math.hypot(
+                                    b.easting - c.easting,
+                                    b.northing - c.northing
+                                );
+                                const sideC = Math.hypot(
+                                    c.easting - a.easting,
+                                    c.northing - a.northing
+                                );
+
+                                const perimeter = sideA + sideB + sideC;
+
+                                return perimeter > 0
+                                    ? Number(
+                                        ((sideA * sideB * sideC) /
+                                            Math.pow(perimeter, 3)).toFixed(6)
+                                    )
+                                    : 0;
+                            })(),
+
+                            circumradiusM: Number(circumradius.toFixed(3)),
+                            horizontalAreaM2: Number((
+                                Math.abs(
+                                    (b.easting - a.easting) * (c.northing - a.northing) -
+                                    (b.northing - a.northing) * (c.easting - a.easting)
+                                ) / 2
+                            ).toFixed(3)),
+                            vertices: [a, b, c].map(p => ({
+                                easting: p.easting,
+                                northing: p.northing,
+                                rl: p.rl
+                            }))
+                        });
+                    }
+
+                    continue;
+                }
+
+
+                const va = toWorld(a.easting, a.northing, a.rl);
+                const vb = toWorld(b.easting, b.northing, b.rl);
+                const vc = toWorld(c.easting, c.northing, c.rl);
+
+                const ab = new THREE.Vector3(
+                    vb.x - va.x,
+                    vb.y - va.y,
+                    vb.z - va.z
+                );
+
+                const ac = new THREE.Vector3(
+                    vc.x - va.x,
+                    vc.y - va.y,
+                    vc.z - va.z
+                );
+
+                const normal = new THREE.Vector3()
+                    .crossVectors(ab, ac)
+                    .normalize();
+
+                const slopeDegrees = THREE.MathUtils.radToDeg(
+                    Math.acos(
+                        THREE.MathUtils.clamp(
+                            Math.abs(normal.y),
+                            0,
+                            1
+                        )
+                    )
+                );
+
+                const triangleColor =
+                    slopeDegrees >= FALL_SLOPE_THRESHOLD
+                        ? fallColor
+                        : naturalColor;
+
+                // Duplicate vertices so each triangle has its own colour.
+                for (const point of [va, vb, vc]) {
+                    terrainPositions.push(point.x, point.y, point.z);
+                    terrainColors.push(
+                        triangleColor.r,
+                        triangleColor.g,
+                        triangleColor.b
+                    );
+                }
+
+                acceptedTriangleIndices.push(ia, ib, ic);
+                acceptedTriangles++;
+            }
+
+
+            // Read-only candidate report.
+            // Does not change triangle acceptance or rendered terrain.
+            const acceptedVertexSet = new Set(acceptedTriangleIndices);
+
+            const TERRAIN_CANDIDATE_REPORT_LIMIT = 100;
+
+            const terrainCandidateReport = rejectedTriangleDiagnostics
+                .map(t => {
+                    const centroidE =
+                        (t.vertices[0].easting +
+                            t.vertices[1].easting +
+                            t.vertices[2].easting) / 3;
+
+                    const centroidN =
+                        (t.vertices[0].northing +
+                            t.vertices[1].northing +
+                            t.vertices[2].northing) / 3;
+
+                    let nearestAlignmentDistanceM = Infinity;
+
+                    for (const p of alignmentPoints) {
+                        const e = Number(p.Easting);
+                        const n = Number(p.Northing);
+
+                        if (!Number.isFinite(e) ||
+                            !Number.isFinite(n)) {
+                            continue;
+                        }
+
+                        const distance = Math.hypot(
+                            e - centroidE,
+                            n - centroidN
+                        );
+
+                        nearestAlignmentDistanceM = Math.min(
+                            nearestAlignmentDistanceM,
+                            distance
+                        );
+                    }
+
+                    const allVerticesTouchAcceptedMesh =
+                        t.indices.every(index =>
+                            acceptedVertexSet.has(index)
+                        );
+
+                    const rlValues = t.vertices.map(p => p.rl);
+
+                    return {
+                        indices: t.indices.join(", "),
+                        maxEdgeM: t.maxEdgeM,
+                        circumradiusM: t.circumradiusM,
+                        areaM2: t.horizontalAreaM2,
+                        rlRangeM: Number((
+                            Math.max(...rlValues) -
+                            Math.min(...rlValues)
+                        ).toFixed(3)),
+                        nearestAlignmentDistanceM:
+                            Number.isFinite(nearestAlignmentDistanceM)
+                                ? Number(nearestAlignmentDistanceM.toFixed(2))
+                                : null,
+                        allVerticesTouchAcceptedMesh
+                    };
+                })
+                .sort((a, b) =>
+                    a.nearestAlignmentDistanceM -
+                    b.nearestAlignmentDistanceM
+                );
+
+            console.info(
+                "[Survey Terrain] Read-only candidate report:",
+                {
+                    candidateCount: terrainCandidateReport.length,
+                    thresholdUnchangedM:
+                        MAX_TERRAIN_CIRCUMRADIUS_M,
+                    candidatesNearestAlignment:
+                        terrainCandidateReport.slice(
+                            0,
+                            TERRAIN_CANDIDATE_REPORT_LIMIT
+                        )
+                }
+            );
+
+
+            // Read-only diagnostic: classify rejected triangle edges
+            // against the accepted mesh boundary and interior.
+            const diagnosticAcceptedEdgeCounts = new Map();
+
+            function makeEdgeKey(a, b) {
+                return a < b ? `${a},${b}` : `${b},${a}`;
+            }
+
+            const coverageEdgeCounts = new Map();
+
+            for (let i = 0; i < acceptedTriangleIndices.length; i += 3) {
+                const a = acceptedTriangleIndices[i];
+                const b = acceptedTriangleIndices[i + 1];
+                const c = acceptedTriangleIndices[i + 2];
+
+                for (const [u, v] of [[a, b], [b, c], [c, a]]) {
+                    const key = makeEdgeKey(u, v);
+                    diagnosticAcceptedEdgeCounts.set(
+                        key,
+                        (diagnosticAcceptedEdgeCounts.get(key) || 0) + 1
+                    );
+                }
+            }
+            window.__acceptedEdgeCounts = Object.fromEntries(
+                diagnosticAcceptedEdgeCounts
+            );
+
+            const rejectedEdgeAdjacencyReport =
+                rejectedTriangleDiagnostics.map(t => {
+                    const [a, b, c] = t.indices;
+
+                    const edges = [
+                        makeEdgeKey(a, b),
+                        makeEdgeKey(b, c),
+                        makeEdgeKey(c, a)
+                    ];
+
+                    let sharedBoundaryEdges = 0;
+                    let sharedInteriorEdges = 0;
+                    let sharedUnexpectedEdges = 0;
+
+                    for (const edge of edges) {
+                        const count = diagnosticAcceptedEdgeCounts.get(edge) || 0;
+
+                        if (count === 1) sharedBoundaryEdges++;
+                        else if (count === 2) sharedInteriorEdges++;
+                        else if (count > 2) sharedUnexpectedEdges++;
+                    }
+
+                    return {
+                        indices: t.indices.join(","),
+                        sharedAcceptedEdges:
+                            sharedBoundaryEdges +
+                            sharedInteriorEdges +
+                            sharedUnexpectedEdges,
+                        sharedBoundaryEdges,
+                        sharedInteriorEdges,
+                        sharedUnexpectedEdges,
+                        maxEdgeM: t.maxEdgeM,
+                        circumradiusM: t.circumradiusM,
+                        areaM2: t.horizontalAreaM2
+                    };
+                });
+
+            window.__rejectedEdgeAdjacencyReport = rejectedEdgeAdjacencyReport;
+
+            const firstRejectedEdgeCheck = rejectedTriangleDiagnostics.length
+                ? (() => {
+                    const t = rejectedTriangleDiagnostics[0];
+                    const [a, b, c] = t.indices;
+
+                    return {
+                        triangleIndices: t.indices,
+                        edges: [
+                            [a, b],
+                            [b, c],
+                            [c, a]
+                        ].map(([u, v]) => {
+                            const key = makeEdgeKey(u, v);
+
+                            return {
+                                vertices: [u, v],
+                                acceptedEdgeCount: diagnosticAcceptedEdgeCounts.get(key) || 0
+                            };
+                        })
+                    };
+                })()
+                : null;
+
+            console.info(
+                "[Survey Terrain] First rejected triangle edge check:",
+                firstRejectedEdgeCheck
+            );
+
+            console.info(
+                "[Survey Terrain] Rejected triangle edge classification:",
+                {
+                    acceptedUniqueEdges: diagnosticAcceptedEdgeCounts.size,
+                    acceptedBoundaryEdges: [...diagnosticAcceptedEdgeCounts.values()]
+                        .filter(count => count === 1).length,
+                    acceptedInteriorEdges: [...diagnosticAcceptedEdgeCounts.values()]
+                        .filter(count => count === 2).length,
+                    rejectedTriangleCount:
+                        rejectedEdgeAdjacencyReport.length,
+                    sharingZeroEdges: rejectedEdgeAdjacencyReport.filter(
+                        t => t.sharedAcceptedEdges === 0
+                    ).length,
+                    sharingBoundaryEdges: rejectedEdgeAdjacencyReport.filter(
+                        t => t.sharedBoundaryEdges > 0
+                    ).length,
+                    sharingInteriorEdges: rejectedEdgeAdjacencyReport.filter(
+                        t => t.sharedInteriorEdges > 0
+                    ).length,
+                    sample: rejectedEdgeAdjacencyReport
+                        .filter(t => t.sharedAcceptedEdges > 0)
+                        .sort((a, b) =>
+                            a.circumradiusM - b.circumradiusM
+                        )
+                        .slice(0, 30)
+                }
+            );
+
+
+
+            console.info("[Survey Terrain] TIN support filtering:", {
+                inputTriangles: triangles.length / 3,
+                acceptedTriangles,
+                rejectedTriangles,
+                maximumCircumradiusM: MAX_TERRAIN_CIRCUMRADIUS_M,
+                rejectedDegenerate,
+                rejectedLargeCircumradius
+            });
+
+            console.info(
+                "[Survey Terrain] Full rejected-triangle diagnostic:",
+                {
+                    count: rejectedTriangleDiagnostics.length,
+                    triangles: rejectedTriangleDiagnostics
+                }
+            );
+
+            window.__rejectedTriangleDiagnostics = rejectedTriangleDiagnostics;
+
+            terrainGeometry.setAttribute(
+                "position",
+                new THREE.Float32BufferAttribute(terrainPositions, 3)
+            );
+
+            terrainGeometry.setAttribute(
+                "color",
+                new THREE.Float32BufferAttribute(terrainColors, 3)
+            );
+
+            terrainGeometry.computeVertexNormals();
+
+            const terrainMaterial = new THREE.MeshBasicMaterial({
+                vertexColors: true,
+                side: THREE.DoubleSide,
+                wireframe: false
+            });
+
+            const terrainMesh = new THREE.Mesh(
+                terrainGeometry,
+                terrainMaterial
+            );
+
+            // Visualization-only coverage guide. Boundary edges are derived from
+            // accepted triangles only; this does not add terrain or elevations.
+            // The largest closed boundary loop is highlighted as the primary
+            // perimeter for viewing. Other loops remain visible as secondary
+            // coverage edges (typically internal holes or disconnected patches).
+            // This is a visual classification only, not an engineering boundary.
+
+
+            for (let i = 0; i < acceptedTriangleIndices.length; i += 3) {
+                const triangle = [
+                    acceptedTriangleIndices[i],
+                    acceptedTriangleIndices[i + 1],
+                    acceptedTriangleIndices[i + 2]
+                ];
+
+                for (const [u, v] of [
+                    [triangle[0], triangle[1]],
+                    [triangle[1], triangle[2]],
+                    [triangle[2], triangle[0]]
+                ]) {
+                    const key = u < v ? `${u}:${v}` : `${v}:${u}`;
+                    const edge = coverageEdgeCounts.get(key);
+
+                    if (edge) {
+                        edge.count++;
+                    } else {
+                        coverageEdgeCounts.set(key, {
+                            a: u,
+                            b: v,
+                            count: 1
+                        });
+                    }
+                }
+            }
+
+            const boundaryEdges = [...coverageEdgeCounts.values()]
+                .filter(edge => edge.count === 1);
+            const boundaryAdjacency = new Map();
+            for (let i = 0; i < boundaryEdges.length; i++) {
+                const edge = boundaryEdges[i];
+                edge.boundaryId = i;
+                for (const [from, to] of [[edge.a, edge.b], [edge.b, edge.a]]) {
+                    if (!boundaryAdjacency.has(from)) boundaryAdjacency.set(from, []);
+                    boundaryAdjacency.get(from).push({ edgeId: i, to });
+                }
+            }
+
+            // Walk closed loops where each boundary vertex has exactly two
+            // boundary neighbours. Branches/open chains are kept secondary.
+            const visitedBoundaryEdges = new Set();
+            const boundaryLoops = [];
+            const secondaryBoundaryEdgeIds = new Set();
+            for (let seed = 0; seed < boundaryEdges.length; seed++) {
+                if (visitedBoundaryEdges.has(seed)) continue;
+                const seedEdge = boundaryEdges[seed];
+                const loopVertices = [seedEdge.a];
+                const componentEdges = new Set();
+                let currentVertex = seedEdge.a;
+                let previousEdgeId = -1;
+                let closed = false;
+
+                for (let step = 0; step <= boundaryEdges.length; step++) {
+                    const options = (boundaryAdjacency.get(currentVertex) || [])
+                        .filter(item => item.edgeId !== previousEdgeId &&
+                            !visitedBoundaryEdges.has(item.edgeId));
+                    if (options.length === 0) break;
+                    const next = options[0];
+                    visitedBoundaryEdges.add(next.edgeId);
+                    componentEdges.add(next.edgeId);
+                    previousEdgeId = next.edgeId;
+                    currentVertex = next.to;
+                    if (currentVertex === loopVertices[0]) {
+                        closed = true;
+                        break;
+                    }
+                    loopVertices.push(currentVertex);
+                }
+
+                if (closed && loopVertices.length >= 3 &&
+                    loopVertices.every(vertex => (boundaryAdjacency.get(vertex) || []).length === 2)) {
+                    let twiceArea = 0;
+                    for (let i = 0; i < loopVertices.length; i++) {
+                        const a = terrainPoints[loopVertices[i]];
+                        const b = terrainPoints[loopVertices[(i + 1) % loopVertices.length]];
+                        twiceArea += a.easting * b.northing - b.easting * a.northing;
+                    }
+                    boundaryLoops.push({ edgeIds: componentEdges, area: Math.abs(twiceArea) / 2 });
+                } else {
+                    for (const edgeId of componentEdges) secondaryBoundaryEdgeIds.add(edgeId);
+                }
+            }
+
+            // Any unvisited or non-loop edge is retained as secondary coverage.
+            for (let i = 0; i < boundaryEdges.length; i++) {
+                if (!visitedBoundaryEdges.has(i)) secondaryBoundaryEdgeIds.add(i);
+            }
+
+            boundaryLoops.sort((a, b) => b.area - a.area);
+            const primaryPerimeterEdgeIds = boundaryLoops.length
+                ? boundaryLoops[0].edgeIds
+                : new Set();
+            for (let i = 0; i < boundaryEdges.length; i++) {
+                if (!primaryPerimeterEdgeIds.has(i)) secondaryBoundaryEdgeIds.add(i);
+            }
+
+            const primaryPerimeterPositions = [];
+            const secondaryCoveragePositions = [];
+            for (let i = 0; i < boundaryEdges.length; i++) {
+                const edge = boundaryEdges[i];
+                const a = terrainPoints[edge.a];
+                const b = terrainPoints[edge.b];
+                const va = toWorld(a.easting, a.northing, a.rl);
+                const vb = toWorld(b.easting, b.northing, b.rl);
+                const target = primaryPerimeterEdgeIds.has(i)
+                    ? primaryPerimeterPositions
+                    : secondaryCoveragePositions;
+                target.push(va.x, va.y, va.z, vb.x, vb.y, vb.z);
+            }
+
+            function makeBoundaryLine(positions, color, opacity, name, renderOrder) {
+                const geometry = new THREE.BufferGeometry();
+                geometry.setAttribute(
+                    "position",
+                    new THREE.Float32BufferAttribute(positions, 3)
+                );
+                const material = new THREE.LineBasicMaterial({
+                    color,
+                    transparent: true,
+                    opacity,
+                    depthTest: false
+                });
+                const lines = new THREE.LineSegments(geometry, material);
+                lines.name = name;
+                lines.renderOrder = renderOrder;
+                return lines;
+            }
+
+            const primaryPerimeterGuide = makeBoundaryLine(
+                primaryPerimeterPositions,
+                0xff8c42,
+                1.0,
+                "Primary terrain coverage perimeter (visual estimate)",
+                11
+            );
+            const secondaryCoverageGuide = makeBoundaryLine(
+                secondaryCoveragePositions,
+                0xf4d35e,
+                0.9,
+                "Secondary terrain coverage edges and internal gaps",
+                10
+            );
+
+            const terrainLayer = new THREE.Group();
+            terrainLayer.name = "Measured survey terrain and coverage guides";
+            terrainLayer.add(terrainMesh);
+
+            // Diagnostic overlay: edges of triangles rejected by the
+            // maximum circumradius filter. Does not add terrain surfaces.
+            if (SHOW_REJECTED_TRIANGLES && rejectedTriangleIndices.length > 0) {
+                const rejectedGeometry = new THREE.BufferGeometry();
+                const rejectedPositions = [];
+
+                for (let i = 0; i < rejectedTriangleIndices.length; i += 3) {
+                    const ia = rejectedTriangleIndices[i];
+                    const ib = rejectedTriangleIndices[i + 1];
+                    const ic = rejectedTriangleIndices[i + 2];
+
+                    const a = terrainPoints[ia];
+                    const b = terrainPoints[ib];
+                    const c = terrainPoints[ic];
+
+                    if (!a || !b || !c) continue;
+
+                    const va = toWorld(a.easting, a.northing, a.rl);
+                    const vb = toWorld(b.easting, b.northing, b.rl);
+                    const vc = toWorld(c.easting, c.northing, c.rl);
+
+                    rejectedPositions.push(
+                        va.x, va.y, va.z,
+                        vb.x, vb.y, vb.z,
+
+                        vb.x, vb.y, vb.z,
+                        vc.x, vc.y, vc.z,
+
+                        vc.x, vc.y, vc.z,
+                        va.x, va.y, va.z
+                    );
+                }
+
+                rejectedGeometry.setAttribute(
+                    "position",
+                    new THREE.Float32BufferAttribute(rejectedPositions, 3)
+                );
+
+                const rejectedMaterial = new THREE.LineBasicMaterial({
+                    color: 0x00ffff,
+                    transparent: false,
+                    opacity: 1.0,
+                    depthTest: false,
+                    depthWrite: false
+                });
+
+                const rejectedLines = new THREE.LineSegments(
+                    rejectedGeometry,
+                    rejectedMaterial
+                );
+
+                rejectedLines.name = "RejectedTriangleDiagnostic";
+                rejectedLines.renderOrder = 999;
+
+                terrainLayer.add(rejectedLines);
+
+                console.info("[Survey Terrain] Rejected triangle diagnostic:", {
+                    triangleCount: rejectedTriangleIndices.length / 3,
+                    lineSegments: rejectedPositions.length / 6
+                });
+            }
+
+            terrainLayer.add(primaryPerimeterGuide);
+            terrainLayer.add(secondaryCoverageGuide);
+            scene.add(terrainLayer);
+
+            console.info("[Survey Terrain] Coverage guide:", {
+                boundaryEdgeSegments: boundaryEdges.length,
+                primaryPerimeterSegments: primaryPerimeterPositions.length / 6,
+                secondaryCoverageSegments: secondaryCoveragePositions.length / 6,
+                closedBoundaryLoops: boundaryLoops.length,
+                primaryLoopAreaM2: boundaryLoops.length ? boundaryLoops[0].area : null,
+                meaning: "Orange is the largest closed accepted-mesh boundary loop (visual estimate); yellow shows other boundary edges/internal gaps. No terrain is extrapolated."
+            });
+
+            // Terrain layer on/off control.
+            const terrainToggle = document.getElementById(
+                "survey-map-toggle-terrain"
+            );
+
+            terrainToggle?.addEventListener("click", () => {
+                terrainLayer.visible = !terrainLayer.visible;
+
+                const isVisible = terrainLayer.visible;
+
+                terrainToggle.setAttribute("aria-pressed", String(isVisible));
+                terrainToggle.innerHTML = isVisible
+                    ? '<i class="bi bi-layers"></i> Terrain: On'
+                    : '<i class="bi bi-layers"></i> Terrain: Off';
+            });
+        }
+
+        // Keep surveyed points visible above the terrain.
+        const surveyLayer = new THREE.Points(surveyGeometry, surveyMaterial);
+        scene.add(surveyLayer);
+
+        // Survey data layer on/off control.
+        const surveyToggle = document.getElementById(
+            "survey-map-toggle-survey"
+        );
+
+        surveyToggle?.addEventListener("click", () => {
+            surveyLayer.visible = !surveyLayer.visible;
+
+            const isVisible = surveyLayer.visible;
+
+            surveyToggle.setAttribute("aria-pressed", String(isVisible));
+            surveyToggle.innerHTML = isVisible
+                ? '<i class="bi bi-geo"></i> Survey Data: On'
+                : '<i class="bi bi-geo"></i> Survey Data: Off';
+        });
+
+        /// Imported road alignment: continuous 7 m visual road surface.
+        // Display geometry only; does not change engineering data.
+        if (validAlignment.length > 1) {
+            const orderedAlignment = [...validAlignment].sort((a, b) => {
+                const ca = Number(a.Chainage);
+                const cb = Number(b.Chainage);
+
+                if (Number.isFinite(ca) && Number.isFinite(cb)) {
+                    return ca - cb;
+                }
+
+                return 0;
+            });
+
+            const halfRoadWidth = 3.5;
+            const visualLift = 0.15;
+            const roadPositions = [];
+            const roadIndices = [];
+            const centerlinePositions = [];
+
+            const getAlignmentRL = (p) => {
+                if (
+                    p.ExistingRL != null &&
+                    p.ExistingRL !== "" &&
+                    Number.isFinite(Number(p.ExistingRL))
+                ) {
+                    return Number(p.ExistingRL);
+                }
+
+                let nearest = null;
+                let nearestDistance = Infinity;
+
+                validSurvey.forEach(s => {
+                    const dx = Number(s.Easting) - Number(p.Easting);
+                    const dz = Number(s.Northing) - Number(p.Northing);
+                    const distance = dx * dx + dz * dz;
+
+                    if (distance < nearestDistance) {
+                        nearestDistance = distance;
+                        nearest = s;
+                    }
+                });
+
+                return nearest ? Number(nearest.RL) : baseRL;
+            };
+
+            const originalRoadCenters = orderedAlignment.map(p => ({
+                e: Number(p.Easting),
+                n: Number(p.Northing),
+                rl: getAlignmentRL(p)
+            }));
+
+            // Add intermediate points to reduce visible gaps between road segments.
+            const roadCenters = [];
+
+            for (let i = 0; i < originalRoadCenters.length - 1; i++) {
+                const a = originalRoadCenters[i];
+                const b = originalRoadCenters[i + 1];
+
+                roadCenters.push(a);
+
+                const distance = Math.hypot(b.e - a.e, b.n - a.n);
+                const divisions = Math.max(1, Math.ceil(distance / 1.0));
+
+                for (let j = 1; j < divisions; j++) {
+                    const t = j / divisions;
+
+                    roadCenters.push({
+                        e: a.e + (b.e - a.e) * t,
+                        n: a.n + (b.n - a.n) * t,
+                        rl: a.rl + (b.rl - a.rl) * t
+                    });
+                }
+            }
+
+            roadCenters.push(originalRoadCenters[originalRoadCenters.length - 1]);
+
+            const roadElevationDifferences = originalRoadCenters.map(p => ({
+                rl: p.rl,
+                difference: p.rl - datumRL
+            }));
+
+            const belowDatumCount = roadElevationDifferences.filter(
+                p => p.difference < -DATUM_ELEVATION_TOLERANCE_M
+            ).length;
+
+            const aboveDatumCount = roadElevationDifferences.filter(
+                p => p.difference > DATUM_ELEVATION_TOLERANCE_M
+            ).length;
+
+            const nearDatumCount = roadElevationDifferences.length
+                - belowDatumCount
+                - aboveDatumCount;
+
+            const minDifference = Math.min(
+                ...roadElevationDifferences.map(p => p.difference)
+            );
+
+            const maxDifference = Math.max(
+                ...roadElevationDifferences.map(p => p.difference)
+            );
+
+            const setText = (id, value) => {
+                const element = document.getElementById(id);
+                if (element) element.textContent = value;
+            };
+
+            setText("survey-datum-rl", datumRL.toFixed(3));
+            setText("survey-datum-above-count", aboveDatumCount.toLocaleString());
+            setText("survey-datum-below-count", belowDatumCount.toLocaleString());
+            setText("survey-datum-near-count", nearDatumCount.toLocaleString());
+            setText("survey-datum-min-difference", minDifference.toFixed(3));
+            setText("survey-datum-max-difference", `+${maxDifference.toFixed(3)}`);
+
+            console.info("[Survey Terrain] Road vs datum:", {
+                datumRL: Number(datumRL.toFixed(3)),
+                minimumDifferenceM: Number(minDifference.toFixed(3)),
+                maximumDifferenceM: Number(maxDifference.toFixed(3)),
+                belowDatum: belowDatumCount,
+                nearDatum: nearDatumCount,
+                aboveDatum: aboveDatumCount
+            });
+
+            // Remove consecutive duplicate points that can cause zero-width segments.
+            const cleanCenters = roadCenters.filter((p, i, arr) => {
+                if (i === 0) return true;
+
+                const previous = arr[i - 1];
+                return Math.hypot(p.e - previous.e, p.n - previous.n) > 0.001;
+            });
+
+            cleanCenters.forEach((p, i) => {
+                const previous = cleanCenters[Math.max(0, i - 1)];
+                const next = cleanCenters[Math.min(cleanCenters.length - 1, i + 1)];
+
+                let dx = next.e - previous.e;
+                let dz = next.n - previous.n;
+                const length = Math.hypot(dx, dz);
+
+                if (length < 1e-8) {
+                    dx = 1;
+                    dz = 0;
+                } else {
+                    dx /= length;
+                    dz /= length;
+                }
+
+                // Perpendicular offset for the road edges.
+                const offsetE = -dz * halfRoadWidth;
+                const offsetN = dx * halfRoadWidth;
+
+                const left = toWorld(
+                    p.e + offsetE,
+                    p.n + offsetN,
+                    p.rl
+                );
+
+                const right = toWorld(
+                    p.e - offsetE,
+                    p.n - offsetN,
+                    p.rl
+                );
+
+                roadPositions.push(
+                    left.x, left.y + visualLift, left.z,
+                    right.x, right.y + visualLift, right.z
+                );
+
+                const center = toWorld(p.e, p.n, p.rl);
+                centerlinePositions.push(
+                    center.x,
+                    center.y + visualLift + 0.12,
+                    center.z
+                );
+
+                if (i < cleanCenters.length - 1) {
+                    const a = i * 2;
+                    const b = a + 1;
+                    const c = a + 2;
+                    const d = a + 3;
+
+                    roadIndices.push(a, b, c);
+                    roadIndices.push(b, d, c);
+                }
+            });
+
+            // Road surface.
+            const roadGeometry = new THREE.BufferGeometry();
+
+            roadGeometry.setAttribute(
+                "position",
+                new THREE.Float32BufferAttribute(roadPositions, 3)
+            );
+
+            roadGeometry.setIndex(roadIndices);
+            roadGeometry.computeVertexNormals();
+
+            // Colour the road according to elevation relative to the datum.
+            // Blue = above, red = below, grey = near datum.
+            const roadGeometryColors = [];
+
+            for (let i = 0; i < cleanCenters.length; i++) {
+                const rlDifference = cleanCenters[i].rl - datumRL;
+
+                let color;
+
+                if (rlDifference > DATUM_ELEVATION_TOLERANCE_M) {
+                    color = new THREE.Color(0x2196F3); // Above datum
+                } else if (rlDifference < -DATUM_ELEVATION_TOLERANCE_M) {
+                    color = new THREE.Color(0xE57373); // Below datum
+                } else {
+                    color = new THREE.Color(0xB0BEC5); // Near datum
+                }
+
+                // Two road-edge vertices for each centreline point.
+                for (let j = 0; j < 2; j++) {
+                    roadGeometryColors.push(
+                        color.r,
+                        color.g,
+                        color.b
+                    );
+                }
+            }
+
+            roadGeometry.setAttribute(
+                "color",
+                new THREE.Float32BufferAttribute(roadGeometryColors, 3)
+            );
+
+            const roadMaterial = new THREE.MeshStandardMaterial({
+                vertexColors: true,
+                roughness: 0.95,
+                metalness: 0,
+                side: THREE.DoubleSide,
+                polygonOffset: true,
+                polygonOffsetFactor: -1,
+                polygonOffsetUnits: -1
+            });
+
+            const roadSurface = new THREE.Mesh(roadGeometry, roadMaterial);
+            roadSurface.renderOrder = 1;
+            const alignmentLayer = new THREE.Group();
+            alignmentLayer.add(roadSurface);
+            scene.add(alignmentLayer);
+
+            // Orange imported alignment: separate line above the road surface.
+            const alignmentGeometry = new THREE.BufferGeometry();
+
+            alignmentGeometry.setAttribute(
+                "position",
+                new THREE.Float32BufferAttribute(centerlinePositions, 3)
+            );
+
+            const alignmentMaterial = new THREE.LineBasicMaterial({
+                color: 0xff8c42,
+                depthTest: false,
+                depthWrite: false,
+                transparent: false
+            });
+
+            const alignmentLine = new THREE.Line(
+                alignmentGeometry,
+                alignmentMaterial
+            );
+
+            alignmentLine.renderOrder = 10;
+            alignmentLayer.add(alignmentLine);
+
+            // Road alignment layer on/off control.
+            const alignmentToggle = document.getElementById(
+                "survey-map-toggle-alignment"
+            );
+
+            alignmentToggle?.addEventListener("click", () => {
+                alignmentLayer.visible = !alignmentLayer.visible;
+
+                const isVisible = alignmentLayer.visible;
+
+                alignmentToggle.setAttribute("aria-pressed", String(isVisible));
+                alignmentToggle.innerHTML = isVisible
+                    ? '<i class="bi bi-signpost-split"></i> Alignment: On'
+                    : '<i class="bi bi-signpost-split"></i> Alignment: Off';
+            });
+        }
+
+        // Detected culvert groups: locate markers using SurveyPointNos.
+        const culvertPoints = [];
+        const culvertMarkerData = [];
+
+        const surveyByPointNo = new Map(
+            validSurvey.map(p => [Number(p.PointNo), p])
+        );
+
+        culverts.forEach(c => {
+            const pointNos = c.SurveyPointNos || [];
+
+            const members = pointNos
+                .map(pointNo => surveyByPointNo.get(Number(pointNo)))
+                .filter(Boolean);
+
+            if (!members.length) return;
+
+            const easting = members.reduce(
+                (sum, p) => sum + Number(p.Easting), 0
+            ) / members.length;
+
+            const northing = members.reduce(
+                (sum, p) => sum + Number(p.Northing), 0
+            ) / members.length;
+
+            const rl = members.reduce(
+                (sum, p) => sum + Number(p.RL), 0
+            ) / members.length;
+
+            const position = toWorld(easting, northing, rl);
+
+            culvertPoints.push(position);
+
+            culvertMarkerData.push({
+                data: c,
+                position,
+                easting,
+                northing,
+                rl,
+                pointNos
+            });
+        });
+
+        if (culvertPoints.length) {
+            const geometry = new THREE.BufferGeometry();
+            const positions = [];
+
+            culvertPoints.forEach(v => {
+                positions.push(v.x, v.y, v.z);
+            });
+
+            geometry.setAttribute(
+                "position",
+                new THREE.Float32BufferAttribute(positions, 3)
+            );
+
+            const material = new THREE.PointsMaterial({
+                color: 0x3fb950,
+                size: 10,
+                sizeAttenuation: false,
+                depthTest: false
+            });
+
+            const markers = new THREE.Points(geometry, material);
+            markers.renderOrder = 999;
+
+            scene.add(markers);
+
+            // Temporary labels for identifying culvert locations during terrain diagnostics.
+            const culvertLabels = new THREE.Group();
+            culvertLabels.name = "Temporary culvert location labels";
+
+            culvertMarkerData.forEach(marker => {
+                const label = document.createElement("div");
+                label.textContent = String(marker.data.LocationIndex);
+                label.style.cssText = `
+        color: #ffffff;
+        background: #198754;
+        border: 1px solid #ffffff;
+        border-radius: 50%;
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        font-weight: bold;
+    `;
+            });
+
+            // Culvert specification information box.
+            const infoBox = document.createElement("div");
+
+            infoBox.id = "survey-culvert-info";
+            infoBox.style.cssText = `
+                position: absolute;
+                display: none;
+                z-index: 1000;
+                width: 300px;
+                max-width: calc(100% - 16px);
+                max-height: 70%;
+                overflow-y: auto;
+                box-sizing: border-box;
+                padding: 18px;
+                background: #f8f9fa;
+                color: #212529;
+                border: 1px solid #ced4da;
+                border-radius: 10px;
+                box-shadow: 0 4px 14px rgba(33, 37, 41, 0.12);
+                font-family: inherit;
+                font-size: 13px;
+                line-height: 1.6;
+                pointer-events: auto;
+            `;
+
+            const mapWorkspace = document.getElementById("survey-map-container");
+            mapWorkspace.style.position = "relative";
+            mapWorkspace.appendChild(infoBox);
+
+            const culvertRaycaster = new THREE.Raycaster();
+            culvertRaycaster.params.Points.threshold = 12;
+
+            let selectedCulvertIndex = -1;
+
+            const showCulvertInfo = (index, event) => {
+                const markerData = culvertMarkerData[index];
+                if (!markerData) return;
+
+                const data = markerData.data;
+
+                const formatValue = (value, decimals = 3) =>
+                    Number.isFinite(Number(value))
+                        ? Number(value).toFixed(decimals)
+                        : String(value);
+
+                const rows = [
+                    {
+                        section: "Identification & Status"
+                    },
+                    ["Culvert Reference", `Location ${data.LocationIndex}`],
+                    ["Detection Method", data.IsManual ? "Manual" : "Automatic"],
+                    ["Review Status", data.IsConfirmed ? "Confirmed" : "Pending"],
+                    ["Design Status", data.DesignId != null ? "Design Created" : "Not Created"],
+
+                    {
+                        section: "Location & Survey"
+                    },
+                    ["Chainage (m)", formatValue(data.Chainage)],
+                    ["Easting Coordinate (m)", formatValue(markerData.easting)],
+                    ["Northing Coordinate (m)", formatValue(markerData.northing)],
+                    ["Average Ground Level (m)", formatValue(markerData.rl)],
+                    ["Distance from Alignment (m)", formatValue(data.DistToAlignment)],
+                    ["Associated Survey Points", String(data.SurveyPointCount)],
+                    ["Survey Point Numbers", (data.SurveyPointNos || []).join(", ")],
+
+                    {
+                        section: "Levels & Ground Conditions"
+                    },
+                    ["Invert Level (RL) (m)", formatValue(data.InvertRL)],
+                    ["Road Level (RL) (m)", formatValue(data.RoadRL)],
+                    ["Fill Height (m)", formatValue(data.FillHeightM)],
+                    ["Bed Slope (%)", `${formatValue(data.BedSlopePct)}%`]
+                ];
+
+                infoBox.replaceChildren();
+
+                // Card heading
+                const header = document.createElement("div");
+                header.textContent = "Culvert Specifications";
+                header.style.cssText = `
+                    font-size: 15px;
+                    font-weight: 600;
+                    color: #212529;
+                    padding-bottom: 12px;
+                    margin-bottom: 10px;
+                    border-bottom: 1px solid #dee2e6;
+                    `;
+
+                infoBox.appendChild(header);
+
+                // Specification rows
+
+                // Specification rows and section headings.
+                rows.forEach((item, index) => {
+                    if (item.section) {
+                        const section = document.createElement("div");
+                        section.textContent = item.section;
+                        section.style.cssText = `
+                            font-size: 13px;
+                            font-weight: 600;
+                            color: #212529;
+                            padding-top: 12px;
+                            padding-bottom: 5px;
+                            border-bottom: 1px solid #dee2e6;
+                        `;
+
+                        infoBox.appendChild(section);
+                        return;
+                    }
+
+                    const [label, value] = item;
+
+                    const row = document.createElement("div");
+                    row.style.cssText = `
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: flex-start;
+                        gap: 12px;
+                        padding: 7px 0;
+                        border-bottom: 1px solid #e9ecef;
+                    `;
+
+                    const labelElement = document.createElement("span");
+                    labelElement.textContent = label;
+                    labelElement.style.cssText = `
+                        color: #6c757d;
+                        flex: 1;
+                        min-width: 0;
+                        overflow-wrap: anywhere;
+                    `;
+
+                    const valueElement = document.createElement("span");
+                    valueElement.textContent = String(value);
+                    valueElement.style.cssText = `
+                        color: #212529;
+                        font-weight: 500;
+                        text-align: right;
+                        flex: 1;
+                        min-width: 0;
+                        overflow-wrap: anywhere;
+                    `;
+
+                    row.appendChild(labelElement);
+                    row.appendChild(valueElement);
+                    infoBox.appendChild(row);
+                });
+
+                infoBox.style.display = "block";
+
+                if (event) {
+                    const workspaceRect = mapWorkspace.getBoundingClientRect();
+
+                    let left = event.clientX - workspaceRect.left + 14;
+                    let top = event.clientY - workspaceRect.top + 14;
+
+                    const cardWidth = infoBox.offsetWidth;
+                    const cardHeight = infoBox.offsetHeight;
+
+                    if (left + cardWidth > workspaceRect.width - 8) {
+                        left = event.clientX - workspaceRect.left - cardWidth - 14;
+                    }
+
+                    if (top + cardHeight > workspaceRect.height - 8) {
+                        top = event.clientY - workspaceRect.top - cardHeight - 14;
+                    }
+
+                    left = Math.max(
+                        8,
+                        Math.min(left, workspaceRect.width - cardWidth - 8)
+                    );
+
+                    top = Math.max(
+                        8,
+                        Math.min(top, workspaceRect.height - cardHeight - 8)
+                    );
+
+                    infoBox.style.left = `${left}px`;
+                    infoBox.style.top = `${top}px`;
+                }
+            };
+
+            const findCulvertAtPointer = (event) => {
+                const rect = renderer.domElement.getBoundingClientRect();
+
+                const pointer = new THREE.Vector2(
+                    ((event.clientX - rect.left) / rect.width) * 2 - 1,
+                    -((event.clientY - rect.top) / rect.height) * 2 + 1
+                );
+
+                culvertRaycaster.setFromCamera(pointer, camera);
+
+                const hits = culvertRaycaster.intersectObject(markers);
+
+                return hits.length ? hits[0].index : -1;
+            };
+
+            renderer.domElement.addEventListener("pointermove", (event) => {
+                if (selectedCulvertIndex !== -1) return;
+
+                const index = findCulvertAtPointer(event);
+
+                if (index !== -1) {
+                    showCulvertInfo(index, event);
+                } else if (!infoBox.matches(":hover")) {
+                    infoBox.style.display = "none";
+                }
+            });
+
+            renderer.domElement.addEventListener("click", (event) => {
+                const index = findCulvertAtPointer(event);
+
+                if (index !== -1) {
+                    selectedCulvertIndex = index;
+                    showCulvertInfo(index, event);
+                } else {
+                    selectedCulvertIndex = -1;
+                    infoBox.style.display = "none";
+                }
+            });
+        }
+
+        const span = Math.max(maxE - minE, maxN - minN, 10);
+        const target = new THREE.Vector3(
+            0,
+            ((maxRL - minRL) * verticalExaggeration) / 2,
+            0
+        );
+
+        const initialDistance = span * 1.2;
+
+        const setCameraView = (view) => {
+            const width = canvas.clientWidth || 800;
+            const height = canvas.clientHeight || 600;
+            const aspect = width / height;
+
+            camera.aspect = aspect;
+            camera.updateProjectionMatrix();
+
+            const verticalSpan = Math.max(
+                (maxRL - minRL) * verticalExaggeration,
+                10
+            );
+
+            const horizontalSpan = Math.max(
+                maxE - minE,
+                maxN - minN,
+                10
+            );
+
+            const verticalFov = THREE.MathUtils.degToRad(camera.fov);
+            const horizontalFov = 2 * Math.atan(
+                Math.tan(verticalFov / 2) * aspect
+            );
+
+            const distanceForWidth =
+                (horizontalSpan / 2) / Math.tan(horizontalFov / 2);
+
+            const distanceForHeight =
+                (verticalSpan / 2) / Math.tan(verticalFov / 2);
+
+            const distance = Math.max(
+                distanceForWidth,
+                distanceForHeight
+            ) * 1.25;
+
+            if (view === "top" || view === "north") {
+                camera.position.set(
+                    target.x,
+                    target.y + distance,
+                    target.z
+                );
+                camera.up.set(0, 0, -1);
+            } else {
+                camera.up.set(0, 1, 0);
+                camera.position.set(
+                    target.x + distance * 0.65,
+                    target.y + distance * 0.65,
+                    target.z + distance * 0.65
+                );
+            }
+
+            camera.lookAt(target);
+
+            if (controls) {
+                controls.target.copy(target);
+                controls.update();
+            }
+        };
+
+        camera.position.set(
+            target.x + initialDistance * 0.65,
+            target.y + initialDistance * 0.65,
+            target.z + initialDistance * 0.65
+        );
+        camera.lookAt(target);
+
+        let controls = null;
+
+        if (THREE.OrbitControls) {
+            controls = new THREE.MapControls(camera, renderer.domElement);
+            controls.target.copy(target);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.08;
+            controls.zoomSpeed = 1.0;
+            controls.panSpeed = 1.0;
+            controls.rotateSpeed = 0.8;
+
+            // Prevent the camera from getting too close to the terrain.
+            controls.minDistance = Math.max(0.5, span * 0.005);
+
+            // Prevent zooming so far out that the model becomes difficult to find.
+            controls.maxDistance = Math.max(100, span * 10);
+
+            // Enable rotation, zoom and panning.
+            controls.enableRotate = true;
+            controls.enableZoom = true;
+            controls.enablePan = true;
+
+            // Right mouse button pans the map.
+            controls.mouseButtons.LEFT = THREE.MOUSE.PAN;
+            controls.mouseButtons.MIDDLE = THREE.MOUSE.DOLLY;
+            controls.mouseButtons.RIGHT = THREE.MOUSE.ROTATE;
+
+            controls.update();
+        }
+
+        const resize = () => {
+            const width = canvas.clientWidth;
+            const height = canvas.clientHeight;
+
+            if (!width || !height) return;
+
+            renderer.setSize(width, height, false);
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+        };
+
+        // Full-screen survey map workspace
+        const mapContainer = document.getElementById("survey-map-container");
+        const fullScreenButton = document.getElementById("survey-map-fullscreen");
+
+        fullScreenButton?.addEventListener("click", async () => {
+            if (!mapContainer) return;
+
+            try {
+                if (!document.fullscreenElement) {
+                    await mapContainer.requestFullscreen();
+                } else {
+                    await document.exitFullscreen();
+                }
+            } catch (error) {
+                console.error("Survey map full-screen error:", error);
+                status.textContent = "Could not open the map in full-screen mode.";
+            }
+        });
+
+        document.addEventListener("fullscreenchange", () => {
+            const isFullScreen = document.fullscreenElement === mapContainer;
+
+            if (fullScreenButton) {
+                fullScreenButton.innerHTML = isFullScreen
+                    ? '<i class="bi bi-arrows-angle-contract"></i> Exit Full Screen'
+                    : '<i class="bi bi-arrows-angle-expand"></i> Expand Map';
+            }
+
+            // Resize the renderer and camera after the container changes size.
+            requestAnimationFrame(() => {
+                resize();
+
+                if (window.surveyLeafletMap) {
+                    window.surveyLeafletMap.invalidateSize();
+                }
+            });
+        });
+
+        // Survey map navigation buttons
+        document.getElementById("survey-map-recenter")?.addEventListener("click", () => {
+            window.setSurveyMapMode?.("3d");
+            setCameraView("3d");
+        });
+
+        document.getElementById("survey-map-top-view")?.addEventListener("click", () => {
+            window.setSurveyMapMode?.("top");
+            setCameraView("top");
+        });
+
+        document.getElementById("survey-map-3d-view")?.addEventListener("click", () => {
+            window.setSurveyMapMode?.("3d");
+            setCameraView("3d");
+        });
+
+        document.getElementById("survey-map-north-up")?.addEventListener("click", () => {
+            setCameraView("north");
+        });
+
+        window.addEventListener("resize", resize);
+        resize();
+
+        const animate = () => {
+            requestAnimationFrame(animate);
+
+            if (controls) controls.update();
+
+            renderer.render(scene, camera);
+        };
+
+        animate();
+
+        status.textContent = "";
+
+        document.getElementById("survey-map-point-count").textContent =
+            validSurvey.length.toLocaleString();
+
+        document.getElementById("survey-map-alignment-count").textContent =
+            validAlignment.length.toLocaleString();
+
+        document.getElementById("survey-map-culvert-count").textContent =
+            culverts.length.toLocaleString();
+    } catch (error) {
+        console.error("Survey map error:", error);
+        status.textContent =
+            "The survey map could not be rendered. Check the browser console for details.";
+    }
+})();

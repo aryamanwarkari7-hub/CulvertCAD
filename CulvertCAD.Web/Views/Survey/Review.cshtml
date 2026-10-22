@@ -122,6 +122,13 @@
                     <i class="bi bi-square"></i>
                     Ground Sheet: On
                 </button>
+                <button type="button"
+                        id="survey-map-toggle-datum"
+                        class="btn-ghost"
+                        aria-pressed="true">
+                    <i class="bi bi-layers"></i>
+                    Datum Sheet: On
+                </button>
             </div>
 
             
@@ -141,6 +148,49 @@
                     <strong id="survey-map-culvert-count">0</strong>
                 </div>
             </div>
+            <div class="survey-datum-summary">
+                <div class="survey-datum-header">
+                    <strong>Road Elevation vs Datum</strong>
+                    <span>Datum RL: <strong id="survey-datum-rl">—</strong> m</span>
+                </div>
+
+                <div class="survey-datum-legend">
+                    <div class="survey-datum-item">
+                        <span class="survey-datum-swatch above"></span>
+                        <span>Above datum</span>
+                        <strong id="survey-datum-above-count">—</strong>
+                    </div>
+
+                    <div class="survey-datum-item">
+                        <span class="survey-datum-swatch below"></span>
+                        <span>Below datum</span>
+                        <strong id="survey-datum-below-count">—</strong>
+                    </div>
+
+                    <div class="survey-datum-item">
+                        <span class="survey-datum-swatch near"></span>
+                        <span>Near datum (±0.10 m)</span>
+                        <strong id="survey-datum-near-count">—</strong>
+                    </div>
+                </div>
+
+                <div class="survey-datum-extremes">
+                    <span>
+                        Minimum difference:
+                        <strong id="survey-datum-min-difference">—</strong> m
+                    </span>
+                    <span>
+                        Maximum difference:
+                        <strong id="survey-datum-max-difference">—</strong> m
+                    </span>
+                </div>
+
+                <p class="survey-datum-note">
+                    Road elevations without an imported Existing RL may be estimated
+                    from nearby survey points. These estimates are not surveyed road levels.
+                </p>
+            </div>
+
 
             <div id="survey-map-container">
                 <div id="survey-leaflet-map"></div>
