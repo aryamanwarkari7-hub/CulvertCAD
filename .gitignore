@@ -20,5 +20,10 @@ appsettings.Development.json
 appsettings.Production.json
 *.pfx
 
+## txt
+culvert-class-search.txt
+culvert-parameter-search.txt
+culvert-ui-search.txt
+
 ## Node (if any front-end tooling added later)
 node_modules/
