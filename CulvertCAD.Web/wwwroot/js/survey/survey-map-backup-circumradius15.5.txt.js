@@ -1,4 +1,4 @@
-﻿(() => {
+(() => {
     "use strict";
 
     const canvas = document.getElementById("survey-map-canvas");
@@ -340,134 +340,72 @@
         // Terrain surface generated from actual surveyed Easting, Northing and RL.
 
         if (window.Delaunator && validSurvey.length >= 3) {
-
             const terrainPoints = validSurvey.map(p => ({
                 easting: Number(p.Easting),
                 northing: Number(p.Northing),
-                rl: Number(p.RL)
+                rl: Number(p.RL),
+                pointNo: p.PointNo ?? p.pointNo ?? null,
+                code: p.Code ?? p.CodeType ?? p.code ?? null
             }));
-
-            window.__terrainPointsDebug = terrainPoints;
-
-            const diagnosticTriangleIndices = [2027, 2016, 2013];
-
-            const diagnosticTriangle = diagnosticTriangleIndices.map(index => ({
-                index,
-                point: terrainPoints[index] ?? null
-            }));
-
-            if (diagnosticTriangle.every(item => item.point)) {
-                const [a, b] = [
-                    diagnosticTriangle[0].point,
-                    diagnosticTriangle[1].point
-                ];
-
-                const midpoint = {
-                    easting: (a.easting + b.easting) / 2,
-                    northing: (a.northing + b.northing) / 2
-                };
-
-                const nearbyPoints = terrainPoints
-                    .map((p, index) => ({
-                        index,
-                        ...p,
-                        distanceM: Math.hypot(
-                            p.easting - midpoint.easting,
-                            p.northing - midpoint.northing
-                        )
-                    }))
-                    .filter(p => !diagnosticTriangleIndices.includes(p.index))
-                    .sort((a, b) => a.distanceM - b.distanceM)
-                    .slice(0, 10);
-
-                console.table(
-                    terrainPoints
-                        .map((p, index) => ({
-                            index,
-                            easting: p.easting,
-                            northing: p.northing,
-                            rl: p.rl,
-                            distanceM: Math.hypot(
-                                p.easting - midpoint.easting,
-                                p.northing - midpoint.northing
-                            )
-                        }))
-                        .filter(p => p.distanceM <= 25)
-                        .sort((a, b) => a.distanceM - b.distanceM)
-                );
-
-                console.info(
-                    "[Survey Terrain] Local triangle investigation:",
-                    {
-                        target: diagnosticTriangleIndices,
-                        nearbyIndices: nearbyPoints.map(p => p.index),
-                        note: "Keep current triangle acceptance unchanged."
-                    }
-                );
-
-                console.info("[Survey Terrain] Triangle midpoint neighbours:", {
-                    triangleIndices: diagnosticTriangleIndices,
-                    midpoint,
-                    nearbyPoints
-                });
-            } else {
-                console.warn(
-                    "[Survey Terrain] Diagnostic triangle indices were not found.",
-                    diagnosticTriangle
-                );
-            }
-
-
-
-            // Read-only nearest-neighbour spacing diagnostic.
-            // Does not modify triangulation or terrain acceptance.
-            const nearestNeighbourDistancesM = terrainPoints.map(
-                (point, index) => {
-                    let nearestDistance = Infinity;
-
-                    for (let j = 0; j < terrainPoints.length; j++) {
-                        if (j === index) continue;
-
-                        const other = terrainPoints[j];
-
-                        const distance = Math.hypot(
-                            point.easting - other.easting,
-                            point.northing - other.northing
-                        );
-
-                        if (distance > 0 && distance < nearestDistance) {
-                            nearestDistance = distance;
-                        }
-                    }
-
-                    return nearestDistance;
-                }
-            ).filter(Number.isFinite).sort((a, b) => a - b);
-
-            const percentile = (values, p) =>
-                values[Math.min(
-                    values.length - 1,
-                    Math.floor((values.length - 1) * p)
-                )];
-
-            console.info(
-                "[Survey Terrain] Nearest-neighbour spacing:",
-                {
-                    pointCount: nearestNeighbourDistancesM.length,
-                    p50M: Number(percentile(nearestNeighbourDistancesM, 0.50).toFixed(3)),
-                    p75M: Number(percentile(nearestNeighbourDistancesM, 0.75).toFixed(3)),
-                    p90M: Number(percentile(nearestNeighbourDistancesM, 0.90).toFixed(3)),
-                    p95M: Number(percentile(nearestNeighbourDistancesM, 0.95).toFixed(3)),
-                    p99M: Number(percentile(nearestNeighbourDistancesM, 0.99).toFixed(3))
-                }
-            );
-
 
             const triangulation = window.Delaunator.from(
                 terrainPoints,
                 p => (p.easting - centerE) * terrainScale,
                 p => (p.northing - centerN) * terrainScale
             );
+
+            window.__terrainGapPointSamples = [23, 3566, 3568].map(index => ({
+                index,
+                point: terrainPoints[index]
+                    ? {
+                        pointNo: terrainPoints[index].pointNo,
+                        northing: terrainPoints[index].northing,
+                        easting: terrainPoints[index].easting,
+                        rl: terrainPoints[index].rl
+                    }
+                    : null
+            }));
+
+            console.table(window.__terrainGapPointSamples);
+
+            // Estimate local survey spacing from Delaunay edges. The nearest
+            // neighbour of a point is connected by a Delaunay edge, so this
+            // avoids an all-pairs O(n^2) scan for large survey datasets.
+            const localSpacingM = new Array(terrainPoints.length).fill(Infinity);
+            const delaunayTriangles = triangulation.triangles;
+
+            for (let i = 0; i < delaunayTriangles.length; i += 3) {
+                const a = delaunayTriangles[i];
+                const b = delaunayTriangles[i + 1];
+                const c = delaunayTriangles[i + 2];
+
+                for (const [u, v] of [[a, b], [b, c], [c, a]]) {
+                    const pu = terrainPoints[u];
+                    const pv = terrainPoints[v];
+                    const distance = Math.hypot(
+                        pu.easting - pv.easting,
+                        pu.northing - pv.northing
+                    );
+
+                    if (distance > 0) {
+                        localSpacingM[u] = Math.min(localSpacingM[u], distance);
+                        localSpacingM[v] = Math.min(localSpacingM[v], distance);
+                    }
+                }
+            }
+
+            const sortedLocalSpacingM = localSpacingM
+                .filter(Number.isFinite)
+                .sort((a, b) => a - b);
+
+            const spacingPercentile = (p) => sortedLocalSpacingM.length
+                ? sortedLocalSpacingM[Math.min(
+                    sortedLocalSpacingM.length - 1,
+                    Math.floor((sortedLocalSpacingM.length - 1) * p)
+                )]
+                : Infinity;
+
+            const localSpacingP95M = spacingPercentile(0.95);
 
             const terrainGeometry = new THREE.BufferGeometry();
             const terrainPositions = [];
@@ -485,6 +423,13 @@
             // nearest-neighbour spacing (5.154 m).
             const MAX_TERRAIN_CIRCUMRADIUS_M = 15.5;
             const MIN_TWICE_AREA_M2 = 0.001;
+
+            // Safety gate: keep false until the candidate region report has been
+            // reviewed against this survey. No inferred facet is enabled by default.
+            const ENABLE_SELECTIVE_GAP_RECONSTRUCTION = true;
+            const MAX_RECONSTRUCTION_EDGE_TO_LOCAL_SPACING = 3.0;
+            const MAX_RECONSTRUCTION_EDGE_TO_P95_SPACING = 4.0;
+            const MAX_RECONSTRUCTION_REGION_SPAN_M = 30.0;
 
             let acceptedTriangles = 0;
             let rejectedTriangles = 0;
@@ -530,6 +475,238 @@
                 return (ab * bc * ca) / (2 * twiceArea);
             }
 
+            // Precompute the full Delaunay adjacency once. This enables a
+            // generalized, conservative facet-level exception without hard-coded
+            // triangle indices or changing the global circumradius threshold.
+            const triangleEvidence = [];
+            const terrainEdgeToTriangleIds = new Map();
+            const terrainEdgeKey = (u, v) => u < v ? `${u},${v}` : `${v},${u}`;
+
+            for (let i = 0; i < triangles.length; i += 3) {
+                const triangleId = i / 3;
+                const indices = [triangles[i], triangles[i + 1], triangles[i + 2]];
+                const [ia, ib, ic] = indices;
+                const [a, b, c] = [terrainPoints[ia], terrainPoints[ib], terrainPoints[ic]];
+                const sides = [
+                    Math.hypot(a.easting - b.easting, a.northing - b.northing),
+                    Math.hypot(b.easting - c.easting, b.northing - c.northing),
+                    Math.hypot(c.easting - a.easting, c.northing - a.northing)
+                ];
+                const twiceArea = Math.abs(
+                    (b.easting - a.easting) * (c.northing - a.northing) -
+                    (b.northing - a.northing) * (c.easting - a.easting)
+                );
+                const angleFromSides = (opposite, side1, side2) => {
+                    if (side1 <= 0 || side2 <= 0) return 0;
+                    const cosine = THREE.MathUtils.clamp(
+                        (side1 * side1 + side2 * side2 - opposite * opposite) /
+                        (2 * side1 * side2), -1, 1
+                    );
+                    return THREE.MathUtils.radToDeg(Math.acos(cosine));
+                };
+                const angles = [
+                    angleFromSides(sides[1], sides[0], sides[2]),
+                    angleFromSides(sides[2], sides[0], sides[1]),
+                    angleFromSides(sides[0], sides[1], sides[2])
+                ];
+                const vertexSpacings = indices.map(index => localSpacingM[index]);
+                const finiteSpacings = vertexSpacings.filter(Number.isFinite).sort((x, y) => x - y);
+                const medianVertexSpacingM = finiteSpacings.length
+                    ? finiteSpacings[Math.floor((finiteSpacings.length - 1) / 2)]
+                    : Infinity;
+                const rlValues = [a.rl, b.rl, c.rl];
+                const rlRangeM = Math.max(...rlValues) - Math.min(...rlValues);
+                const circumradiusM = horizontalCircumradius(a, b, c);
+                const edges = [[ia, ib], [ib, ic], [ic, ia]].map(
+                    ([u, v]) => terrainEdgeKey(u, v)
+                );
+
+                const evidence = {
+                    triangleId, indices, edges, sides,
+                    circumradiusM,
+                    maxEdgeM: Math.max(...sides),
+                    minAngleDegrees: Math.min(...angles),
+                    rlRangeM,
+                    medianVertexSpacingM,
+                    baselineAccepted: Number.isFinite(circumradiusM) &&
+                        circumradiusM <= MAX_TERRAIN_CIRCUMRADIUS_M,
+                    acceptedNeighbours: 0,
+                    hullEdgeCount: 0
+                };
+                triangleEvidence.push(evidence);
+
+                for (const edgeKey of edges) {
+                    if (!terrainEdgeToTriangleIds.has(edgeKey)) {
+                        terrainEdgeToTriangleIds.set(edgeKey, []);
+                    }
+                    terrainEdgeToTriangleIds.get(edgeKey).push(triangleId);
+                }
+            }
+
+            for (const evidence of triangleEvidence) {
+                for (const edgeKey of evidence.edges) {
+                    const adjacent = terrainEdgeToTriangleIds.get(edgeKey) || [];
+                    if (adjacent.length === 1) evidence.hullEdgeCount++;
+                    for (const adjacentId of adjacent) {
+                        if (adjacentId !== evidence.triangleId &&
+                            triangleEvidence[adjacentId]?.baselineAccepted) {
+                            evidence.acceptedNeighbours++;
+                        }
+                    }
+                }
+                // acceptedNeighbours counts shared edges; this is the intended
+                // support measure, not merely shared vertices.
+            }
+
+            // Diagnostic only: identify unusually long-edge triangles
+            // and group them by shared Delaunay edges.
+            // This does not change terrain acceptance.
+
+            const longestEdgesM = triangleEvidence
+                .map(evidence => evidence.maxEdgeM)
+                .filter(Number.isFinite)
+                .sort((a, b) => a - b);
+
+            const medianOf = values => {
+                if (!values.length) return Infinity;
+
+                const middle = Math.floor(values.length / 2);
+
+                return values.length % 2
+                    ? values[middle]
+                    : (values[middle - 1] + values[middle]) / 2;
+            };
+
+            const medianLongestEdgeM = medianOf(longestEdgesM);
+
+            // Experimental screening threshold only.
+            const diagnosticEdgeMultiplier = 2.5;
+            const diagnosticLongEdgeLimitM =
+                medianLongestEdgeM * diagnosticEdgeMultiplier;
+
+            const longEdgeTriangleIds = new Set();
+
+            for (const evidence of triangleEvidence) {
+                if (Number.isFinite(diagnosticLongEdgeLimitM) &&
+                    evidence.maxEdgeM > diagnosticLongEdgeLimitM) {
+                    longEdgeTriangleIds.add(evidence.triangleId);
+                }
+            }
+
+            // Group flagged triangles connected by shared edges.
+            const visitedLongEdgeTriangles = new Set();
+            const longEdgeComponents = [];
+
+            for (const seed of longEdgeTriangleIds) {
+                if (visitedLongEdgeTriangles.has(seed)) continue;
+
+                const stack = [seed];
+                const componentTriangleIds = [];
+
+                visitedLongEdgeTriangles.add(seed);
+
+                while (stack.length) {
+                    const currentId = stack.pop();
+                    componentTriangleIds.push(currentId);
+
+                    const evidence = triangleEvidence[currentId];
+
+                    for (const edgeKey of evidence.edges) {
+                        const adjacentIds =
+                            terrainEdgeToTriangleIds.get(edgeKey) || [];
+
+                        for (const adjacentId of adjacentIds) {
+                            if (!longEdgeTriangleIds.has(adjacentId) ||
+                                visitedLongEdgeTriangles.has(adjacentId)) {
+                                continue;
+                            }
+
+                            visitedLongEdgeTriangles.add(adjacentId);
+                            stack.push(adjacentId);
+                        }
+                    }
+                }
+
+                const componentTriangles = componentTriangleIds.map(
+                    id => triangleEvidence[id]
+                );
+
+                longEdgeComponents.push({
+                    triangleCount: componentTriangleIds.length,
+                    triangleIds: componentTriangleIds,
+                    hullTriangleCount: componentTriangles.filter(
+                        t => t.hullEdgeCount > 0
+                    ).length,
+                    interiorTriangleCount: componentTriangles.filter(
+                        t => t.hullEdgeCount === 0
+                    ).length,
+                    maximumEdgeM: Math.max(
+                        ...componentTriangles.map(t => t.maxEdgeM)
+                    )
+                });
+            }
+
+            const terrainEdgeGapDiagnostic = {
+                triangleCount: triangleEvidence.length,
+                medianLongestEdgeM: Number.isFinite(medianLongestEdgeM)
+                    ? Number(medianLongestEdgeM.toFixed(3))
+                    : null,
+                diagnosticEdgeMultiplier,
+                diagnosticLongEdgeLimitM:
+                    Number.isFinite(diagnosticLongEdgeLimitM)
+                        ? Number(diagnosticLongEdgeLimitM.toFixed(3))
+                        : null,
+                flaggedTriangleCount: longEdgeTriangleIds.size,
+                connectedComponentCount: longEdgeComponents.length,
+                components: longEdgeComponents.sort(
+                    (a, b) => b.triangleCount - a.triangleCount
+                )
+            };
+
+            window.__terrainEdgeGapDiagnostic =
+                terrainEdgeGapDiagnostic;
+            window.__terrainTriangleEvidence = triangleEvidence;
+
+
+
+            console.info(
+                "[Survey Terrain] Long-edge gap diagnostic:",
+                terrainEdgeGapDiagnostic
+            );
+
+            const reconstructionRule = {
+                enabled: ENABLE_SELECTIVE_GAP_RECONSTRUCTION,
+                maxCircumradiusM: 16.0,
+                maxEdgeM: 20.0,
+                minimumAngleDegrees: 15.0,
+                maxRlRangeM: 1.0,
+                minimumAcceptedNeighbours: 2,
+                maxEdgeToMedianVertexSpacing: MAX_RECONSTRUCTION_EDGE_TO_LOCAL_SPACING,
+                maxEdgeToGlobalP95Spacing: MAX_RECONSTRUCTION_EDGE_TO_P95_SPACING,
+                rejectConvexHullFacets: true
+            };
+
+            const selectiveReconstructionDecision = (evidence) => {
+                if (!ENABLE_SELECTIVE_GAP_RECONSTRUCTION) return false;
+                if (!Number.isFinite(evidence.circumradiusM) ||
+                    evidence.circumradiusM > reconstructionRule.maxCircumradiusM) return false;
+                if (evidence.maxEdgeM > reconstructionRule.maxEdgeM) return false;
+                if (evidence.minAngleDegrees < reconstructionRule.minimumAngleDegrees) return false;
+                if (evidence.rlRangeM > reconstructionRule.maxRlRangeM) return false;
+                if (evidence.acceptedNeighbours < reconstructionRule.minimumAcceptedNeighbours) return false;
+                if (reconstructionRule.rejectConvexHullFacets && evidence.hullEdgeCount > 0) return false;
+                if (!Number.isFinite(evidence.medianVertexSpacingM) ||
+                    evidence.maxEdgeM > reconstructionRule.maxEdgeToMedianVertexSpacing *
+                    evidence.medianVertexSpacingM) return false;
+                if (Number.isFinite(localSpacingP95M) &&
+                    evidence.maxEdgeM > reconstructionRule.maxEdgeToGlobalP95Spacing *
+                    localSpacingP95M) return false;
+                return !evidence.baselineAccepted;
+            };
+
+            let selectivelyRestoredTriangles = 0;
+            const selectivelyRestoredFacetReport = [];
+
             for (let i = 0; i < triangles.length; i += 3) {
                 const ia = triangles[i];
                 const ib = triangles[i + 1];
@@ -549,8 +726,13 @@
                     continue;
                 }
 
+                const facetEvidence = triangleEvidence[i / 3];
+                const selectivelyRestoreFacet =
+                    circumradius > MAX_TERRAIN_CIRCUMRADIUS_M &&
+                    selectiveReconstructionDecision(facetEvidence);
 
-                if (circumradius > MAX_TERRAIN_CIRCUMRADIUS_M) {
+                if (circumradius > MAX_TERRAIN_CIRCUMRADIUS_M &&
+                    !selectivelyRestoreFacet) {
                     rejectedTriangles++;
                     rejectedLargeCircumradius++;
 
@@ -574,15 +756,55 @@
                         (b.northing - a.northing) * (c.easting - a.easting)
                     );
 
+                    const sideLengths = [edgeAB, edgeBC, edgeCA];
+                    const angleFromSides = (opposite, side1, side2) => {
+                        if (side1 <= 0 || side2 <= 0) return 0;
+                        const cosine = THREE.MathUtils.clamp(
+                            (side1 * side1 + side2 * side2 - opposite * opposite) /
+                            (2 * side1 * side2),
+                            -1,
+                            1
+                        );
+                        return THREE.MathUtils.radToDeg(Math.acos(cosine));
+                    };
+                    const angles = [
+                        angleFromSides(edgeBC, edgeAB, edgeCA),
+                        angleFromSides(edgeCA, edgeAB, edgeBC),
+                        angleFromSides(edgeAB, edgeBC, edgeCA)
+                    ];
+                    const vertexLocalSpacingM = [ia, ib, ic].map(index =>
+                        Number.isFinite(localSpacingM[index])
+                            ? Number(localSpacingM[index].toFixed(3))
+                            : null
+                    );
+                    const vertexRlValues = [a.rl, b.rl, c.rl];
+                    const rlRangeM = Math.max(...vertexRlValues) - Math.min(...vertexRlValues);
+                    const minimumAngleDegrees = Math.min(...angles);
+                    const maxEdgeM = Math.max(...sideLengths);
+                    let supportClass = "review_with_feature_context";
+                    if (minimumAngleDegrees < 10) {
+                        supportClass = "sliver_or_near_collinear";
+                    } else if (maxEdgeM > 30) {
+                        supportClass = "long_span_unsupported_pending_evidence";
+                    } else if (maxEdgeM > 20 || rlRangeM > 1) {
+                        supportClass = "uncertain_local_support";
+                    }
+
                     rejectedTriangleDiagnostics.push({
                         indices: [ia, ib, ic],
                         circumradiusM: Number(circumradius.toFixed(3)),
                         edgeAB_M: Number(edgeAB.toFixed(3)),
                         edgeBC_M: Number(edgeBC.toFixed(3)),
                         edgeCA_M: Number(edgeCA.toFixed(3)),
-                        maxEdgeM: Number(Math.max(edgeAB, edgeBC, edgeCA).toFixed(3)),
+                        maxEdgeM: Number(maxEdgeM.toFixed(3)),
+                        minAngleDegrees: Number(minimumAngleDegrees.toFixed(3)),
                         horizontalAreaM2: Number((twiceArea / 2).toFixed(3)),
+                        rlRangeM: Number(rlRangeM.toFixed(3)),
+                        vertexLocalSpacingM,
+                        supportClass,
                         vertices: [a, b, c].map(p => ({
+                            pointNo: p.pointNo,
+                            code: p.code,
                             easting: p.easting,
                             northing: p.northing,
                             rl: p.rl
@@ -593,61 +815,30 @@
                         rejectedTriangleIndices.push(ia, ib, ic);
                     }
 
-                    // Diagnostic only: record a small sample of rejected triangles.
-                    if (window.__rejectedTriangleSamples === undefined) {
-                        window.__rejectedTriangleSamples = [];
-                    }
-
-                    if (window.__rejectedTriangleSamples.length < 30) {
-                        window.__rejectedTriangleSamples.push({
-                            triangleIndices: [ia, ib, ic],
-                            edgeLengthsM: [
-                                Math.hypot(a.easting - b.easting, a.northing - b.northing),
-                                Math.hypot(b.easting - c.easting, b.northing - c.northing),
-                                Math.hypot(c.easting - a.easting, c.northing - a.northing)
-                            ].map(d => Number(d.toFixed(3))),
-                            shapeQuality: (() => {
-                                const sideA = Math.hypot(
-                                    a.easting - b.easting,
-                                    a.northing - b.northing
-                                );
-                                const sideB = Math.hypot(
-                                    b.easting - c.easting,
-                                    b.northing - c.northing
-                                );
-                                const sideC = Math.hypot(
-                                    c.easting - a.easting,
-                                    c.northing - a.northing
-                                );
-
-                                const perimeter = sideA + sideB + sideC;
-
-                                return perimeter > 0
-                                    ? Number(
-                                        ((sideA * sideB * sideC) /
-                                            Math.pow(perimeter, 3)).toFixed(6)
-                                    )
-                                    : 0;
-                            })(),
-
-                            circumradiusM: Number(circumradius.toFixed(3)),
-                            horizontalAreaM2: Number((
-                                Math.abs(
-                                    (b.easting - a.easting) * (c.northing - a.northing) -
-                                    (b.northing - a.northing) * (c.easting - a.easting)
-                                ) / 2
-                            ).toFixed(3)),
-                            vertices: [a, b, c].map(p => ({
-                                easting: p.easting,
-                                northing: p.northing,
-                                rl: p.rl
-                            }))
-                        });
-                    }
-
                     continue;
                 }
 
+                if (selectivelyRestoreFacet) {
+                    selectivelyRestoredTriangles++;
+                    selectivelyRestoredFacetReport.push({
+                        triangleId: facetEvidence.triangleId,
+                        indices: facetEvidence.indices,
+                        circumradiusM: Number(facetEvidence.circumradiusM.toFixed(3)),
+                        maxEdgeM: Number(facetEvidence.maxEdgeM.toFixed(3)),
+                        minAngleDegrees: Number(facetEvidence.minAngleDegrees.toFixed(3)),
+                        rlRangeM: Number(facetEvidence.rlRangeM.toFixed(3)),
+                        medianVertexSpacingM: Number(facetEvidence.medianVertexSpacingM.toFixed(3)),
+                        acceptedNeighbours: facetEvidence.acceptedNeighbours,
+                        hullEdgeCount: facetEvidence.hullEdgeCount,
+                        vertices: [a, b, c].map(point => ({
+                            pointNo: point.pointNo,
+                            code: point.code,
+                            easting: point.easting,
+                            northing: point.northing,
+                            rl: point.rl
+                        }))
+                    });
+                }
 
                 const va = toWorld(a.easting, a.northing, a.rl);
                 const vb = toWorld(b.easting, b.northing, b.rl);
@@ -698,90 +889,6 @@
                 acceptedTriangles++;
             }
 
-
-            // Read-only candidate report.
-            // Does not change triangle acceptance or rendered terrain.
-            const acceptedVertexSet = new Set(acceptedTriangleIndices);
-
-            const TERRAIN_CANDIDATE_REPORT_LIMIT = 100;
-
-            const terrainCandidateReport = rejectedTriangleDiagnostics
-                .map(t => {
-                    const centroidE =
-                        (t.vertices[0].easting +
-                            t.vertices[1].easting +
-                            t.vertices[2].easting) / 3;
-
-                    const centroidN =
-                        (t.vertices[0].northing +
-                            t.vertices[1].northing +
-                            t.vertices[2].northing) / 3;
-
-                    let nearestAlignmentDistanceM = Infinity;
-
-                    for (const p of alignmentPoints) {
-                        const e = Number(p.Easting);
-                        const n = Number(p.Northing);
-
-                        if (!Number.isFinite(e) ||
-                            !Number.isFinite(n)) {
-                            continue;
-                        }
-
-                        const distance = Math.hypot(
-                            e - centroidE,
-                            n - centroidN
-                        );
-
-                        nearestAlignmentDistanceM = Math.min(
-                            nearestAlignmentDistanceM,
-                            distance
-                        );
-                    }
-
-                    const allVerticesTouchAcceptedMesh =
-                        t.indices.every(index =>
-                            acceptedVertexSet.has(index)
-                        );
-
-                    const rlValues = t.vertices.map(p => p.rl);
-
-                    return {
-                        indices: t.indices.join(", "),
-                        maxEdgeM: t.maxEdgeM,
-                        circumradiusM: t.circumradiusM,
-                        areaM2: t.horizontalAreaM2,
-                        rlRangeM: Number((
-                            Math.max(...rlValues) -
-                            Math.min(...rlValues)
-                        ).toFixed(3)),
-                        nearestAlignmentDistanceM:
-                            Number.isFinite(nearestAlignmentDistanceM)
-                                ? Number(nearestAlignmentDistanceM.toFixed(2))
-                                : null,
-                        allVerticesTouchAcceptedMesh
-                    };
-                })
-                .sort((a, b) =>
-                    a.nearestAlignmentDistanceM -
-                    b.nearestAlignmentDistanceM
-                );
-
-            console.info(
-                "[Survey Terrain] Read-only candidate report:",
-                {
-                    candidateCount: terrainCandidateReport.length,
-                    thresholdUnchangedM:
-                        MAX_TERRAIN_CIRCUMRADIUS_M,
-                    candidatesNearestAlignment:
-                        terrainCandidateReport.slice(
-                            0,
-                            TERRAIN_CANDIDATE_REPORT_LIMIT
-                        )
-                }
-            );
-
-
             // Read-only diagnostic: classify rejected triangle edges
             // against the accepted mesh boundary and interior.
             const diagnosticAcceptedEdgeCounts = new Map();
@@ -808,6 +915,277 @@
             window.__acceptedEdgeCounts = Object.fromEntries(
                 diagnosticAcceptedEdgeCounts
             );
+
+            // Generalized rejected-region analysis.
+            // Groups rejected triangles by shared edges and classifies each connected
+            // region using its boundary relationship to the accepted terrain mesh.
+            // This is intentionally diagnostic-only: it does not invent terrain.
+            const rejectedTriangleByEdge = new Map();
+
+            rejectedTriangleDiagnostics.forEach((triangle, triangleIndex) => {
+                const [a, b, c] = triangle.indices;
+                const edges = [
+                    makeEdgeKey(a, b),
+                    makeEdgeKey(b, c),
+                    makeEdgeKey(c, a)
+                ];
+
+                for (const edgeKey of edges) {
+                    if (!rejectedTriangleByEdge.has(edgeKey)) {
+                        rejectedTriangleByEdge.set(edgeKey, []);
+                    }
+                    rejectedTriangleByEdge.get(edgeKey).push(triangleIndex);
+                }
+            });
+
+            const rejectedNeighbours = rejectedTriangleDiagnostics.map(() => new Set());
+
+            for (const adjacentTriangles of rejectedTriangleByEdge.values()) {
+                for (let i = 0; i < adjacentTriangles.length; i++) {
+                    for (let j = i + 1; j < adjacentTriangles.length; j++) {
+                        rejectedNeighbours[adjacentTriangles[i]].add(adjacentTriangles[j]);
+                        rejectedNeighbours[adjacentTriangles[j]].add(adjacentTriangles[i]);
+                    }
+                }
+            }
+
+            const visitedRejectedTriangles = new Set();
+            const rejectedRegions = [];
+
+            for (let seed = 0; seed < rejectedTriangleDiagnostics.length; seed++) {
+                if (visitedRejectedTriangles.has(seed)) continue;
+
+                const stack = [seed];
+                const regionTriangleIds = [];
+                visitedRejectedTriangles.add(seed);
+
+                while (stack.length) {
+                    const current = stack.pop();
+                    regionTriangleIds.push(current);
+
+                    for (const neighbour of rejectedNeighbours[current]) {
+                        if (visitedRejectedTriangles.has(neighbour)) continue;
+                        visitedRejectedTriangles.add(neighbour);
+                        stack.push(neighbour);
+                    }
+                }
+
+                const regionEdgeCounts = new Map();
+                const regionVertexSet = new Set();
+                let areaM2 = 0;
+                let maxTriangleEdgeM = 0;
+                let minE = Infinity;
+                let maxE = -Infinity;
+                let minN = Infinity;
+                let maxN = -Infinity;
+                let minRL = Infinity;
+                let maxRL = -Infinity;
+                let maximumLocalSpacingRatio = 0;
+                let allEdgesLocallySupported = true;
+
+                for (const triangleId of regionTriangleIds) {
+                    const triangle = rejectedTriangleDiagnostics[triangleId];
+                    const [a, b, c] = triangle.indices;
+                    areaM2 += triangle.horizontalAreaM2;
+                    maxTriangleEdgeM = Math.max(maxTriangleEdgeM, triangle.maxEdgeM);
+
+                    for (const vertexIndex of triangle.indices) {
+                        regionVertexSet.add(vertexIndex);
+                        const point = terrainPoints[vertexIndex];
+                        minE = Math.min(minE, point.easting);
+                        maxE = Math.max(maxE, point.easting);
+                        minN = Math.min(minN, point.northing);
+                        maxN = Math.max(maxN, point.northing);
+                        minRL = Math.min(minRL, point.rl);
+                        maxRL = Math.max(maxRL, point.rl);
+                    }
+
+                    for (const [u, v] of [[a, b], [b, c], [c, a]]) {
+                        const edgeKey = makeEdgeKey(u, v);
+                        regionEdgeCounts.set(
+                            edgeKey,
+                            (regionEdgeCounts.get(edgeKey) || 0) + 1
+                        );
+
+                        const pu = terrainPoints[u];
+                        const pv = terrainPoints[v];
+                        const edgeLengthM = Math.hypot(
+                            pu.easting - pv.easting,
+                            pu.northing - pv.northing
+                        );
+                        const endpointSupportM = Math.max(
+                            localSpacingM[u],
+                            localSpacingM[v]
+                        );
+                        const localRatio = endpointSupportM > 0 &&
+                            Number.isFinite(endpointSupportM)
+                            ? edgeLengthM / endpointSupportM
+                            : Infinity;
+
+                        maximumLocalSpacingRatio = Math.max(
+                            maximumLocalSpacingRatio,
+                            localRatio
+                        );
+
+                        if (
+                            !Number.isFinite(localRatio) ||
+                            localRatio > MAX_RECONSTRUCTION_EDGE_TO_LOCAL_SPACING ||
+                            edgeLengthM > MAX_RECONSTRUCTION_EDGE_TO_P95_SPACING * localSpacingP95M
+                        ) {
+                            allEdgesLocallySupported = false;
+                        }
+                    }
+                }
+
+                const regionBoundaryEdges = [...regionEdgeCounts.entries()]
+                    .filter(([, count]) => count === 1)
+                    .map(([key]) => key);
+
+                const boundaryAcceptedCounts = regionBoundaryEdges.map(
+                    edgeKey => diagnosticAcceptedEdgeCounts.get(edgeKey) || 0
+                );
+
+                const boundaryEdgesAllTouchAcceptedMesh =
+                    regionBoundaryEdges.length > 0 &&
+                    boundaryAcceptedCounts.every(count => count === 1);
+
+                const hasUnsupportedOuterBoundary =
+                    boundaryAcceptedCounts.some(count => count === 0);
+
+                const spanE = maxE - minE;
+                const spanN = maxN - minN;
+                const spanM = Math.hypot(spanE, spanN);
+
+                let classification;
+                let reason;
+
+                if (boundaryEdgesAllTouchAcceptedMesh) {
+                    classification = "enclosed_candidate_gap";
+                    reason = "Rejected region is enclosed by accepted-mesh boundary edges; survey support must be evaluated before filling.";
+                } else if (hasUnsupportedOuterBoundary) {
+                    classification = "open_or_outer_rejected_region";
+                    reason = "At least one region boundary edge has no accepted neighbouring triangle; this may be an outer coverage boundary or an open gap.";
+                } else {
+                    classification = "topologically_ambiguous_region";
+                    reason = "Boundary adjacency is not sufficient to establish a safely enclosed gap.";
+                }
+
+                rejectedRegions.push({
+                    regionId: rejectedRegions.length + 1,
+                    triangleIndices: regionTriangleIds,
+                    classification,
+                    reason,
+                    triangleCount: regionTriangleIds.length,
+                    vertexCount: regionVertexSet.size,
+                    boundaryEdgeCount: regionBoundaryEdges.length,
+                    boundaryEdgesAllTouchAcceptedMesh,
+                    areaM2: Number(areaM2.toFixed(3)),
+                    spanEastingM: Number(spanE.toFixed(3)),
+                    spanNorthingM: Number(spanN.toFixed(3)),
+                    diagonalSpanM: Number(spanM.toFixed(3)),
+                    maximumTriangleEdgeM: Number(maxTriangleEdgeM.toFixed(3)),
+                    elevationRangeM: Number((maxRL - minRL).toFixed(3)),
+                    maximumEdgeToLocalSpacingRatio: Number(maximumLocalSpacingRatio.toFixed(3)),
+                    allEdgesLocallySupported,
+                    bounds: {
+                        minEasting: Number(minE.toFixed(3)),
+                        maxEasting: Number(maxE.toFixed(3)),
+                        minNorthing: Number(minN.toFixed(3)),
+                        maxNorthing: Number(maxN.toFixed(3))
+                    }
+                });
+            }
+
+            rejectedRegions.sort((a, b) => b.areaM2 - a.areaM2);
+            window.__rejectedTerrainRegions = rejectedRegions;
+
+            const eligibleReconstructionRegionIds = new Set(
+                rejectedRegions
+                    .filter(region =>
+                        region.classification === "enclosed_candidate_gap" &&
+                        region.allEdgesLocallySupported &&
+                        region.diagonalSpanM <= MAX_RECONSTRUCTION_REGION_SPAN_M
+                    )
+                    .map(region => region.regionId)
+            );
+
+            const reconstructedRejectedTriangleIds = new Set();
+            let selectivelyReconstructedTriangles = 0;
+
+            if (ENABLE_SELECTIVE_GAP_RECONSTRUCTION && eligibleReconstructionRegionIds.size) {
+                for (const region of rejectedRegions) {
+                    if (!eligibleReconstructionRegionIds.has(region.regionId)) continue;
+
+                    // Rebuild region membership by matching its triangle indices
+                    // through the connected-component traversal order.
+                    // Region membership is retained below during analysis.
+                    const regionTriangles = region.triangleIndices || [];
+                    for (const triangleId of regionTriangles) {
+                        const triangle = rejectedTriangleDiagnostics[triangleId];
+                        if (!triangle || reconstructedRejectedTriangleIds.has(triangleId)) continue;
+
+                        const [ia, ib, ic] = triangle.indices;
+                        const a = terrainPoints[ia];
+                        const b = terrainPoints[ib];
+                        const c = terrainPoints[ic];
+                        const va = toWorld(a.easting, a.northing, a.rl);
+                        const vb = toWorld(b.easting, b.northing, b.rl);
+                        const vc = toWorld(c.easting, c.northing, c.rl);
+                        const ab = new THREE.Vector3(vb.x - va.x, vb.y - va.y, vb.z - va.z);
+                        const ac = new THREE.Vector3(vc.x - va.x, vc.y - va.y, vc.z - va.z);
+                        const normal = new THREE.Vector3().crossVectors(ab, ac).normalize();
+                        const slopeDegrees = THREE.MathUtils.radToDeg(
+                            Math.acos(THREE.MathUtils.clamp(Math.abs(normal.y), 0, 1))
+                        );
+                        const triangleColor = slopeDegrees >= FALL_SLOPE_THRESHOLD
+                            ? fallColor
+                            : naturalColor;
+
+                        for (const point of [va, vb, vc]) {
+                            terrainPositions.push(point.x, point.y, point.z);
+                            terrainColors.push(triangleColor.r, triangleColor.g, triangleColor.b);
+                        }
+
+                        acceptedTriangleIndices.push(ia, ib, ic);
+                        reconstructedRejectedTriangleIds.add(triangleId);
+                        selectivelyReconstructedTriangles++;
+                        acceptedTriangles++;
+                        rejectedTriangles--;
+                        rejectedLargeCircumradius--;
+                    }
+                }
+            }
+
+            window.__terrainReconstructionAssessment = {
+                enabled: ENABLE_SELECTIVE_GAP_RECONSTRUCTION,
+                localSpacingP95M: Number.isFinite(localSpacingP95M)
+                    ? Number(localSpacingP95M.toFixed(3))
+                    : null,
+                eligibleRegionCount: eligibleReconstructionRegionIds.size,
+                selectivelyReconstructedTriangles,
+                eligibleRegionIds: [...eligibleReconstructionRegionIds],
+                note: "Reconstruction uses measured vertices only. The safety gate is disabled by default pending review of this survey's region report."
+            };
+
+            console.info("[Survey Terrain] Connected rejected-region assessment:", {
+                regionCount: rejectedRegions.length,
+                enclosedCandidateGaps: rejectedRegions.filter(
+                    region => region.classification === "enclosed_candidate_gap"
+                ).length,
+                openOrOuterRegions: rejectedRegions.filter(
+                    region => region.classification === "open_or_outer_rejected_region"
+                ).length,
+                ambiguousRegions: rejectedRegions.filter(
+                    region => region.classification === "topologically_ambiguous_region"
+                ).length,
+                eligibleReconstructionRegions: eligibleReconstructionRegionIds.size,
+                selectivelyReconstructedTriangles,
+                localSpacingP95M: Number.isFinite(localSpacingP95M)
+                    ? Number(localSpacingP95M.toFixed(3))
+                    : null,
+                largestRegions: rejectedRegions.slice(0, 20),
+                note: "No region is reconstructed unless enclosed, locally supported, and within the configured span; feature remains disabled by default."
+            });
 
             const rejectedEdgeAdjacencyReport =
                 rejectedTriangleDiagnostics.map(t => {
@@ -904,7 +1282,14 @@
                 }
             );
 
-
+            window.__selectivelyRestoredTerrainFacets = selectivelyRestoredFacetReport;
+            console.info("[Survey Terrain] Selective reconstruction gate:", {
+                enabled: ENABLE_SELECTIVE_GAP_RECONSTRUCTION,
+                rule: reconstructionRule,
+                restoredFacetCount: selectivelyRestoredTriangles,
+                restoredFacets: selectivelyRestoredFacetReport,
+                note: "Only non-hull facets passing all geometric/local-support gates are restored. This is a conservative visualization heuristic, not an authoritative surveyed surface."
+            });
 
             console.info("[Survey Terrain] TIN support filtering:", {
                 inputTriangles: triangles.length / 3,
@@ -912,18 +1297,29 @@
                 rejectedTriangles,
                 maximumCircumradiusM: MAX_TERRAIN_CIRCUMRADIUS_M,
                 rejectedDegenerate,
-                rejectedLargeCircumradius
+                rejectedLargeCircumradius,
+                selectivelyRestoredTriangles
             });
 
-            console.info(
-                "[Survey Terrain] Full rejected-triangle diagnostic:",
-                {
-                    count: rejectedTriangleDiagnostics.length,
-                    triangles: rejectedTriangleDiagnostics
-                }
-            );
-
             window.__rejectedTriangleDiagnostics = rejectedTriangleDiagnostics;
+            window.__rejectedFacetSupportReport = {
+                total: rejectedTriangleDiagnostics.length,
+                byClass: rejectedTriangleDiagnostics.reduce((counts, triangle) => {
+                    counts[triangle.supportClass] = (counts[triangle.supportClass] || 0) + 1;
+                    return counts;
+                }, {}),
+                highestPriorityReview: rejectedTriangleDiagnostics
+                    .filter(triangle => triangle.supportClass === "review_with_feature_context")
+                    .sort((a, b) => a.circumradiusM - b.circumradiusM)
+                    .slice(0, 100),
+                note: "Diagnostic triage only; no rejected facet is accepted solely by this classification."
+            };
+
+            console.info("[Survey Terrain] Rejected-facet support triage:", {
+                count: rejectedTriangleDiagnostics.length,
+                byClass: window.__rejectedFacetSupportReport.byClass,
+                note: window.__rejectedFacetSupportReport.note
+            });
 
             terrainGeometry.setAttribute(
                 "position",
@@ -954,7 +1350,6 @@
             // perimeter for viewing. Other loops remain visible as secondary
             // coverage edges (typically internal holes or disconnected patches).
             // This is a visual classification only, not an engineering boundary.
-
 
             for (let i = 0; i < acceptedTriangleIndices.length; i += 3) {
                 const triangle = [
@@ -1114,6 +1509,13 @@
                     const ia = rejectedTriangleIndices[i];
                     const ib = rejectedTriangleIndices[i + 1];
                     const ic = rejectedTriangleIndices[i + 2];
+                    const rejectedTriangleId = rejectedTriangleDiagnostics.findIndex(
+                        triangle => triangle.indices[0] === ia &&
+                            triangle.indices[1] === ib &&
+                            triangle.indices[2] === ic
+                    );
+
+                    if (reconstructedRejectedTriangleIds.has(rejectedTriangleId)) continue;
 
                     const a = terrainPoints[ia];
                     const b = terrainPoints[ib];

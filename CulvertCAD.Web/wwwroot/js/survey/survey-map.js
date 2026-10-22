@@ -1,6 +1,9 @@
 ﻿(() => {
     "use strict";
 
+    // -------------------------------------------------------------------------
+    // 1. DOM references and required library checks
+    // -------------------------------------------------------------------------
     const canvas = document.getElementById("survey-map-canvas");
     const leafletContainer = document.getElementById("survey-leaflet-map");
     const status = document.getElementById("survey-map-status");
@@ -59,6 +62,9 @@
             };
         }
 
+        // ---------------------------------------------------------------------
+        // 2. Load survey, alignment, and culvert data
+        // ---------------------------------------------------------------------
         const alignmentPoints = readJson("survey-map-alignment-data") || [];
         const culverts = readJson("survey-map-culverts-data") || [];
 
@@ -67,6 +73,9 @@
             return;
         }
 
+        // ---------------------------------------------------------------------
+        // 3. Initialise the Three.js scene, camera, renderer, and lighting
+        // ---------------------------------------------------------------------
         const THREE = window.THREE;
 
         const scene = new THREE.Scene();
@@ -195,6 +204,9 @@
             (Number(northing) - centerN) * terrainScale
         );
 
+        // ---------------------------------------------------------------------
+        // 4. Reference grid and datum plane
+        // ---------------------------------------------------------------------
         // Simple rectangular grid below the survey terrain.
         const gridWidth = Math.max(maxE - minE, 10);
         const gridLength = Math.max(maxN - minN, 10);
@@ -337,10 +349,12 @@
             sizeAttenuation: true
         });
 
+        // ---------------------------------------------------------------------
+        // 5. Build measured terrain and assess triangulation gaps
+        // ---------------------------------------------------------------------
         // Terrain surface generated from actual surveyed Easting, Northing and RL.
 
         if (window.Delaunator && validSurvey.length >= 3) {
-
             const terrainPoints = validSurvey.map(p => ({
                 easting: Number(p.Easting),
                 northing: Number(p.Northing),
@@ -354,6 +368,20 @@
                 p => (p.easting - centerE) * terrainScale,
                 p => (p.northing - centerN) * terrainScale
             );
+
+            window.__terrainGapPointSamples = [23, 3566, 3568].map(index => ({
+                index,
+                point: terrainPoints[index]
+                    ? {
+                        pointNo: terrainPoints[index].pointNo,
+                        northing: terrainPoints[index].northing,
+                        easting: terrainPoints[index].easting,
+                        rl: terrainPoints[index].rl
+                    }
+                    : null
+            }));
+
+            console.table(window.__terrainGapPointSamples);
 
             // Estimate local survey spacing from Delaunay edges. The nearest
             // neighbour of a point is connected by a Delaunay edge, so this
@@ -545,6 +573,122 @@
                 // support measure, not merely shared vertices.
             }
 
+            // Diagnostic only: identify unusually long-edge triangles
+            // and group them by shared Delaunay edges.
+            // This does not change terrain acceptance.
+
+            const longestEdgesM = triangleEvidence
+                .map(evidence => evidence.maxEdgeM)
+                .filter(Number.isFinite)
+                .sort((a, b) => a - b);
+
+            const medianOf = values => {
+                if (!values.length) return Infinity;
+
+                const middle = Math.floor(values.length / 2);
+
+                return values.length % 2
+                    ? values[middle]
+                    : (values[middle - 1] + values[middle]) / 2;
+            };
+
+            const medianLongestEdgeM = medianOf(longestEdgesM);
+
+            // Experimental screening threshold only.
+            const diagnosticEdgeMultiplier = 2.5;
+            const diagnosticLongEdgeLimitM =
+                medianLongestEdgeM * diagnosticEdgeMultiplier;
+
+            const longEdgeTriangleIds = new Set();
+
+            for (const evidence of triangleEvidence) {
+                if (Number.isFinite(diagnosticLongEdgeLimitM) &&
+                    evidence.maxEdgeM > diagnosticLongEdgeLimitM) {
+                    longEdgeTriangleIds.add(evidence.triangleId);
+                }
+            }
+
+            // Group flagged triangles connected by shared edges.
+            const visitedLongEdgeTriangles = new Set();
+            const longEdgeComponents = [];
+
+            for (const seed of longEdgeTriangleIds) {
+                if (visitedLongEdgeTriangles.has(seed)) continue;
+
+                const stack = [seed];
+                const componentTriangleIds = [];
+
+                visitedLongEdgeTriangles.add(seed);
+
+                while (stack.length) {
+                    const currentId = stack.pop();
+                    componentTriangleIds.push(currentId);
+
+                    const evidence = triangleEvidence[currentId];
+
+                    for (const edgeKey of evidence.edges) {
+                        const adjacentIds =
+                            terrainEdgeToTriangleIds.get(edgeKey) || [];
+
+                        for (const adjacentId of adjacentIds) {
+                            if (!longEdgeTriangleIds.has(adjacentId) ||
+                                visitedLongEdgeTriangles.has(adjacentId)) {
+                                continue;
+                            }
+
+                            visitedLongEdgeTriangles.add(adjacentId);
+                            stack.push(adjacentId);
+                        }
+                    }
+                }
+
+                const componentTriangles = componentTriangleIds.map(
+                    id => triangleEvidence[id]
+                );
+
+                longEdgeComponents.push({
+                    triangleCount: componentTriangleIds.length,
+                    triangleIds: componentTriangleIds,
+                    hullTriangleCount: componentTriangles.filter(
+                        t => t.hullEdgeCount > 0
+                    ).length,
+                    interiorTriangleCount: componentTriangles.filter(
+                        t => t.hullEdgeCount === 0
+                    ).length,
+                    maximumEdgeM: Math.max(
+                        ...componentTriangles.map(t => t.maxEdgeM)
+                    )
+                });
+            }
+
+            const terrainEdgeGapDiagnostic = {
+                triangleCount: triangleEvidence.length,
+                medianLongestEdgeM: Number.isFinite(medianLongestEdgeM)
+                    ? Number(medianLongestEdgeM.toFixed(3))
+                    : null,
+                diagnosticEdgeMultiplier,
+                diagnosticLongEdgeLimitM:
+                    Number.isFinite(diagnosticLongEdgeLimitM)
+                        ? Number(diagnosticLongEdgeLimitM.toFixed(3))
+                        : null,
+                flaggedTriangleCount: longEdgeTriangleIds.size,
+                connectedComponentCount: longEdgeComponents.length,
+                components: longEdgeComponents.sort(
+                    (a, b) => b.triangleCount - a.triangleCount
+                )
+            };
+
+            window.__terrainEdgeGapDiagnostic =
+                terrainEdgeGapDiagnostic;
+            window.__terrainTriangleEvidence = triangleEvidence;
+
+
+
+            console.info(
+                "[Survey Terrain] Long-edge gap diagnostic:",
+                terrainEdgeGapDiagnostic
+            );
+
             const reconstructionRule = {
                 enabled: ENABLE_SELECTIVE_GAP_RECONSTRUCTION,
                 maxCircumradiusM: 16.0,
@@ -596,7 +740,6 @@
                     rejectedDegenerate++;
                     continue;
                 }
-
 
                 const facetEvidence = triangleEvidence[i / 3];
                 const selectivelyRestoreFacet =
@@ -663,6 +806,7 @@
                     }
 
                     rejectedTriangleDiagnostics.push({
+                        triangleId: i / 3,
                         indices: [ia, ib, ic],
                         circumradiusM: Number(circumradius.toFixed(3)),
                         edgeAB_M: Number(edgeAB.toFixed(3)),
@@ -687,10 +831,8 @@
                         rejectedTriangleIndices.push(ia, ib, ic);
                     }
 
-
                     continue;
                 }
-
 
                 if (selectivelyRestoreFacet) {
                     selectivelyRestoredTriangles++;
@@ -762,7 +904,6 @@
                 acceptedTriangleIndices.push(ia, ib, ic);
                 acceptedTriangles++;
             }
-
 
             // Read-only diagnostic: classify rejected triangle edges
             // against the accepted mesh boundary and interior.
@@ -1157,8 +1298,6 @@
                 }
             );
 
-
-
             window.__selectivelyRestoredTerrainFacets = selectivelyRestoredFacetReport;
             console.info("[Survey Terrain] Selective reconstruction gate:", {
                 enabled: ENABLE_SELECTIVE_GAP_RECONSTRUCTION,
@@ -1221,13 +1360,149 @@
                 terrainMaterial
             );
 
+
+
+            // AMBER TERRAIN — FULL VISUAL FILL
+            // All rejected Delaunay triangles are displayed as provisional terrain.
+            // This does not change the authoritative green terrain or calculations.
+            const provisionalTerrainPositions = [];
+            const PROVISIONAL_TERRAIN_COLOR = new THREE.Color(0xD9A441);
+
+            let provisionalVisualTriangleCount = 0;
+            let skippedInvalid = 0;
+
+            for (const candidate of rejectedTriangleDiagnostics) {
+                const [ia, ib, ic] = candidate.indices;
+
+                const a = terrainPoints[ia];
+                const b = terrainPoints[ib];
+                const c = terrainPoints[ic];
+
+                if (!a || !b || !c) {
+                    skippedInvalid++;
+                    continue;
+                }
+
+                const va = toWorld(a.easting, a.northing, a.rl);
+                const vb = toWorld(b.easting, b.northing, b.rl);
+                const vc = toWorld(c.easting, c.northing, c.rl);
+
+                for (const point of [va, vb, vc]) {
+                    provisionalTerrainPositions.push(
+                        point.x, point.y, point.z
+                    );
+                }
+
+                provisionalVisualTriangleCount++;
+            }
+
+            let provisionalTerrainMesh = null;
+
+            if (provisionalTerrainPositions.length > 0) {
+                const provisionalGeometry = new THREE.BufferGeometry();
+
+                provisionalGeometry.setAttribute(
+                    "position",
+                    new THREE.Float32BufferAttribute(
+                        provisionalTerrainPositions, 3
+                    )
+                );
+
+                provisionalGeometry.computeVertexNormals();
+
+                const provisionalMaterial = new THREE.MeshBasicMaterial({
+                    color: 0xD9D2B8,       // pale sand colour
+                    side: THREE.DoubleSide,
+                    transparent: true,
+                    opacity: 0.25,         // Keeps underlying details visible
+                    depthWrite: false,
+                    polygonOffset: true,
+                    polygonOffsetFactor: -1,
+                    polygonOffsetUnits: -1
+                });
+
+                provisionalTerrainMesh = new THREE.Mesh(
+                    provisionalGeometry,
+                    provisionalMaterial
+                );
+
+                provisionalTerrainMesh.name = "provisional-visual-terrain";
+                provisionalTerrainMesh.renderOrder = 1;
+            }
+
+            // CYAN TERRAIN OVERLAY — VISUAL ONLY
+            // Shows rejected Delaunay facets as a separate cyan surface.
+            // It uses measured survey vertices only and is not authoritative terrain.
+            const cyanTerrainPositions = [];
+
+            for (const candidate of rejectedTriangleDiagnostics) {
+                if (reconstructedRejectedTriangleIds.has(candidate.triangleId)) continue;
+
+                const [ia, ib, ic] = candidate.indices;
+                const a = terrainPoints[ia];
+                const b = terrainPoints[ib];
+                const c = terrainPoints[ic];
+
+                if (!a || !b || !c) continue;
+
+                for (const point of [a, b, c]) {
+                    const worldPoint = toWorld(point.easting, point.northing, point.rl);
+                    cyanTerrainPositions.push(worldPoint.x, worldPoint.y, worldPoint.z);
+                }
+            }
+
+            let cyanTerrainMesh = null;
+
+            if (cyanTerrainPositions.length > 0) {
+                const cyanTerrainGeometry = new THREE.BufferGeometry();
+                cyanTerrainGeometry.setAttribute(
+                    "position",
+                    new THREE.Float32BufferAttribute(cyanTerrainPositions, 3)
+                );
+                cyanTerrainGeometry.computeVertexNormals();
+
+                const cyanTerrainMaterial = new THREE.MeshBasicMaterial({
+                    color: 0x00ffff,
+                    side: THREE.DoubleSide,
+                    transparent: true,
+                    opacity: 0.22,
+                    depthWrite: false,
+                    polygonOffset: true,
+                    polygonOffsetFactor: -2,
+                    polygonOffsetUnits: -2
+                });
+
+                cyanTerrainMesh = new THREE.Mesh(cyanTerrainGeometry, cyanTerrainMaterial);
+                cyanTerrainMesh.name = "cyan-visual-terrain-overlay";
+                cyanTerrainMesh.renderOrder = 2;
+                cyanTerrainMesh.visible = true;
+            }
+
+            window.__provisionalVisualTerrain = {
+                triangleCount: provisionalVisualTriangleCount,
+                vertexCount: provisionalTerrainPositions.length / 3,
+                skippedInvalid,
+                meshCreated: !!provisionalTerrainMesh,
+                meshVisible: provisionalTerrainMesh?.visible ?? false,
+                engineeringUse: false,
+                note: "All rejected Delaunay facets are rendered as provisional amber visual terrain only."
+            };
+
+            console.info(
+                "[Survey Terrain] Full amber visual fill:",
+                window.__provisionalVisualTerrain
+            );
+
+
+            // -----------------------------------------------------------------
+            // 6. Terrain coverage boundaries and visibility controls
+            // -----------------------------------------------------------------
             // Visualization-only coverage guide. Boundary edges are derived from
             // accepted triangles only; this does not add terrain or elevations.
             // The largest closed boundary loop is highlighted as the primary
             // perimeter for viewing. Other loops remain visible as secondary
             // coverage edges (typically internal holes or disconnected patches).
             // This is a visual classification only, not an engineering boundary.
-
 
             for (let i = 0; i < acceptedTriangleIndices.length; i += 3) {
                 const triangle = [
@@ -1360,7 +1635,7 @@
 
             const primaryPerimeterGuide = makeBoundaryLine(
                 primaryPerimeterPositions,
-                0xff8c42,
+                0xff0000,
                 1.0,
                 "Primary terrain coverage perimeter (visual estimate)",
                 11
@@ -1376,6 +1651,53 @@
             const terrainLayer = new THREE.Group();
             terrainLayer.name = "Measured survey terrain and coverage guides";
             terrainLayer.add(terrainMesh);
+
+            if (provisionalTerrainMesh) {
+                terrainLayer.add(provisionalTerrainMesh);
+            }
+
+            if (provisionalTerrainMesh) {
+                terrainLayer.add(provisionalTerrainMesh);
+            }
+            if (provisionalTerrainMesh) {
+                // Share the Terrain toggle with accepted terrain.
+                terrainLayer.add(provisionalTerrainMesh);
+                provisionalTerrainMesh.visible = true;
+                provisionalTerrainMesh.geometry.computeBoundingBox();
+                provisionalTerrainMesh.geometry.computeBoundingSphere();
+                window.__provisionalVisualTerrain.meshVisible = provisionalTerrainMesh.visible;
+                window.__provisionalVisualTerrain.boundingBox = provisionalTerrainMesh.geometry.boundingBox
+                    ? {
+                        min: provisionalTerrainMesh.geometry.boundingBox.min.toArray(),
+                        max: provisionalTerrainMesh.geometry.boundingBox.max.toArray()
+                    }
+                    : null;
+            }
+
+            // Independent cyan terrain visibility control; visible by default.
+            if (cyanTerrainMesh) {
+                terrainLayer.add(cyanTerrainMesh);
+
+                const cyanTerrainToggle = document.getElementById(
+                    "survey-map-toggle-cyan-terrain"
+                );
+
+                cyanTerrainToggle?.setAttribute("aria-pressed", "true");
+                if (cyanTerrainToggle) {
+                    cyanTerrainToggle.innerHTML =
+                        '<i class="bi bi-layers"></i> Cyan Terrain: On';
+                }
+
+                cyanTerrainToggle?.addEventListener("click", () => {
+                    cyanTerrainMesh.visible = !cyanTerrainMesh.visible;
+                    const isVisible = cyanTerrainMesh.visible;
+
+                    cyanTerrainToggle.setAttribute("aria-pressed", String(isVisible));
+                    cyanTerrainToggle.innerHTML = isVisible
+                        ? '<i class="bi bi-layers"></i> Cyan Terrain: On'
+                        : '<i class="bi bi-layers"></i> Cyan Terrain: Off';
+                });
+            }
 
             // Diagnostic overlay: edges of triangles rejected by the
             // maximum circumradius filter. Does not add terrain surfaces.
@@ -1435,7 +1757,28 @@
                     rejectedMaterial
                 );
 
+                // Cyan diagnostic lines: available for toggling, but off initially.
+                rejectedLines.visible = false;
+
                 rejectedLines.name = "RejectedTriangleDiagnostic";
+
+                // Cyan rejected-triangle diagnostic visibility control.
+                const rejectedLinesToggle = document.getElementById(
+                    "survey-map-toggle-rejected-lines"
+                );
+
+                rejectedLinesToggle?.addEventListener("click", () => {
+                    rejectedLines.visible = !rejectedLines.visible;
+
+                    const isVisible = rejectedLines.visible;
+
+                    rejectedLinesToggle.setAttribute("aria-pressed", String(isVisible));
+                    rejectedLinesToggle.innerHTML = isVisible
+                        ? '<i class="bi bi-diagram-3"></i> Cyan Lines: On'
+                        : '<i class="bi bi-diagram-3"></i> Cyan Lines: Off';
+                });
+
+
                 rejectedLines.renderOrder = 999;
 
                 terrainLayer.add(rejectedLines);
@@ -1456,7 +1799,7 @@
                 secondaryCoverageSegments: secondaryCoveragePositions.length / 6,
                 closedBoundaryLoops: boundaryLoops.length,
                 primaryLoopAreaM2: boundaryLoops.length ? boundaryLoops[0].area : null,
-                meaning: "Orange is the largest closed accepted-mesh boundary loop (visual estimate); yellow shows other boundary edges/internal gaps. No terrain is extrapolated."
+                meaning: "Red is the largest closed accepted-mesh boundary loop (visual estimate); yellow shows other boundary edges/internal gaps. No terrain is extrapolated."
             });
 
             // Terrain layer on/off control.
@@ -1476,6 +1819,9 @@
             });
         }
 
+        // ---------------------------------------------------------------------
+        // 7. Survey points and road alignment
+        // ---------------------------------------------------------------------
         // Keep surveyed points visible above the terrain.
         const surveyLayer = new THREE.Points(surveyGeometry, surveyMaterial);
         scene.add(surveyLayer);
@@ -1781,6 +2127,9 @@
             });
         }
 
+        // ---------------------------------------------------------------------
+        // 8. Culvert markers and information panel
+        // ---------------------------------------------------------------------
         // Detected culvert groups: locate markers using SurveyPointNos.
         const culvertPoints = [];
         const culvertMarkerData = [];
@@ -2092,6 +2441,9 @@
             });
         }
 
+        // ---------------------------------------------------------------------
+        // 9. Camera views, navigation, resizing, and animation
+        // ---------------------------------------------------------------------
         const span = Math.max(maxE - minE, maxN - minN, 10);
         const target = new THREE.Vector3(
             0,
