@@ -141,8 +141,8 @@
                 <button type="button"
                         id="survey-map-toggle-rejected-lines"
                         class="btn btn-sm btn-outline-info"
-                        aria-pressed="true">
-                    <i class="bi bi-diagram-3"></i> Cyan Lines: On
+                        aria-pressed="false">
+                    <i class="bi bi-diagram-3"></i> Cyan Lines: Off
                 </button>
             </div>
 
@@ -210,6 +210,42 @@
             <div id="survey-map-container">
                 <div id="survey-leaflet-map"></div>
                 <canvas id="survey-map-canvas"></canvas>
+
+                <div id="selected-survey-point" class="selected-survey-point" hidden>
+                    <div class="selected-survey-point-header">
+                        <h4>Selected Survey Point</h4>
+                        <button type="button"
+                                id="clear-survey-point"
+                                class="btn-ghost"
+                                aria-label="Clear selected survey point"
+                                title="Clear selection">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
+
+                    <div class="selected-survey-point-grid">
+                        <div class="selected-survey-field">
+                            <span>Point No.</span>
+                            <strong id="selected-point-no">—</strong>
+                        </div>
+                        <div class="selected-survey-field">
+                            <span>Northing</span>
+                            <strong id="selected-point-northing">—</strong>
+                        </div>
+                        <div class="selected-survey-field">
+                            <span>Easting</span>
+                            <strong id="selected-point-easting">—</strong>
+                        </div>
+                        <div class="selected-survey-field">
+                            <span>RL (m)</span>
+                            <strong id="selected-point-rl">—</strong>
+                        </div>
+                        <div class="selected-survey-field">
+                            <span>Code</span>
+                            <strong id="selected-point-code">—</strong>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <div class="survey-map-legend">
@@ -222,6 +258,8 @@
                     <span class="survey-map-legend-line alignment-line"></span>
                     <span>Road alignment</span>
                 </div>
+
+
 
                 <div class="survey-map-legend-item">
                     <span class="survey-map-legend-dot culvert-point-dot"></span>
@@ -260,6 +298,10 @@
     <script id="survey-map-culverts-data" type="application/json">
             @Html.Raw(surveyMapCulvertsJson)
     </script>
+
+    
+    
+
     
 
     <div class="card">

@@ -363,6 +363,15 @@
                 code: p.Code ?? p.CodeType ?? p.code ?? null
             }));
 
+            // Temporary, read-only survey coverage diagnostic.
+            window.__terrainCoveragePoints = terrainPoints.map(p => ({
+                easting: p.easting,
+                northing: p.northing,
+                rl: p.rl,
+                pointNo: p.pointNo,
+                code: p.code
+            }));
+
             const triangulation = window.Delaunator.from(
                 terrainPoints,
                 p => (p.easting - centerE) * terrainScale,
@@ -1242,6 +1251,26 @@
 
             window.__rejectedEdgeAdjacencyReport = rejectedEdgeAdjacencyReport;
 
+            window.__triangle7419EdgeCheck = (() => {
+                const t = rejectedTriangleDiagnostics.find(
+                    x => x.triangleId === 7419
+                );
+
+                if (!t) return null;
+
+                const [a, b, c] = t.indices;
+
+                return [
+                    [a, b],
+                    [b, c],
+                    [c, a]
+                ].map(([u, v]) => ({
+                    vertices: [u, v],
+                    acceptedTriangleCount:
+                        diagnosticAcceptedEdgeCounts.get(makeEdgeKey(u, v)) || 0
+                }));
+            })();
+
             const firstRejectedEdgeCheck = rejectedTriangleDiagnostics.length
                 ? (() => {
                     const t = rejectedTriangleDiagnostics[0];
@@ -1823,8 +1852,147 @@
         // 7. Survey points and road alignment
         // ---------------------------------------------------------------------
         // Keep surveyed points visible above the terrain.
+
         const surveyLayer = new THREE.Points(surveyGeometry, surveyMaterial);
         scene.add(surveyLayer);
+
+        // Selected survey point highlighter — independent of survey geometry.
+        function createSelectedPointMarker(color, size) {
+            const geometry = new THREE.BufferGeometry();
+
+            geometry.setAttribute(
+                "position",
+                new THREE.Float32BufferAttribute([0, 0, 0], 3)
+            );
+
+            const marker = new THREE.Points(
+                geometry,
+                new THREE.PointsMaterial({
+                    color,
+                    size,
+                    sizeAttenuation: false,
+                    depthTest: false,
+                    depthWrite: false
+                })
+            );
+
+            marker.visible = false;
+            marker.renderOrder = 1001;
+            scene.add(marker);
+
+            return marker;
+        }
+
+        const selectedPointOutline = createSelectedPointMarker(0xffffff, 18);
+        const selectedPointHighlight = createSelectedPointMarker(0xffa500, 10);
+
+        // Highlights the survey points
+        function highlightSurveyPoint(point) {
+            const position = toWorld(
+                point.Easting ?? point.easting,
+                point.Northing ?? point.northing,
+                point.RL ?? point.rl
+            );
+
+            [selectedPointOutline, selectedPointHighlight].forEach(marker => {
+                const attribute = marker.geometry.getAttribute("position");
+
+                attribute.setXYZ(0, position.x, position.y, position.z);
+                attribute.needsUpdate = true;
+
+                marker.geometry.computeBoundingSphere();
+                marker.visible = true;
+            });
+        }
+
+        function clearSurveyPointHighlight() {
+            selectedPointOutline.visible = false;
+            selectedPointHighlight.visible = false;
+        }
+
+        const selectedPointPanel = document.getElementById("selected-survey-point");
+
+        const selectedPointFields = {
+            pointNo: document.getElementById("selected-point-no"),
+            northing: document.getElementById("selected-point-northing"),
+            easting: document.getElementById("selected-point-easting"),
+            rl: document.getElementById("selected-point-rl"),
+            code: document.getElementById("selected-point-code")
+        };
+
+        function selectSurveyPoint(point) {
+            if (!selectedPointPanel) return;
+
+            if (!point) {
+                selectedPointPanel.hidden = true;
+                clearSurveyPointHighlight();
+                return;
+            }
+
+            highlightSurveyPoint(point);
+
+            const formatValue = value => {
+                if (value === null || value === undefined || value === "") {
+                    return "—";
+                }
+
+                const number = Number(value);
+                return Number.isFinite(number) ? number.toFixed(3) : String(value);
+            };
+
+            selectedPointFields.pointNo.textContent =
+                point.PointNo ?? point.pointNo ?? "—";
+
+            selectedPointFields.northing.textContent =
+                formatValue(point.Northing ?? point.northing);
+
+            selectedPointFields.easting.textContent =
+                formatValue(point.Easting ?? point.easting);
+
+            selectedPointFields.rl.textContent =
+                formatValue(point.RL ?? point.rl);
+
+            selectedPointFields.code.textContent =
+                point.Code ?? point.CodeType ?? point.code ?? "—";
+
+            selectedPointPanel.hidden = false;
+        }
+
+        document.getElementById("clear-survey-point")
+            ?.addEventListener("click", () => selectSurveyPoint(null));
+
+        // Select the nearest survey point hit by a click.
+        const surveyPointRaycaster = new THREE.Raycaster();
+        surveyPointRaycaster.params.Points.threshold = 3;
+
+        const surveyPointPointer = new THREE.Vector2();
+
+        canvas.addEventListener("click", event => {
+            if (!surveyLayer.visible) return;
+
+            const rect = canvas.getBoundingClientRect();
+            if (!rect.width || !rect.height) return;
+
+            surveyPointPointer.x =
+                ((event.clientX - rect.left) / rect.width) * 2 - 1;
+
+            surveyPointPointer.y =
+                -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+            surveyPointRaycaster.setFromCamera(surveyPointPointer, camera);
+
+            const hits = surveyPointRaycaster.intersectObject(surveyLayer);
+
+            if (!hits.length) return;
+
+            const point = validSurvey[hits[0].index];
+
+            if (point) {
+                selectSurveyPoint(point);
+            }
+        });
+
+
 
         // Survey data layer on/off control.
         const surveyToggle = document.getElementById(
