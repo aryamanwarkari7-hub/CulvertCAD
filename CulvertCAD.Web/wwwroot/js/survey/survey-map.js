@@ -195,8 +195,11 @@
         const centerN = (minN + maxN) / 2;
         const baseRL = minRL;
 
+
+
         const terrainScale = 1;
-        const verticalExaggeration = 3;
+        const verticalExaggeration = 5;
+
 
         const toWorld = (easting, northing, rl) => new THREE.Vector3(
             (Number(easting) - centerE) * terrainScale,
@@ -450,7 +453,7 @@
 
             // Safety gate: keep false until the candidate region report has been
             // reviewed against this survey. No inferred facet is enabled by default.
-            const ENABLE_SELECTIVE_GAP_RECONSTRUCTION = true;
+            const ENABLE_SELECTIVE_GAP_RECONSTRUCTION = false;
             const MAX_RECONSTRUCTION_EDGE_TO_LOCAL_SPACING = 3.0;
             const MAX_RECONSTRUCTION_EDGE_TO_P95_SPACING = 4.0;
             const MAX_RECONSTRUCTION_REGION_SPAN_M = 30.0;
@@ -1062,38 +1065,82 @@
                     }
                 }
 
+
                 const regionBoundaryEdges = [...regionEdgeCounts.entries()]
                     .filter(([, count]) => count === 1)
                     .map(([key]) => key);
 
-                const boundaryAcceptedCounts = regionBoundaryEdges.map(
-                    edgeKey => diagnosticAcceptedEdgeCounts.get(edgeKey) || 0
-                );
+                // Assess each region boundary against the full Delaunay triangulation,
+                // not only the accepted rendered mesh.
+                let hullBoundaryEdgeCount = 0;
+                let acceptedNeighbourBoundaryEdgeCount = 0;
+                let unsupportedInternalBoundaryEdgeCount = 0;
+                let unclassifiedBoundaryEdgeCount = 0;
+
+                for (const edgeKey of regionBoundaryEdges) {
+                    const adjacentIds = terrainEdgeToTriangleIds.get(edgeKey) || [];
+
+                    if (adjacentIds.length === 1) {
+                        hullBoundaryEdgeCount++;
+                        continue;
+                    }
+
+                    if (adjacentIds.length !== 2) {
+                        unclassifiedBoundaryEdgeCount++;
+                        continue;
+                    }
+
+                    const hasBaselineAcceptedNeighbour = adjacentIds.some(
+                        id => triangleEvidence[id]?.baselineAccepted
+                    );
+
+                    if (hasBaselineAcceptedNeighbour) {
+                        acceptedNeighbourBoundaryEdgeCount++;
+                    } else {
+                        unsupportedInternalBoundaryEdgeCount++;
+                    }
+                }
 
                 const boundaryEdgesAllTouchAcceptedMesh =
                     regionBoundaryEdges.length > 0 &&
-                    boundaryAcceptedCounts.every(count => count === 1);
+                    regionBoundaryEdges.every(
+                        edgeKey => (diagnosticAcceptedEdgeCounts.get(edgeKey) || 0) === 1
+                    );
 
-                const hasUnsupportedOuterBoundary =
-                    boundaryAcceptedCounts.some(count => count === 0);
-
-                const spanE = maxE - minE;
-                const spanN = maxN - minN;
-                const spanM = Math.hypot(spanE, spanN);
+                const hasUnsupportedOuterBoundary = hullBoundaryEdgeCount > 0;
 
                 let classification;
                 let reason;
 
-                if (boundaryEdgesAllTouchAcceptedMesh) {
-                    classification = "enclosed_candidate_gap";
-                    reason = "Rejected region is enclosed by accepted-mesh boundary edges; survey support must be evaluated before filling.";
-                } else if (hasUnsupportedOuterBoundary) {
+                if (unclassifiedBoundaryEdgeCount > 0) {
+                    classification = "topologically_ambiguous_region";
+                    reason =
+                        "Some boundary edges do not have the expected full-triangulation adjacency.";
+                } else if (hullBoundaryEdgeCount > 0 &&
+                    unsupportedInternalBoundaryEdgeCount === 0) {
+                    classification = "hull_touching_supported_region";
+                    reason =
+                        "Region touches the triangulation hull; its internal boundary edges have baseline-accepted neighbours. It is not eligible for enclosed-gap reconstruction.";
+                } else if (hullBoundaryEdgeCount > 0) {
                     classification = "open_or_outer_rejected_region";
-                    reason = "At least one region boundary edge has no accepted neighbouring triangle; this may be an outer coverage boundary or an open gap.";
+                    reason =
+                        "Region touches the triangulation hull and has internal boundary edges without baseline-accepted neighbours.";
+                } else if (unsupportedInternalBoundaryEdgeCount > 0) {
+                    classification = "internal_unsupported_region";
+                    reason =
+                        "Region has internal boundary edges without baseline-accepted neighbours.";
+                } else if (regionBoundaryEdges.length > 0) {
+                    classification = "enclosed_candidate_gap";
+                    reason =
+                        "Region has no hull boundary edges and its internal boundary edges have baseline-accepted neighbours; geometric safety checks are still required.";
                 } else {
                     classification = "topologically_ambiguous_region";
-                    reason = "Boundary adjacency is not sufficient to establish a safely enclosed gap.";
+                    reason = "Region has no usable boundary edges for classification.";
                 }
+
+                const spanE = maxE - minE;
+                const spanN = maxN - minN;
+                const spanM = Math.hypot(spanE, spanN);
 
                 rejectedRegions.push({
                     regionId: rejectedRegions.length + 1,
@@ -1388,7 +1435,6 @@
                 terrainGeometry,
                 terrainMaterial
             );
-
 
 
             // AMBER TERRAIN — FULL VISUAL FILL
