@@ -104,9 +104,9 @@
                     <div class="pc-footer">
 
                         <span>
-                            <i class="bi bi-rulers"
+                            <i class="bi bi-geo-alt"
                                aria-hidden="true"></i>
-                            @project.DesignCount designs
+                            @(project.HasSurveyData ? "Survey available" : "No survey yet")
                         </span>
 
                         <span>

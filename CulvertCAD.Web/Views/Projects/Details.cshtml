@@ -1,4 +1,4 @@
-@* Views/Projects/Details.cshtml *@
+﻿@* Views/Projects/Details.cshtml *@
 @model CulvertCAD.Core.DTOs.ProjectDto
 
 @{
@@ -23,31 +23,20 @@
         };
 
     ViewData["PageHeaderActions"] =
-        new List<Dictionary<string, string>>
+    new List<Dictionary<string, string>>
+    {
+        new()
         {
-            new()
-            {
-                ["Text"] = "Survey Data",
-                ["Url"] = Url.Action(
-                    "Upload", "Survey",
-                    new { projectId = Model.Id })!,
-                ["Icon"] = "bi bi-bar-chart-line",
-                ["CssClass"] = "btn-ghost"
-            },
-            new()
-            {
-                ["Text"] = "New Design",
-                ["Url"] = Url.Action(
-                    "Create", "Designs",
-                    new { projectId = Model.Id })!,
-                ["Icon"] = "bi bi-plus-lg",
-                ["CssClass"] = "btn-primary"
-            }
-        };
+            ["Text"] = "Survey Data",
+            ["Url"] = Url.Action(
+                "Upload", "Survey",
+                new { projectId = Model.Id })!,
+            ["Icon"] = "bi bi-bar-chart-line",
+            ["CssClass"] = "btn-ghost"
+        }
+    };
 
-    var designs =
-        ViewBag.Designs as List<CulvertCAD.Core.DTOs.CulvertDesignDto>
-        ?? new();
+
 
     var summary =
         ViewBag.SurveySummary as CulvertCAD.Core.DTOs.SurveySummaryDto;
@@ -98,12 +87,12 @@
             <div class="mi">
                 <span class="mi-lbl">Chainage</span>
                 <span class="mi-val">
-                    @Model.ChainageFrom – @Model.ChainageTo
+                    @Model.ChainageFrom â€“ @Model.ChainageTo
                 </span>
             </div>
         }
 
-        
+
         <div class="mi">
             <span class="mi-lbl">Status</span>
             <span class="project-status-pill @(string.Equals(Model.Status, "Active", StringComparison.OrdinalIgnoreCase) ? "project-status-active" : "project-status-inactive")">
@@ -115,7 +104,7 @@
 
     </div>
 
-    
+
     <!-- =====================================================
          Survey Summary
          ===================================================== -->
@@ -208,7 +197,7 @@
         </section>
     }
 
-    
+
 
 
     <!-- =====================================================
@@ -217,19 +206,6 @@
 
     <div class="tab-bar">
 
-        <button type="button"
-                class="tab active"
-                data-tab="designs"
-                onclick="showTab('designs', this)">
-
-            <i class="bi bi-rulers"
-               aria-hidden="true"></i>
-
-            <span>
-                Designs (@designs.Count)
-            </span>
-
-        </button>
 
         <button type="button"
                 class="tab"
@@ -248,128 +224,7 @@
     </div>
 
 
-    <!-- =====================================================
-         Designs Tab
-         ===================================================== -->
 
-    <div id="tab-designs">
-
-        @if (!designs.Any())
-        {
-            <div class="empty-state">
-
-                <i class="bi bi-rulers es-icon"
-                   aria-hidden="true"></i>
-
-                <p>No designs yet.</p>
-
-                <a asp-controller="Designs"
-                   asp-action="Create"
-                   asp-route-projectId="@Model.Id"
-                   class="btn-primary">
-
-                    <i class="bi bi-plus-lg"
-                       aria-hidden="true"></i>
-
-                    <span>Create First Design</span>
-
-                </a>
-
-            </div>
-        }
-        else
-        {
-            <div class="table-responsive">
-
-                <table class="dt">
-
-                    <thead>
-                        <tr>
-                            <th>Code</th>
-                            <th>Design Name</th>
-                            <th>Chainage</th>
-                            <th>Type</th>
-                            <th>Q (m³/s)</th>
-                            <th>Revisions</th>
-                            <th>Status</th>
-                            <th>Actions</th>
-
-                        </tr>
-                    </thead>
-
-                    <tbody>
-
-                        @foreach (var design in designs)
-                        {
-                            <tr>
-
-                                <td>
-                                    <code>
-                                        @(design.DesignCode ?? "—")
-                                    </code>
-                                </td>
-
-                                <td>
-                                    <strong>
-                                        @design.DesignName
-                                    </strong>
-
-                                    <br />
-
-                                    <small>
-                                        @design.CulvertLocation
-                                    </small>
-                                </td>
-
-                                <td>
-                                    @(design.Chainage ?? "—")
-                                </td>
-
-                                <td>
-                                    @design.CulvertType
-                                </td>
-
-                                <td>
-                                    @(design.DesignDischargeQ?
-                                        .ToString("0.000") ?? "—")
-                                </td>
-
-                                <td>
-                                    <span class="badge badge-gray">
-                                        @design.RevisionCount rev
-                                    </span>
-                                </td>
-
-                                <td>
-                                    <span class="badge @RevBadge(design.LatestRevisionStatus)">
-                                        @(design.LatestRevisionStatus ?? "Draft")
-                                    </span>
-                                </td>
-
-                                <td>
-                                    <a asp-controller="Designs"
-                                       asp-action="Details"
-                                       asp-route-id="@design.Id"
-                                       class="btn-xs"
-                                       title="View Design"
-                                       aria-label="View Design">
-
-                                        <i class="bi bi-eye" aria-hidden="true"></i>
-
-                                    </a>
-                                </td>
-
-                            </tr>
-                        }
-
-                    </tbody>
-
-                </table>
-
-            </div>
-        }
-
-    </div>
 
 
     <!-- =====================================================
@@ -420,21 +275,19 @@
 
 @section Scripts {
     <script>
+
         function showTab(tab, button) {
-            const designs = document.getElementById('tab-designs');
             const members = document.getElementById('tab-members');
 
-            designs.classList.toggle('tab-panel-hidden', tab !== 'designs');
             members.classList.toggle('tab-panel-hidden', tab !== 'members');
 
-            document
-                .querySelectorAll('.tab')
-                .forEach(tabButton => {
-                    tabButton.classList.remove('active');
-                });
+            document.querySelectorAll('.tab').forEach(tabButton => {
+                tabButton.classList.remove('active');
+            });
 
             button.classList.add('active');
         }
+
     </script>
 }
 

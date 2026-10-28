@@ -7,6 +7,8 @@ using CulvertCAD.Infrastructure.MySQL.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 
+using CulvertCAD.Web.Filters;
+
 // CulvertCAD.Web/Controllers/SurveyController.cs
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -698,8 +700,6 @@ public class SurveyController : Controller
         // alongside the survey on the same analysis page.
         var alignment = await _alignmentRepo.GetByProjectAsync(projectId);
 
-
-
         ViewBag.ProjectId = projectId;
         ViewBag.ProjectName = project.ProjectName;
         ViewBag.Alignment = alignment;
@@ -762,45 +762,6 @@ public class SurveyController : Controller
         }
         return RedirectToAction("Review", new { projectId });
     }
-
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> CreateDesignFromLocation(int projectId, int locationIndex)
-    {
-        var survey = await _surveyRepo.GetByProjectAsync(projectId);
-        if (survey == null) return NotFound();
-
-        var loc = survey.DetectedCulverts.FirstOrDefault(l => l.LocationIndex == locationIndex);
-        if (loc == null) return NotFound();
-
-        int chKm = (int)(loc.Chainage / 1000);
-        int chM = (int)(loc.Chainage % 1000);
-        string chFmt = $"{chKm}+{chM:D3}";
-
-        var design = new CulvertDesign
-        {
-            ProjectId = projectId,
-            DesignName = $"Culvert at Ch. {chFmt}",
-            DesignCode = $"CUL-{locationIndex:D3}",
-            CulvertLocation = $"Survey-detected location {locationIndex}",
-            Chainage = chFmt,
-            CulvertType = CulvertType.SinglePipe,
-            FillHeightM = (decimal)loc.FillHeightM,
-            SlopePercent = (decimal?)loc.BedSlopePct,
-            SoilUnitWeightKNm3 = 18.5m,
-            DesignStandard = "IRC 89:1997",
-            LoadClass = LoadClass.IRC_ClassA,
-            CreatedByUserId = CurrentUserId,
-        };
-
-        _db.CulvertDesigns.Add(design);
-        await _db.SaveChangesAsync();
-
-        loc.DesignId = design.Id;
-        await _surveyRepo.UpdateAsync(survey);
-
-        return RedirectToAction("Create", "Designs", new { projectId, prefillFromSurvey = locationIndex });
-    }
 }
 
 // ============================================================
@@ -808,6 +769,7 @@ public class SurveyController : Controller
 // ============================================================
 
 [Authorize]
+[EngineeringRoutesDisabled]
 public class DrawingsController : Controller
 {
     private readonly AppDbContext _db;
@@ -977,6 +939,7 @@ public class DrawingsController : Controller
 // ============================================================
 
 [Authorize]
+[EngineeringRoutesDisabled]
 public class BOQController : Controller
 {
     private readonly AppDbContext _db;
@@ -1023,52 +986,34 @@ public class HomeController : Controller
         bool isAdmin = roles.Contains("SuperAdmin") || roles.Contains("Admin");
 
         var projectQuery = _db.Projects.AsQueryable();
-        if (!isAdmin) projectQuery = projectQuery.Where(p => p.Members.Any(m => m.UserId == CurrentUserId));
+
+        if (!isAdmin)
+        {
+            projectQuery = projectQuery.Where(
+                p => p.Members.Any(m => m.UserId == CurrentUserId));
+        }
 
         int totalProjects = await projectQuery.CountAsync();
-        int activeProjects = await projectQuery.CountAsync(p => p.Status == ProjectStatus.Active);
 
-        var designQuery = _db.CulvertDesigns.Where(d => d.IsActive);
-        if (!isAdmin) designQuery = designQuery.Where(d => d.Project.Members.Any(m => m.UserId == CurrentUserId));
-        int totalDesigns = await designQuery.CountAsync();
-
-        int pendingReviews = await _db.DesignRevisions
-            .Where(r => r.Status == RevisionStatus.Submitted || r.Status == RevisionStatus.UnderReview)
-            .CountAsync();
-        int approvedDesigns = await _db.DesignRevisions
-            .Where(r => r.Status == RevisionStatus.Approved).CountAsync();
-
-        var activity = await _db.RevisionStatusHistory
-            .Include(h => h.ChangedBy).Include(h => h.Revision).ThenInclude(r => r.Design)
-            .OrderByDescending(h => h.ChangedAt).Take(10)
-            .Select(h => new RecentActivityDto
-            {
-                Type = h.ToStatus.ToString(),
-                Description = $"{h.Revision.Design.DesignName} → {h.Revision.RevisionNumber} {h.ToStatus}",
-                UserName = h.ChangedBy.FullName,
-                Timestamp = h.ChangedAt
-            }).ToListAsync();
+        int activeProjects = await projectQuery.CountAsync(
+            p => p.Status == ProjectStatus.Active);
 
         var myProjects = await projectQuery
-            .Include(p => p.Designs)
-            .OrderByDescending(p => p.CreatedAt).Take(6)
+            .OrderByDescending(p => p.CreatedAt)
+            .Take(6)
             .Select(p => new ProjectSummaryDto
             {
                 Id = p.Id,
                 ProjectName = p.ProjectName,
                 ProjectCode = p.ProjectCode,
-                DesignCount = p.Designs.Count(d => d.IsActive),
                 Status = p.Status.ToString()
-            }).ToListAsync();
+            })
+            .ToListAsync();
 
         return View(new DashboardDto
         {
             TotalProjects = totalProjects,
             ActiveProjects = activeProjects,
-            TotalDesigns = totalDesigns,
-            PendingReviews = pendingReviews,
-            ApprovedDesigns = approvedDesigns,
-            RecentActivity = activity,
             MyProjects = myProjects
         });
     }

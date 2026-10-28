@@ -1,4 +1,4 @@
-using CulvertCAD.Core.Repositories;
+﻿using CulvertCAD.Core.Repositories;
 // CulvertCAD.Web/Controllers/ProjectsController.cs
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
@@ -33,10 +33,9 @@ public class ProjectsController : Controller
         bool isAdmin = roles.Contains("SuperAdmin") || roles.Contains("Admin");
 
         var query = _db.Projects
-            .Include(p => p.CreatedBy)
-            .Include(p => p.Members).ThenInclude(m => m.User)
-            .Include(p => p.Designs.Where(d => d.IsActive))
-            .AsQueryable();
+    .Include(p => p.CreatedBy)
+    .Include(p => p.Members).ThenInclude(m => m.User)
+    .AsQueryable();
 
         if (!isAdmin)
             query = query.Where(p => p.Members.Any(m => m.UserId == CurrentUserId));
@@ -51,7 +50,6 @@ public class ProjectsController : Controller
             RoadName = p.RoadName, ChainageFrom = p.ChainageFrom, ChainageTo = p.ChainageTo,
             Status = p.Status.ToString(), CreatedAt = p.CreatedAt,
             CreatedByName = p.CreatedBy?.FullName ?? "",
-            DesignCount = p.Designs?.Count ?? 0,
             HasSurveyData = !string.IsNullOrEmpty(p.SurveyCollectionId),
             HasAlignment  = !string.IsNullOrEmpty(p.AlignmentCollectionId),
             Members = p.Members?.Select(m => new ProjectMemberDto
@@ -67,10 +65,9 @@ public class ProjectsController : Controller
     public async Task<IActionResult> Details(int id)
     {
         var p = await _db.Projects
-            .Include(x => x.CreatedBy)
-            .Include(x => x.Members).ThenInclude(m => m.User)
-            .Include(x => x.Designs.Where(d => d.IsActive)).ThenInclude(d => d.Revisions)
-            .FirstOrDefaultAsync(x => x.Id == id);
+    .Include(x => x.CreatedBy)
+    .Include(x => x.Members).ThenInclude(m => m.User)
+    .FirstOrDefaultAsync(x => x.Id == id);
 
         if (p == null) return NotFound();
 
@@ -84,7 +81,7 @@ public class ProjectsController : Controller
             RoadName = p.RoadName, ChainageFrom = p.ChainageFrom, ChainageTo = p.ChainageTo,
             Status = p.Status.ToString(), CreatedAt = p.CreatedAt,
             CreatedByName = p.CreatedBy?.FullName ?? "",
-            DesignCount = p.Designs?.Count ?? 0,
+
             HasSurveyData = survey != null,
             Members = p.Members?.Select(m => new ProjectMemberDto
             {
@@ -93,16 +90,7 @@ public class ProjectsController : Controller
             }).ToList() ?? new()
         };
 
-        ViewBag.Designs = p.Designs?.Select(d => new CulvertDesignDto
-        {
-            Id = d.Id, ProjectId = d.ProjectId, DesignName = d.DesignName,
-            DesignCode = d.DesignCode, CulvertLocation = d.CulvertLocation,
-            Chainage = d.Chainage, CulvertType = d.CulvertType.ToString(),
-            DesignDischargeQ = d.DesignDischargeQ, CreatedAt = d.CreatedAt,
-            RevisionCount = d.Revisions?.Count ?? 0,
-            LatestRevisionStatus = d.Revisions?.OrderByDescending(r => r.CreatedAt)
-                .FirstOrDefault()?.Status.ToString()
-        }).ToList() ?? new();
+
 
 
         var alignment = survey == null

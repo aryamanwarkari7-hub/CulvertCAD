@@ -294,21 +294,7 @@ public class DashboardDto
 {
     public int TotalProjects { get; set; }
     public int ActiveProjects { get; set; }
-    public int TotalDesigns { get; set; }
-    public int PendingReviews { get; set; }
-    public int ApprovedDesigns { get; set; }
-    public int TotalCulvertsOK { get; set; }
-    public int TotalCulvertsFail { get; set; }
-    public List<RecentActivityDto> RecentActivity { get; set; } = new();
     public List<ProjectSummaryDto> MyProjects { get; set; } = new();
-}
-
-public class RecentActivityDto
-{
-    public string Type { get; set; } = "";
-    public string Description { get; set; } = "";
-    public string UserName { get; set; } = "";
-    public DateTime Timestamp { get; set; }
 }
 
 public class ProjectSummaryDto
@@ -316,7 +302,6 @@ public class ProjectSummaryDto
     public int Id { get; set; }
     public string ProjectName { get; set; } = "";
     public string ProjectCode { get; set; } = "";
-    public int DesignCount { get; set; }
     public string Status { get; set; } = "";
 }
 

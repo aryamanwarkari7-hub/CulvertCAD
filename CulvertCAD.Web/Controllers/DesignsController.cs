@@ -1,4 +1,5 @@
 using CulvertCAD.Core.Repositories;
+
 // CulvertCAD.Web/Controllers/DesignsController.cs
 using System.Security.Claims;
 using CulvertCAD.Application.Services;
@@ -10,9 +11,12 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
+using CulvertCAD.Web.Filters;
+
 namespace CulvertCAD.Web.Controllers;
 
 [Authorize]
+[EngineeringRoutesDisabled]
 public class DesignsController : Controller
 {
     private readonly AppDbContext _db;
@@ -243,6 +247,7 @@ public class DesignsController : Controller
 // ============================================================
 
 [Authorize]
+[EngineeringRoutesDisabled]
 public class RevisionsController : Controller
 {
     private readonly AppDbContext _db;
@@ -318,12 +323,12 @@ public class RevisionsController : Controller
                         CreatedAt = c.CreatedAt,
                         Replies =
                             c.Replies?.Select(rep => new RevisionCommentDto
-                                {
-                                    Id = rep.Id,
-                                    AuthorName = rep.Author?.FullName ?? "",
-                                    CommentText = rep.CommentText,
-                                    CreatedAt = rep.CreatedAt,
-                                })
+                            {
+                                Id = rep.Id,
+                                AuthorName = rep.Author?.FullName ?? "",
+                                CommentText = rep.CommentText,
+                                CreatedAt = rep.CreatedAt,
+                            })
                                 .ToList()
                             ?? new(),
                     })
@@ -397,6 +402,7 @@ public class RevisionsController : Controller
     }
 
     #region Edit Inputs
+
     [HttpGet]
     public async Task<IActionResult> EditInputs(int id)
     {
@@ -530,8 +536,7 @@ public class RevisionsController : Controller
         }
     }
 
-    #endregion
-
+    #endregion Edit Inputs
 
     [HttpPost]
     [ValidateAntiForgeryToken]
@@ -630,5 +635,3 @@ public class RevisionsController : Controller
         return RedirectToAction("Details", new { id = revision.Id });
     }
 }
-
-

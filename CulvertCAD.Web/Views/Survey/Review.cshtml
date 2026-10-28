@@ -1,4 +1,4 @@
-@* Views/Survey/Review.cshtml *@
+﻿@* Views/Survey/Review.cshtml *@
 
 @using System.Text.Json
 @using CulvertCAD.Core.DTOs
@@ -111,7 +111,7 @@
     </div>
     </div>
 
-    
+
     <!-- Survey Terrain Map -->
     <!-- Survey Terrain Map -->
     <div class="card survey-map-card">
@@ -219,7 +219,7 @@
                 </button>
             </div>
 
-            
+
             <div class="survey-map-summary">
                 <div class="survey-map-summary-item">
                     <span class="survey-map-summary-label">Survey Points</span>
@@ -236,7 +236,7 @@
                     <strong id="survey-map-culvert-count">0</strong>
                 </div>
             </div>
-            
+
 
 
             <div id="survey-map-container">
@@ -258,23 +258,23 @@
                     <div class="selected-survey-point-grid">
                         <div class="selected-survey-field">
                             <span>Point No.</span>
-                            <strong id="selected-point-no">—</strong>
+                            <strong id="selected-point-no">â€”</strong>
                         </div>
                         <div class="selected-survey-field">
                             <span>Northing</span>
-                            <strong id="selected-point-northing">—</strong>
+                            <strong id="selected-point-northing">â€”</strong>
                         </div>
                         <div class="selected-survey-field">
                             <span>Easting</span>
-                            <strong id="selected-point-easting">—</strong>
+                            <strong id="selected-point-easting">â€”</strong>
                         </div>
                         <div class="selected-survey-field">
                             <span>RL (m)</span>
-                            <strong id="selected-point-rl">—</strong>
+                            <strong id="selected-point-rl">â€”</strong>
                         </div>
                         <div class="selected-survey-field">
                             <span>Code</span>
-                            <strong id="selected-point-code">—</strong>
+                            <strong id="selected-point-code">â€”</strong>
                         </div>
                     </div>
                 </div>
@@ -307,7 +307,7 @@
             <div class="survey-datum-summary">
                 <div class="survey-datum-header">
                     <strong>Road Elevation vs Datum</strong>
-                    <span>Datum RL: <strong id="survey-datum-rl">—</strong> m</span>
+                    <span>Datum RL: <strong id="survey-datum-rl">â€”</strong> m</span>
                 </div>
 
                 <div class="survey-datum-stats-row">
@@ -315,7 +315,7 @@
                     <div class="survey-datum-extremes">
                         <span>
                             Maximum difference:
-                            <strong id="survey-datum-max-difference">—</strong> m
+                            <strong id="survey-datum-max-difference">â€”</strong> m
                         </span>
                     </div>
 
@@ -323,26 +323,26 @@
                         <div class="survey-datum-item">
                             <span class="survey-datum-swatch above"></span>
                             <span>Above datum</span>
-                            <strong id="survey-datum-above-count">—</strong>
+                            <strong id="survey-datum-above-count">â€”</strong>
                         </div>
 
                         <div class="survey-datum-item">
                             <span class="survey-datum-swatch below"></span>
                             <span>Below datum</span>
-                            <strong id="survey-datum-below-count">—</strong>
+                            <strong id="survey-datum-below-count">â€”</strong>
                         </div>
 
                         <div class="survey-datum-item">
                             <span class="survey-datum-swatch near"></span>
-                            <span>Near datum (±0.10 m)</span>
-                            <strong id="survey-datum-near-count">—</strong>
+                            <span>Near datum (Â±0.10 m)</span>
+                            <strong id="survey-datum-near-count">â€”</strong>
                         </div>
                     </div>
 
                     <div class="survey-datum-extremes">
                         <span>
                             Minimum difference:
-                            <strong id="survey-datum-min-difference">—</strong> m
+                            <strong id="survey-datum-min-difference">â€”</strong> m
                         </span>
                     </div>
 
@@ -354,7 +354,7 @@
                 </p>
             </div>
 
-            
+
             <div id="survey-map-status" role="status" aria-live="polite">
                 Preparing survey map...
             </div>
@@ -385,10 +385,10 @@
             @Html.Raw(surveyMapCulvertsJson)
     </script>
 
-    
-    
 
-    
+
+
+
 
     <div class="card">
         <div class="card-hd"><h3>Detected Culvert Locations</h3><span class="badge badge-gray">@locations.Count locations</span></div>
@@ -421,27 +421,17 @@
                             }
                         </td>
                     <td>@loc.SurveyPointCount</td>
-                    <td>
-                        @if (loc.DesignId.HasValue)
-                        { <span class="badge badge-green">Design Created</span> }
-                        else if (loc.IsConfirmed)
-                        { <span class="badge badge-blue">Confirmed</span> }
-                        else
-                        { <span class="badge badge-gray">Pending</span> }
-                    </td>
-                    <td>
-                        @if (!loc.DesignId.HasValue)
-                        {
-                            <form asp-action="CreateDesignFromLocation" asp-route-projectId="@ViewBag.ProjectId" asp-route-locationIndex="@loc.LocationIndex" method="post" style="display:inline">
-                                @Html.AntiForgeryToken()
-                                <button type="submit" class="btn-xs">＋ Create Design</button>
-                            </form>
-                        }
-                        else
-                        {
-                            <a asp-controller="Designs" asp-action="Details" asp-route-id="@loc.DesignId" class="btn-xs">View →</a>
-                        }
-                    </td>
+                        <td>
+                            @if (loc.IsConfirmed)
+                            {
+                                <span class="badge badge-blue">Confirmed</span>
+                            }
+                            else
+                            {
+                                <span class="badge badge-gray">Pending</span>
+                            }
+                        </td>
+
                 </tr>
             }
             </tbody>
@@ -464,7 +454,7 @@
 </div>
 
 @section Scripts {
-    
+
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="~/lib/three/three.min.js"></script>
     <script src="~/lib/three/OrbitControls.js"></script>
