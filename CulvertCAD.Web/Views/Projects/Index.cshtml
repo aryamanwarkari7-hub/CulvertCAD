@@ -3,25 +3,25 @@
 
 @{
     ViewData["Title"] = "Projects";
+    ViewData["PageTitle"] = "Projects";
+    ViewData["PageSubtitle"] =
+        $"{Model.Count} project{(Model.Count != 1 ? "s" : "")}";
+
+    ViewData["PageHeaderActions"] = new List<Dictionary<string, string>>
+    {
+        new()
+        {
+            ["Text"] = "New Project",
+            ["Url"] = Url.Action("Create") ?? "#",
+            ["CssClass"] = "btn-primary",
+            ["Icon"] = "bi bi-plus-lg"
+        }
+    };
 }
 
 <div class="page">
 
-    <div class="page-header">
-        <div>
-            <h1 class="page-title">Projects</h1>
-
-            <p class="page-sub">
-                @Model.Count project@(Model.Count != 1 ? "s" : "")
-            </p>
-        </div>
-
-        <a asp-action="Create"
-           class="btn-primary">
-            <i class="bi bi-plus-lg" aria-hidden="true"></i>
-            <span>New Project</span>
-        </a>
-    </div>
+    <partial name="_PageHeader" />
 
 
     @if (!Model.Any())

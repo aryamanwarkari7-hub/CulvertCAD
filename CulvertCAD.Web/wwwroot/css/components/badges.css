@@ -111,3 +111,28 @@
         font-size: .62rem;
     }
 }
+
+
+
+/* ---------------------------------------------------------
+   Users Page — Role and Status Badges
+   --------------------------------------------------------- */
+
+.table-card .table-badges {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--sp-2);
+}
+
+.table-card .badge {
+    padding: .25rem var(--sp-3);
+    border: 1px solid var(--bdr);
+    font-size: var(--fs-xs);
+    line-height: 1.4;
+    letter-spacing: .03em;
+}
+
+    .table-card .badge i {
+        font-size: .75rem;
+    }

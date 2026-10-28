@@ -13,6 +13,17 @@
     overflow: hidden;
 }
 
+/* Users Table Card */
+.table-card {
+    padding: 0;
+    overflow: hidden;
+}
+
+    .table-card .table-wrap {
+        width: 100%;
+        overflow-x: auto;
+    }
+
 .card-hd {
     display: flex;
     align-items: center;
@@ -38,7 +49,7 @@
     background: var(--bg-card);
     border: 1px solid var(--bdr);
     border-radius: var(--r-lg);
-    padding: var(--sp-8);
+    padding: var(--sp-9);
     display: flex;
     align-items: center;
     gap: var(--sp-6);
@@ -68,6 +79,83 @@
     color: var(--tx-2);
     margin-top: var(--sp-1);
 }
+
+
+/* ---------------------------------------------------------
+   Page header Cards
+   --------------------------------------------------------- */
+.page-header-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    padding: 24px 28px;
+    margin-bottom: 24px;
+    background: var(--surface, #151a20);
+    border: 1px solid var(--border, #2b323b);
+    border-radius: 14px;
+    box-shadow: 0 4px 14px rgb(0 0 0 / 12%);
+}
+
+    .page-header-card .page-header-content {
+        min-width: 0;
+        flex: 1;
+    }
+
+    .page-header-card .page-title {
+        margin: 8px 0 6px;
+    }
+
+    .page-header-card .page-sub {
+        margin: 0;
+    }
+
+    .page-header-card .action-row {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        flex-wrap: wrap;
+        gap: 10px;
+        flex-shrink: 0;
+    }
+
+.page-header-breadcrumb {
+    margin-bottom: 12px;
+}
+
+.page-header-card .region-pill {
+    display: inline-flex;
+    margin-left: 0;
+    padding: 4px 10px;
+    border: 1px solid #303944;
+    border-radius: 999px;
+    background: #20262e;
+    color: var(--text-secondary, #a5b4c8);
+    font-size: 0.75rem;
+    font-weight: 500;
+    vertical-align: middle;
+    white-space: nowrap;
+}
+
+.survey-upload-info {
+    margin: -12px 0 20px;
+    font-size: 0.75rem;
+}
+
+@media (max-width: 768px) {
+    .page-header-card {
+        align-items: flex-start;
+        flex-direction: column;
+        padding: 20px;
+        gap: 18px;
+    }
+
+        .page-header-card .action-row {
+            justify-content: flex-start;
+            width: 100%;
+        }
+}
+
 
 
 /* ---------------------------------------------------------
@@ -151,39 +239,120 @@
 }
 
 
-/* ---------------------------------------------------------
-   Metadata Strip
-   --------------------------------------------------------- */
+
+/* =====================================================
+   Project Details — Metadata Cards
+   ===================================================== */
 
 .meta-strip {
     display: grid;
-    grid-template-columns: repeat( auto-fill, minmax(190px, 1fr) );
-    background: var(--bg-card);
-    border: 1px solid var(--bdr);
-    border-radius: var(--r-lg);
-    overflow: hidden;
-    margin-bottom: var(--sp-9);
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 10px;
+    margin-bottom: var(--sp-5, 20px);
+    padding: 0;
+    overflow: visible;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
 }
 
-.mi {
-    padding: var(--sp-5) var(--sp-7);
-    border-right: 1px solid var(--bdr);
-    border-bottom: 1px solid var(--bdr);
+    .meta-strip .mi {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 9px;
+        min-width: 0;
+        min-height: 84px;
+        padding: 15px 16px;
+        background: var(--card-bg, #161b22);
+        border: 1px solid var(--border-color, #30363d);
+        border-radius: 10px;
+        transition: border-color 0.18s ease, background-color 0.18s ease;
+    }
+
+        .meta-strip .mi:hover {
+            border-color: #484f58;
+            background: #191f27;
+        }
+
+    .meta-strip .mi-lbl {
+        color: var(--text-muted, #8b949e);
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.09em;
+        line-height: 1.3;
+        text-transform: uppercase;
+    }
+
+    .meta-strip .mi-val {
+        color: var(--text-primary, #e6edf3);
+        font-size: 13px;
+        font-weight: 600;
+        line-height: 1.5;
+        overflow-wrap: anywhere;
+    }
+
+/* Responsive metadata grid */
+
+@media (max-width: 760px) {
+    .meta-strip {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
 }
 
-.mi-lbl {
-    display: block;
-    font-size: var(--fs-xs);
-    color: var(--tx-m);
-    text-transform: uppercase;
-    letter-spacing: .08em;
-    margin-bottom: var(--sp-1);
+@media (max-width: 420px) {
+    .meta-strip {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+        .meta-strip .mi {
+            min-height: 70px;
+        }
 }
 
-.mi-val {
-    font-size: var(--fs-body);
-    font-weight: var(--fw-semibold);
-    color: var(--tx);
+@media (prefers-reduced-motion: reduce) {
+    .meta-strip .mi {
+        transition: none;
+    }
+}
+
+
+/* Project status pill */
+
+.meta-strip .project-status-pill {
+    display: inline-flex;
+    align-items: center;
+    align-self: flex-start;
+    gap: 7px;
+    width: fit-content;
+    max-width: 100%;
+    padding: 5px 10px;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 650;
+    line-height: 1.4;
+    white-space: nowrap;
+}
+
+.meta-strip .project-status-active {
+    color: #56d364;
+    background: rgba(63, 185, 80, 0.10);
+    border-color: rgba(63, 185, 80, 0.28);
+}
+
+.meta-strip .project-status-inactive {
+    color: #b1bac4;
+    background: rgba(139, 148, 158, 0.10);
+    border-color: rgba(139, 148, 158, 0.28);
+}
+
+.meta-strip .project-status-dot {
+    width: 6px;
+    height: 6px;
+    flex: 0 0 6px;
+    border-radius: 50%;
+    background: currentColor;
 }
 
 

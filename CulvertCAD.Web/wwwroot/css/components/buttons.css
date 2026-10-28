@@ -17,7 +17,7 @@
     justify-content: center;
     gap: var(--sp-2);
     min-height: var(--button-height);
-    border-radius: var(--r);
+    border-radius: var(--r-pill);
     font-family: var(--font);
     font-weight: var(--fw-semibold);
     line-height: 1.2;

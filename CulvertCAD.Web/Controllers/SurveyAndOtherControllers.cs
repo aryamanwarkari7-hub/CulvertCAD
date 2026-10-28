@@ -786,7 +786,7 @@ public class SurveyController : Controller
             Chainage = chFmt,
             CulvertType = CulvertType.SinglePipe,
             FillHeightM = (decimal)loc.FillHeightM,
-            SlopePercent = (decimal)loc.BedSlopePct,
+            SlopePercent = (decimal?)loc.BedSlopePct,
             SoilUnitWeightKNm3 = 18.5m,
             DesignStandard = "IRC 89:1997",
             LoadClass = LoadClass.IRC_ClassA,

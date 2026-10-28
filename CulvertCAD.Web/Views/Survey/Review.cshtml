@@ -8,8 +8,38 @@
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 
+
 @{
     ViewData["Title"] = "Survey Analysis";
+
+    ViewData["PageTitle"] = "Survey Analysis";
+    ViewData["PageSubtitle"] = Model.FileName;
+    ViewData["PageRegion"] = null;
+
+    ViewData["PageHeaderBreadcrumbs"] =
+        new List<Dictionary<string, string>>
+        {
+            new()
+            {
+                ["Text"] = "Projects",
+                ["Url"] = Url.Action("Index", "Projects")!
+            },
+            new()
+            {
+                ["Text"] = ViewBag.ProjectName?.ToString() ?? "Project",
+                ["Url"] = Url.Action(
+                    "Details",
+                    "Projects",
+                    new { id = ViewBag.ProjectId })!
+            },
+            new()
+            {
+                ["Text"] = "Survey Analysis"
+            }
+        };
+
+    ViewData["PageHeaderActions"] =
+        new List<Dictionary<string, string>>();
 
     var summary = ViewBag.Summary as SurveySummaryDto;
     var locations = ViewBag.Locations as List<DetectedCulvertLocation> ?? new();
@@ -22,20 +52,63 @@
 }
 
 <div class="page">
-    <div class="page-header">
-        <div>
-            <div class="breadcrumb"><a asp-controller="Projects" asp-action="Details" asp-route-id="@ViewBag.ProjectId">@ViewBag.ProjectName</a> / Survey Analysis</div>
-            <h1 class="page-title">Survey Analysis — @Model.FileName</h1>
-            <p class="page-sub">Uploaded @Model.UploadedAt.ToString("dd MMM yyyy HH:mm")</p>
+    <partial name="_PageHeader" />
+
+    <p class="page-sub survey-upload-info">
+        Uploaded @Model.UploadedAt.ToString("dd MMM yyyy HH:mm")
+    </p>
+
+    <div class="stat-grid">
+
+    <div class="stat-card">
+        <div class="stat-icon" style="background:#58a6ff22;color:#58a6ff">
+            <i class="bi bi-geo-alt-fill"></i>
+        </div>
+        <div class="stat-body">
+            <div class="stat-val">@summary?.TotalPoints</div>
+            <div class="stat-lbl">Total Points</div>
         </div>
     </div>
 
-    <div class="stat-grid">
-        <div class="stat-card"><div class="stat-icon" style="background:#58a6ff22;color:#58a6ff">📍</div><div class="stat-body"><div class="stat-val">@summary?.TotalPoints</div><div class="stat-lbl">Total Points</div></div></div>
-        <div class="stat-card"><div class="stat-icon" style="background:#f0883e22;color:#f0883e">📏</div><div class="stat-body"><div class="stat-val">@((summary?.AlignmentLengthM/1000)?.ToString("0.00"))km</div><div class="stat-lbl">Alignment Length</div></div></div>
-        <div class="stat-card"><div class="stat-icon" style="background:#3fb95022;color:#3fb950">🚰</div><div class="stat-body"><div class="stat-val">@summary?.DetectedCulverts</div><div class="stat-lbl">Detected Culverts</div></div></div>
-        <div class="stat-card"><div class="stat-icon" style="background:#d2992222;color:#d29922">📐</div><div class="stat-body"><div class="stat-val">@summary?.TBMCount</div><div class="stat-lbl">TBMs</div></div></div>
-        <div class="stat-card"><div class="stat-icon" style="background:#bc8cff22;color:#bc8cff">🌉</div><div class="stat-body"><div class="stat-val">@summary?.BridgePoints</div><div class="stat-lbl">Bridge Points</div></div></div>
+    <div class="stat-card">
+        <div class="stat-icon" style="background:#f0883e22;color:#f0883e">
+            <i class="bi bi-rulers"></i>
+        </div>
+        <div class="stat-body">
+            <div class="stat-val">@((summary?.AlignmentLengthM / 1000)?.ToString("0.00"))km</div>
+            <div class="stat-lbl">Alignment Length</div>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-icon" style="background:#3fb95022;color:#3fb950">
+            <i class="bi bi-water"></i>
+        </div>
+        <div class="stat-body">
+            <div class="stat-val">@summary?.DetectedCulverts</div>
+            <div class="stat-lbl">Detected Culverts</div>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-icon" style="background:#d2992222;color:#d29922">
+            <i class="bi bi-triangle"></i>
+        </div>
+        <div class="stat-body">
+            <div class="stat-val">@summary?.TBMCount</div>
+            <div class="stat-lbl">TBMs</div>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-icon" style="background:#bc8cff22;color:#bc8cff">
+            <i class="bi bi-building"></i>
+        </div>
+        <div class="stat-body">
+            <div class="stat-val">@summary?.BridgePoints</div>
+            <div class="stat-lbl">Bridge Points</div>
+        </div>
+    </div>
     </div>
 
     
@@ -133,7 +206,7 @@
                 <button type="button"
                         id="survey-map-toggle-cyan-terrain"
                         class="btn-ghost"
-                        aria-pressed="true">
+                        aria-pressed="false">
                     <i class="bi bi-layers"></i>
                     Cyan Terrain: On
                 </button>
@@ -141,8 +214,8 @@
                 <button type="button"
                         id="survey-map-toggle-rejected-lines"
                         class="btn btn-sm btn-outline-info"
-                        aria-pressed="false">
-                    <i class="bi bi-diagram-3"></i> Cyan Lines: Off
+                        aria-pressed="true">
+                    <i class="bi bi-diagram-3"></i> Cyan Lines: On
                 </button>
             </div>
 
@@ -163,48 +236,7 @@
                     <strong id="survey-map-culvert-count">0</strong>
                 </div>
             </div>
-            <div class="survey-datum-summary">
-                <div class="survey-datum-header">
-                    <strong>Road Elevation vs Datum</strong>
-                    <span>Datum RL: <strong id="survey-datum-rl">—</strong> m</span>
-                </div>
-
-                <div class="survey-datum-legend">
-                    <div class="survey-datum-item">
-                        <span class="survey-datum-swatch above"></span>
-                        <span>Above datum</span>
-                        <strong id="survey-datum-above-count">—</strong>
-                    </div>
-
-                    <div class="survey-datum-item">
-                        <span class="survey-datum-swatch below"></span>
-                        <span>Below datum</span>
-                        <strong id="survey-datum-below-count">—</strong>
-                    </div>
-
-                    <div class="survey-datum-item">
-                        <span class="survey-datum-swatch near"></span>
-                        <span>Near datum (±0.10 m)</span>
-                        <strong id="survey-datum-near-count">—</strong>
-                    </div>
-                </div>
-
-                <div class="survey-datum-extremes">
-                    <span>
-                        Minimum difference:
-                        <strong id="survey-datum-min-difference">—</strong> m
-                    </span>
-                    <span>
-                        Maximum difference:
-                        <strong id="survey-datum-max-difference">—</strong> m
-                    </span>
-                </div>
-
-                <p class="survey-datum-note">
-                    Road elevations without an imported Existing RL may be estimated
-                    from nearby survey points. These estimates are not surveyed road levels.
-                </p>
-            </div>
+            
 
 
             <div id="survey-map-container">
@@ -272,6 +304,56 @@
                 </div>
             </div>
 
+            <div class="survey-datum-summary">
+                <div class="survey-datum-header">
+                    <strong>Road Elevation vs Datum</strong>
+                    <span>Datum RL: <strong id="survey-datum-rl">—</strong> m</span>
+                </div>
+
+                <div class="survey-datum-stats-row">
+
+                    <div class="survey-datum-extremes">
+                        <span>
+                            Maximum difference:
+                            <strong id="survey-datum-max-difference">—</strong> m
+                        </span>
+                    </div>
+
+                    <div class="survey-datum-legend">
+                        <div class="survey-datum-item">
+                            <span class="survey-datum-swatch above"></span>
+                            <span>Above datum</span>
+                            <strong id="survey-datum-above-count">—</strong>
+                        </div>
+
+                        <div class="survey-datum-item">
+                            <span class="survey-datum-swatch below"></span>
+                            <span>Below datum</span>
+                            <strong id="survey-datum-below-count">—</strong>
+                        </div>
+
+                        <div class="survey-datum-item">
+                            <span class="survey-datum-swatch near"></span>
+                            <span>Near datum (±0.10 m)</span>
+                            <strong id="survey-datum-near-count">—</strong>
+                        </div>
+                    </div>
+
+                    <div class="survey-datum-extremes">
+                        <span>
+                            Minimum difference:
+                            <strong id="survey-datum-min-difference">—</strong> m
+                        </span>
+                    </div>
+
+                </div>
+
+                <p class="survey-datum-note">
+                    Road elevations without an imported Existing RL may be estimated
+                    from nearby survey points. These estimates are not surveyed road levels.
+                </p>
+            </div>
+
             
             <div id="survey-map-status" role="status" aria-live="polite">
                 Preparing survey map...
@@ -289,6 +371,10 @@
 
     <script id="survey-map-points-data" type="application/json">
             @Html.Raw(surveyMapPointsJson)
+    </script>
+
+    <script id="survey-map-working-crs-data" type="application/json">
+            @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.WorkingCrs))
     </script>
 
     <script id="survey-map-alignment-data" type="application/json">

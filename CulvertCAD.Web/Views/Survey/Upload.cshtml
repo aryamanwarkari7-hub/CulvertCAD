@@ -1,33 +1,37 @@
 @{
     ViewData["Title"] = "Project Survey Analysis";
+    ViewData["PageTitle"] = "Project Survey Analysis";
+    ViewData["PageSubtitle"] =
+        "Upload the survey data and prescribed road alignment to prepare the project for combined analysis.";
+
+    ViewData["PageHeaderBreadcrumbs"] = new List<Dictionary<string, string>>
+    {
+        new()
+        {
+            ["Text"] = ViewBag.ProjectName?.ToString() ?? "Project",
+            ["Url"] = Url.Action(
+                "Details",
+                "Projects",
+                new { id = ViewBag.ProjectId }) ?? "#"
+        },
+        new()
+        {
+            ["Text"] = "Survey Analysis",
+            ["Url"] = ""
+        }
+    };
 }
 
 <div class="page">
-    <div class="page-header">
-        <div>
-            <div class="breadcrumb">
-                <a asp-controller="Projects"
-                   asp-action="Details"
-                   asp-route-id="@ViewBag.ProjectId">
-                    @ViewBag.ProjectName
-                </a>
-                / Survey Analysis
-            </div>
+    <partial name="_PageHeader" />
 
-            <h1 class="page-title">Project Survey Analysis</h1>
+    <div class="survey-upload-layout">
 
-            <p class="page-sub">
-                Upload the survey data and prescribed road alignment
-                to prepare the project for combined analysis.
-            </p>
-        </div>
-    </div>
+        <div class="card survey-upload-card">
 
-    <div class="card" style="padding:1.5rem;max-width:700px">
-
-        <div asp-validation-summary="All"
-             class="alert-error"
-             role="alert"></div>
+            <div asp-validation-summary="All"
+                 class="alert-error survey-validation-summary"
+                 role="alert"></div>
 
         @if (TempData["Error"] != null)
         {
@@ -44,9 +48,13 @@
 
             @Html.AntiForgeryToken()
 
-            <h2 style="font-size:1.15rem">
-                1. Survey Data
-            </h2>
+            <div class="survey-upload-section-header">
+                <span class="survey-upload-step">01</span>
+                <div>
+                    <h2>Survey Data</h2>
+                    <p>Upload survey coordinates and configure their coordinate system.</p>
+                </div>
+            </div>
 
             <div class="fg">
                 <label for="csvFile">Survey CSV File *</label>
@@ -64,26 +72,38 @@
                 </small>
             </div>
 
-            <div class="fg" style="margin-top:1.25rem">
-                <label>Coordinate Type *</label>
-
-                <label style="display:block;margin-top:.5rem">
-                    <input type="radio"
-                           name="coordinateType"
-                           value="LatitudeLongitude"
-                           id="coordinateLatLong" />
-                    Latitude / Longitude
+           
+            <div class="fg survey-coordinate-field">
+                <label class="survey-coordinate-label">
+                    Coordinate Type <span class="required-mark">*</span>
                 </label>
 
-                <label style="display:block;margin-top:.5rem">
-                    <input type="radio"
-                           name="coordinateType"
-                           value="EastingNorthing"
-                           id="coordinateGrid"
-                           checked />
-                    Easting / Northing
-                </label>
+                <div class="survey-coordinate-options">
+                    <label class="survey-coordinate-option" for="coordinateLatLong">
+                        <input type="radio"
+                               name="coordinateType"
+                               value="LatitudeLongitude"
+                               id="coordinateLatLong" />
+                        <span>
+                            <strong>Latitude / Longitude</strong>
+                            <small>Geographic coordinates in degrees</small>
+                        </span>
+                    </label>
+
+                    <label class="survey-coordinate-option" for="coordinateGrid">
+                        <input type="radio"
+                               name="coordinateType"
+                               value="EastingNorthing"
+                               id="coordinateGrid"
+                               checked />
+                        <span>
+                            <strong>Easting / Northing</strong>
+                            <small>Projected grid coordinates in metres</small>
+                        </span>
+                    </label>
+                </div>
             </div>
+
 
             <div id="utmSettings"
                  class="fg"
@@ -105,9 +125,15 @@
 
             <hr style="margin:1.5rem 0" />
 
-            <h2 style="font-size:1.15rem">
-                2. Prescribed Road Alignment
-            </h2>
+            
+            <div class="survey-upload-section-header">
+                <span class="survey-upload-step">02</span>
+                <div>
+                    <h2>Prescribed Road Alignment</h2>
+                    <p>Upload the existing road centreline drawing and specify its source CRS.</p>
+                </div>
+            </div>
+
 
             <p>
                 Upload the existing road alignment DXF.
@@ -163,19 +189,71 @@
                 Both files are required for this combined analysis request.
             </div>
 
-            <div class="modal-actions" style="margin-top:1.5rem">
+            
+            <div class="survey-upload-actions">
                 <a asp-controller="Projects"
                    asp-action="Details"
                    asp-route-id="@ViewBag.ProjectId"
                    class="btn-ghost">
-                    Cancel
+                    <i class="bi bi-arrow-left" aria-hidden="true"></i>
+                    <span>Cancel</span>
                 </a>
 
                 <button type="submit" class="btn-primary">
-                    Upload Files &amp; Analyze
+                    <i class="bi bi-cloud-arrow-up" aria-hidden="true"></i>
+                    <span>Upload Files &amp; Analyze</span>
                 </button>
             </div>
+
         </form>
+    </div>
+        <aside class="card survey-project-summary">
+            <div class="survey-project-summary-header">
+                <i class="bi bi-folder2-open" aria-hidden="true"></i>
+                <h2>Project Details</h2>
+            </div>
+
+            <div class="survey-project-summary-body">
+                <span class="survey-summary-label">Project Name</span>
+                <p class="survey-summary-value">
+                    @(ViewBag.ProjectName?.ToString() ?? "Project")
+                </p>
+
+                <div class="survey-summary-divider"></div>
+
+                <span class="survey-summary-label">Survey Requirements</span>
+                <ul class="survey-requirements">
+                    <li class="survey-file-status" id="surveyCsvStatus">
+                        <i class="bi bi-filetype-csv" aria-hidden="true"></i>
+                        <div class="survey-file-info">
+                            <strong>Survey CSV</strong>
+                            <span id="surveyCsvFileName">No file selected</span>
+                            <small id="surveyCsvFileSize"></small>
+                        </div>
+                    </li>
+
+                    <li class="survey-file-status" id="surveyDxfStatus">
+                        <i class="bi bi-file-earmark-richtext" aria-hidden="true"></i>
+                        <div class="survey-file-info">
+                            <strong>Road alignment DXF</strong>
+                            <span id="surveyDxfFileName">No file selected</span>
+                            <small id="surveyDxfFileSize"></small>
+                        </div>
+                    </li>
+
+                    <li>
+                        <i class="bi bi-globe" aria-hidden="true"></i>
+                        <span>Coordinate system and source CRS must be correct.</span>
+                    </li>
+                </ul>
+
+
+                <div class="survey-summary-note">
+                    <i class="bi bi-info-circle" aria-hidden="true"></i>
+                    Both files are required before analysis can begin.
+                </div>
+            </div>
+        </aside>
     </div>
 </div>
 
@@ -199,4 +277,49 @@
 
         updateCoordinateOptions();
     })();
+
+
+    
+    function formatFileSize(bytes) {
+        if (bytes < 1024) return `${bytes} B`;
+        if (bytes < 1024 * 1024) {
+            return `${(bytes / 1024).toFixed(1)} KB`;
+        }
+        return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+    }
+
+    function updateSelectedFile(inputId, nameId, sizeId, statusId) {
+        const input = document.getElementById(inputId);
+        const name = document.getElementById(nameId);
+        const size = document.getElementById(sizeId);
+        const status = document.getElementById(statusId);
+
+        if (!input || !name || !size || !status) return;
+
+        const file = input.files?.[0];
+
+        name.textContent = file ? file.name : "No file selected";
+        size.textContent = file ? formatFileSize(file.size) : "";
+
+        status.classList.toggle("has-file", !!file);
+    }
+
+    document.getElementById("csvFile").addEventListener("change", () => {
+        updateSelectedFile(
+            "csvFile",
+            "surveyCsvFileName",
+            "surveyCsvFileSize",
+            "surveyCsvStatus"
+        );
+    });
+
+    document.getElementById("dxfFile").addEventListener("change", () => {
+        updateSelectedFile(
+            "dxfFile",
+            "surveyDxfFileName",
+            "surveyDxfFileSize",
+            "surveyDxfStatus"
+        );
+    });
+
 </script>

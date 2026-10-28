@@ -1,58 +1,32 @@
-@* Views/Account/Users.cshtml *@
 @model List<CulvertCAD.Core.DTOs.UserProfileDto>
 
 @{
     ViewData["Title"] = "Users";
+    ViewData["PageTitle"] = "Users";
+    ViewData["PageSubtitle"] =
+        $"{Model.Count} registered user{(Model.Count != 1 ? "s" : "")}";
+
+    ViewData["PageHeaderActions"] = new List<Dictionary<string, string>>
+    {
+        new()
+        {
+            ["Text"] = "Add User",
+            ["Url"] = Url.Action("Register") ?? "#",
+            ["CssClass"] = "btn-primary",
+            ["Icon"] = "bi bi-person-plus"
+        }
+    };
 }
 
-<div class="page">
 
-    <!-- =================================================
-         PAGE HEADER
-         ================================================= -->
-
-    <div class="page-header">
-
-        <div>
-
-            <h1 class="page-title">
-                Users
-            </h1>
-
-            <p class="page-sub">
-                @Model.Count registered user@(Model.Count != 1 ? "s" : "")
-            </p>
-
-        </div>
-
-
-        <a asp-action="Register"
-           class="btn-primary">
-
-            <i class="bi bi-person-plus"
-               aria-hidden="true"></i>
-
-            <span>Add User</span>
-
-        </a>
-
-    </div>
-
-
-    <!-- =================================================
-         USERS TABLE
-         ================================================= -->
+<div class="page users-page">
+    <partial name="_PageHeader" />
 
     <div class="card table-card">
-
         <div class="table-wrap">
-
             <table class="dt">
-
                 <thead>
-
                     <tr>
-
                         <th>Name</th>
                         <th>Email</th>
                         <th>Employee</th>
@@ -60,96 +34,54 @@
                         <th>Roles</th>
                         <th>Status</th>
                         <th>Last Login</th>
-
                     </tr>
-
                 </thead>
-
-
                 <tbody>
-
-                    @foreach (var u in Model)
+                    @if (Model.Count == 0)
                     {
                         <tr>
-
-                            <td>
-
-                                <strong>
-                                    @u.FullName
-                                </strong>
-
+                            <td colspan="7" class="dt-empty">
+                                <i class="bi bi-people" aria-hidden="true"></i>
+                                <strong>No users found</strong>
+                                <span>Registered users will appear here.</span>
                             </td>
-
-
-                            <td>
-                                @u.Email
-                            </td>
-
-
-                            <td>
-
-                                <code>
-                                    @(u.EmployeeCode ?? "—")
-                                </code>
-
-                            </td>
-
-
-                            <td>
-                                @(u.Designation ?? "—")
-                            </td>
-
-
-                            <td>
-
-                                <div class="table-badges">
-
-                                    @foreach (var r in u.Roles)
-                                    {
-                                        <span class="badge @RoleBadge(r)">
-                                            @r
-                                        </span>
-                                    }
-
-                                </div>
-
-                            </td>
-
-
-                            <td>
-
-                                <span class="badge @(u.IsActive ? "badge-green" : "badge-red")">
-
-                                    <i class="bi @(u.IsActive ? "bi-check-circle" : "bi-x-circle")"
-                                       aria-hidden="true"></i>
-
-                                    @(u.IsActive ? "Active" : "Inactive")
-
-                                </span>
-
-                            </td>
-
-
-                            <td>
-                                @(u.LastLoginAt?.ToString("dd MMM yyyy") ?? "Never")
-                            </td>
-
                         </tr>
                     }
-
+                    else
+                    {
+                        @foreach (var u in Model)
+                        {
+                            <tr>
+                                <td><strong>@u.FullName</strong></td>
+                                <td>@u.Email</td>
+                                <td><code>@(u.EmployeeCode ?? "—")</code></td>
+                                <td>@(u.Designation ?? "—")</td>
+                                <td>
+                                    <div class="table-badges">
+                                        @foreach (var r in u.Roles)
+                                        {
+                                            <span class="badge @RoleBadge(r)">@r</span>
+                                        }
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge @(u.IsActive ? "badge-green" : "badge-red")">
+                                        <i class="bi @(u.IsActive ? "bi-check-circle" : "bi-x-circle")"
+                                           aria-hidden="true"></i>
+                                        @(u.IsActive ? "Active" : "Inactive")
+                                    </span>
+                                </td>
+                                <td>@(u.LastLoginAt?.ToString("dd MMM yyyy") ?? "Never")</td>
+                            </tr>
+                        }
+                    }
                 </tbody>
-
             </table>
-
         </div>
-
     </div>
-
 </div>
 
-
 @functions {
-
     string RoleBadge(string r) => r switch
     {
         "SuperAdmin" => "badge-red",
@@ -158,5 +90,4 @@
         "CheckingEngineer" => "badge-yellow",
         _ => "badge-gray"
     };
-
 }

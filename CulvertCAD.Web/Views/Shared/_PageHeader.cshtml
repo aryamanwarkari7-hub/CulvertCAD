@@ -1,0 +1,88 @@
+﻿@{
+    var pageTitle = ViewData["PageTitle"] as string
+                    ?? ViewData["Title"] as string
+                    ?? string.Empty;
+
+    var pageSubtitle = ViewData["PageSubtitle"] as string;
+
+    var pageRegion = ViewData["PageRegion"] as string;
+
+    var breadcrumbs =
+        ViewData["PageHeaderBreadcrumbs"] as List<Dictionary<string, string>>
+        ?? new List<Dictionary<string, string>>();
+
+    var actions =
+        ViewData["PageHeaderActions"] as List<Dictionary<string, string>>
+        ?? new List<Dictionary<string, string>>();
+}
+
+@if (breadcrumbs.Count > 0)
+{
+    <nav class="breadcrumb page-header-breadcrumb" aria-label="Breadcrumb">
+        @for (var i = 0; i < breadcrumbs.Count; i++)
+        {
+            var crumb = breadcrumbs[i];
+            var text = crumb.GetValueOrDefault("Text") ?? string.Empty;
+            var url = crumb.GetValueOrDefault("Url");
+
+            if (i > 0)
+            {
+                <span class="breadcrumb-separator">/</span>
+            }
+
+            if (!string.IsNullOrWhiteSpace(url))
+            {
+                <a href="@url">@text</a>
+            }
+            else
+            {
+                <span>@text</span>
+            }
+        }
+    </nav>
+}
+
+<header class="page-header page-header-card">
+   
+    <div class="page-header-content">
+        <h1 class="page-title">@pageTitle</h1>
+
+        @if (!string.IsNullOrWhiteSpace(pageSubtitle) ||
+     !string.IsNullOrWhiteSpace(pageRegion))
+        {
+            <div class="page-sub">
+                @if (!string.IsNullOrWhiteSpace(pageSubtitle))
+                {
+                    <span class="region-pill">@pageSubtitle</span>
+                }
+
+                @if (!string.IsNullOrWhiteSpace(pageRegion))
+                {
+                    <span class="region-pill">@pageRegion</span>
+                }
+            </div>
+        }
+    </div>
+
+    @if (actions.Count > 0)
+    {
+        <div class="action-row">
+            @foreach (var action in actions)
+            {
+                var text = action.GetValueOrDefault("Text") ?? string.Empty;
+                var url = action.GetValueOrDefault("Url") ?? "#";
+                var cssClass = action.GetValueOrDefault("CssClass") ?? "btn-ghost";
+                var icon = action.GetValueOrDefault("Icon");
+
+                <a href="@url" class="@cssClass">
+                    @if (!string.IsNullOrWhiteSpace(icon))
+                    {
+                        <i class="@icon" aria-hidden="true"></i>
+                    }
+                    @text
+                </a>
+            }
+        </div>
+    }
+</header>
+

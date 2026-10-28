@@ -3,24 +3,24 @@
 
 @{
     ViewData["Title"] = "Dashboard";
+    ViewData["PageTitle"] = "Dashboard";
+    ViewData["PageSubtitle"] =
+        $"Welcome back, {User.FindFirst("FullName")?.Value ?? "User"}";
+
+    ViewData["PageHeaderActions"] = new List<Dictionary<string, string>>
+    {
+        new()
+        {
+            ["Text"] = "New Project",
+            ["Url"] = Url.Action("Create", "Projects") ?? "#",
+            ["CssClass"] = "btn-primary",
+            ["Icon"] = "bi bi-plus-lg"
+        }
+    };
 }
 
 <div class="page">
-
-    <div class="page-header">
-        <div>
-            <h1 class="page-title">Dashboard</h1>
-            <p class="page-sub">
-                Welcome back, @User.FindFirst("FullName")?.Value
-            </p>
-        </div>
-
-        <a asp-controller="Projects"
-           asp-action="Create"
-           class="btn-primary">
-            ＋ New Project
-        </a>
-    </div>
+    <partial name="_PageHeader" />
 
 
     <!-- =====================================================
@@ -91,71 +91,152 @@
     </div>
 
 
+    
     <!-- =====================================================
          Dashboard Columns
          ===================================================== -->
 
-    <div class="dash-cols">
+    <div class="dash-cols dashboard-panels">
 
         <!-- Recent Activity -->
+        <section class="card dashboard-panel activity-card">
 
-        <div class="card">
+            <div class="card-hd dashboard-panel-header">
+                <div class="dashboard-panel-heading">
+                    <div class="dashboard-panel-icon activity-panel-icon">
+                        <i class="bi bi-activity" aria-hidden="true"></i>
+                    </div>
 
-            <div class="card-hd">
-                <h3>Recent Activity</h3>
+                    <div>
+                        <h3>Recent Activity</h3>
+                        <p>Latest design and revision updates</p>
+                    </div>
+                </div>
+
+                <span class="panel-count">
+                    @Model.RecentActivity.Count()
+                </span>
             </div>
 
             <div class="activity-feed">
 
                 @if (!Model.RecentActivity.Any())
                 {
-                    <div class="empty-feed">
-                        No recent activity
+                    <div class="dashboard-empty">
+                        <i class="bi bi-activity" aria-hidden="true"></i>
+                        <strong>No recent activity</strong>
+                        <span>Design and revision updates will appear here.</span>
                     </div>
                 }
                 else
                 {
                     @foreach (var activity in Model.RecentActivity)
                     {
-                        <div class="act-row">
+                        <article class="act-row">
 
-                            <div class="act-dot @StatusClass(activity.Type)"></div>
-
-                            <div class="act-body">
-                                <span class="act-desc">
-                                    @activity.Description
-                                </span>
-
-                                <span class="act-meta">
-                                    @activity.UserName
-                                    ·
-                                    @activity.Timestamp.ToString("dd MMM yyyy")
-                                </span>
+                            <div class="act-status-icon @StatusClass(activity.Type)">
+                                @switch (activity.Type)
+                                {
+                                    case "Approved":
+                                        <i class="bi bi-check-lg" aria-hidden="true"></i>
+                                        break;
+                                    case "Submitted":
+                                        <i class="bi bi-send" aria-hidden="true"></i>
+                                        break;
+                                    case "UnderReview":
+                                        <i class="bi bi-eye" aria-hidden="true"></i>
+                                        break;
+                                    case "RevisionRequired":
+                                        <i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i>
+                                        break;
+                                    default:
+                                        <i class="bi bi-file-earmark-text" aria-hidden="true"></i>
+                                        break;
+                                }
                             </div>
 
-                        </div>
+                            <div class="act-body">
+
+                                <div class="act-heading">
+                                    <span class="act-desc">
+                                        @activity.Description
+                                    </span>
+
+                                    <span class="activity-status-pill @StatusClass(activity.Type)">
+                                        @switch (activity.Type)
+                                        {
+                                            case "Approved":
+                                                <text>Approved</text>
+                                                break;
+                                            case "Submitted":
+                                                <text>Submitted</text>
+                                                break;
+                                            case "UnderReview":
+                                                <text>Under Review</text>
+                                                break;
+                                            case "RevisionRequired":
+                                                <text>Revision Required</text>
+                                                break;
+                                            default:
+                                                <text>Draft</text>
+                                                break;
+                                        }
+                                    </span>
+                                </div>
+
+                                <div class="act-footer">
+                                    <span class="act-meta">
+                                        <i class="bi bi-person-circle" aria-hidden="true"></i>
+                                        <span>@activity.UserName</span>
+                                    </span>
+
+                                    <span class="act-date">
+                                        <i class="bi bi-clock" aria-hidden="true"></i>
+                                        <time datetime="@activity.Timestamp.ToString("yyyy-MM-dd")">
+                                            @activity.Timestamp.ToString("dd MMM yyyy")
+                                        </time>
+                                    </span>
+                                </div>
+
+                            </div>
+
+                        </article>
                     }
                 }
 
             </div>
 
-        </div>
+        </section>
 
 
-        <!-- My Projects -->
+        <!-- My Projects and Design Standards -->
+        <section class="card dashboard-panel projects-panel">
 
-        <div class="card">
+            <div class="card-hd dashboard-panel-header">
+                <div class="dashboard-panel-heading">
+                    <div class="dashboard-panel-icon projects-panel-icon">
+                        <i class="bi bi-folder2-open" aria-hidden="true"></i>
+                    </div>
 
-            <div class="card-hd">
-                <h3>My Projects</h3>
+                    <div>
+                        <h3>My Projects</h3>
+                        <p>Your accessible projects</p>
+                    </div>
+                </div>
+
+                <span class="panel-count">
+                    @Model.MyProjects.Count()
+                </span>
             </div>
 
-            <div class="quick-actions">
+            <div class="project-card-list">
 
                 @if (!Model.MyProjects.Any())
                 {
-                    <div class="empty-feed">
-                        No projects found
+                    <div class="dashboard-empty">
+                        <i class="bi bi-folder2" aria-hidden="true"></i>
+                        <strong>No projects found</strong>
+                        <span>Create a project to get started.</span>
                     </div>
                 }
                 else
@@ -165,14 +246,31 @@
                         <a asp-controller="Projects"
                            asp-action="Details"
                            asp-route-id="@project.Id"
-                           class="qa-btn">
+                           class="dashboard-project-card">
 
-                            <span>
+                            <div class="project-card-icon">
                                 <i class="bi bi-folder2-open" aria-hidden="true"></i>
-                                @project.ProjectCode —
-                                @project.ProjectName
-                                (@project.DesignCount designs)
-                            </span>
+                            </div>
+
+                            <div class="project-card-content">
+                                <span class="project-card-code">
+                                    @project.ProjectCode
+                                </span>
+
+                                <strong class="project-card-name">
+                                    @project.ProjectName
+                                </strong>
+
+                                <span class="project-card-meta">
+                                    <i class="bi bi-rulers" aria-hidden="true"></i>
+                                    @project.DesignCount
+                                    @(project.DesignCount == 1 ? "design" : "designs")
+                                </span>
+                            </div>
+
+                            <div class="project-card-arrow">
+                                <i class="bi bi-arrow-up-right" aria-hidden="true"></i>
+                            </div>
 
                         </a>
                     }
@@ -180,39 +278,54 @@
 
             </div>
 
-
             <!-- Design Standards -->
+            <div class="standards-section">
 
-            <div class="is-codes-panel">
+                <div class="standards-header">
+                    <div class="standards-heading-icon">
+                        <i class="bi bi-journal-check" aria-hidden="true"></i>
+                    </div>
 
-                <h4>Design Standards</h4>
-
-                <div class="is-code-item">
-                    <span class="is-dot"></span>
-                    <span>
-                        IS 783:1985 — Laying of Concrete Pipes
-                    </span>
+                    <div>
+                        <h4>Design Standards</h4>
+                        <p>Applicable reference standards</p>
+                    </div>
                 </div>
 
-                <div class="is-code-item">
-                    <span class="is-dot"></span>
-                    <span>
-                        IS 458:2003 — Precast Concrete Pipes
-                    </span>
-                </div>
+                <div class="standards-list">
 
-                <div class="is-code-item">
-                    <span class="is-dot"></span>
-                    <span>
-                        IRC 89:1997 — Road Culverts
-                    </span>
+                    <div class="standard-item">
+                        <span class="standard-code">IS</span>
+                        <div class="standard-content">
+                            <strong>IS 783:1985</strong>
+                            <span>Laying of Concrete Pipes</span>
+                        </div>
+                    </div>
+
+                    <div class="standard-item">
+                        <span class="standard-code">IS</span>
+                        <div class="standard-content">
+                            <strong>IS 458:2003</strong>
+                            <span>Precast Concrete Pipes</span>
+                        </div>
+                    </div>
+
+                    <div class="standard-item">
+                        <span class="standard-code standard-code-irc">IRC</span>
+                        <div class="standard-content">
+                            <strong>IRC 89:1997</strong>
+                            <span>Road Culverts</span>
+                        </div>
+                    </div>
+
                 </div>
 
             </div>
 
-        </div>
+        </section>
 
     </div>
+
 
 </div>
 

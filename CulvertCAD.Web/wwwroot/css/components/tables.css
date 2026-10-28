@@ -191,3 +191,75 @@
             font-size: .78rem;
         }
 }
+
+/* Users Page — Table Refinements */
+
+.table-card .dt {
+    width: 100%;
+    margin: 0;
+    border-radius: 0;
+}
+
+    .table-card .dt th {
+        padding: 0.8rem 1rem;
+    }
+
+    .table-card .dt td {
+        padding: 0.8rem 1rem;
+    }
+
+    .table-card .dt tbody tr:hover {
+        background: var(--bg-hov);
+    }
+
+.table-card .table-badges {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.table-card .badge {
+    white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+    .table-card .dt {
+        min-width: 760px;
+    }
+}
+
+
+/* ---------------------------------------------------------
+   Users Page — Table Readability
+   --------------------------------------------------------- */
+
+.table-card .dt th {
+    padding: .85rem 1rem;
+    vertical-align: middle;
+}
+
+.table-card .dt td {
+    padding: .85rem 1rem;
+    vertical-align: middle;
+}
+
+.table-card .dt tbody tr {
+    transition: background-color .15s ease;
+}
+
+    .table-card .dt tbody tr:hover {
+        background: var(--bg-hov);
+    }
+
+.table-card .table-wrap {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 768px) {
+    .table-card .dt {
+        min-width: 760px;
+    }
+}

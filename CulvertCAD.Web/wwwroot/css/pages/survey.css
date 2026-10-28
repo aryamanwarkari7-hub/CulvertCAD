@@ -8,6 +8,18 @@
     margin-bottom: var(--sp-10);
 }
 
+.stat-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+    .stat-icon i {
+        font-size: 1.25rem;
+        line-height: 1;
+    }
+
 .survey-map-header {
     padding: var(--sp-6) var(--sp-8);
     border-bottom: 1px solid var(--bdr);
@@ -34,55 +46,82 @@
 
 /* Map navigation */
 
+
+/* Map navigation */
+
 .survey-map-toolbar {
     display: flex;
     justify-content: flex-start;
     align-items: center;
     flex-wrap: wrap;
     gap: 8px;
+    margin-bottom: 14px;
 }
 
-    .survey-map-toolbar .btn-ghost {
-        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
-        transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease, transform 0.12s ease;
+    .survey-map-toolbar button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 7px;
+        min-height: 38px;
+        padding: 8px 13px;
+        border: 1px solid var(--bdr);
+        border-radius: 8px;
+        background: transparent;
+        color: var(--tx-2);
+        font: inherit;
+        font-size: var(--fs-sm);
+        line-height: 1.3;
+        box-shadow: none;
+        transform: none;
+        transition: background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease;
     }
 
-        .survey-map-toolbar .btn-ghost:hover {
-            background: #eaf2ff;
-            border-color: #93b4f5;
-            color: #f0883e;
-            box-shadow: 0 3px 7px rgba(37, 99, 235, 0.14);
-            transform: translateY(-1px);
+        .survey-map-toolbar button i {
+            font-size: 0.9rem;
         }
 
-    .survey-map-toolbar .btn-primary {
-        box-shadow: 0 2px 4px rgba(37, 99, 235, 0.18);
-        transition: background-color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, transform 0.12s ease;
-    }
-
-        .survey-map-toolbar .btn-primary:hover {
-            background: #1d4ed8;
-            border-color: #1d4ed8;
-            box-shadow: 0 4px 9px rgba(37, 99, 235, 0.25);
-            transform: translateY(-1px);
+        /* Enabled layer controls */
+        .survey-map-toolbar button[aria-pressed="true"] {
+            background: rgba(240, 136, 62, 0.08);
+            border-color: rgba(240, 136, 62, 0.38);
+            color: var(--tx);
+            box-shadow: none;
         }
 
-    .survey-map-toolbar button:active {
-        box-shadow: 0 0 0 3px rgba(240, 136, 62, 0.22);
-        border-color: #f0883e;
-    }
+        /* Disabled layer controls */
+        .survey-map-toolbar button[aria-pressed="false"] {
+            background: transparent;
+            border-color: var(--bdr);
+            color: var(--tx-2);
+            box-shadow: none;
+        }
 
-    .survey-map-toolbar button:focus,
-    .survey-map-toolbar button:active,
-    .survey-map-toolbar button[aria-pressed="true"] {
-        box-shadow: 0 0 0 3px rgba(240, 136, 62, 0.22);
-        border-color: #f0883e;
-    }
+        /* Primary action */
+        .survey-map-toolbar button.btn-primary {
+            background: var(--acc);
+            border-color: var(--acc);
+            color: #fff;
+        }
 
-    .survey-map-toolbar button:focus-visible {
-        outline: 2px solid #2563eb;
-        outline-offset: 2px;
-    }
+            .survey-map-toolbar button.btn-primary:hover {
+                filter: brightness(1.06);
+            }
+
+        /* Neutral hover */
+        .survey-map-toolbar button.btn-ghost:hover,
+        .survey-map-toolbar button.btn-outline-info:hover {
+            background: var(--bg-in);
+            border-color: var(--bdr);
+            color: var(--tx);
+            box-shadow: none;
+            transform: none;
+        }
+
+        .survey-map-toolbar button:focus-visible {
+            outline: 2px solid var(--acc);
+            outline-offset: 2px;
+        }
 
 @media (prefers-reduced-motion: reduce) {
     .survey-map-toolbar button {
@@ -90,9 +129,6 @@
     }
 }
 
-.survey-map-toolbar i {
-    font-size: 0.9rem;
-}
 
 /* Map status */
 
@@ -107,17 +143,14 @@
 }
 
 /* Map viewport */
-
 #survey-map-container {
     position: relative;
     width: 100%;
-    height: 60vh;
-    min-height: 360px;
-    max-height: 720px;
+    min-height: 420px;
     overflow: hidden;
-    background: #101820;
     border: 1px solid var(--bdr);
     border-radius: var(--r);
+    background: var(--bg-card);
 }
 
 #survey-map-canvas {
@@ -128,27 +161,30 @@
     outline: none;
 }
 
-/* Map legend */
+
+/* Map Legend */
 
 .survey-map-legend {
     display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
     align-items: center;
-    gap: var(--sp-5) var(--sp-8);
-    margin-top: var(--sp-6);
-    padding: var(--sp-5) var(--sp-6);
+    justify-content:center;
+    flex-wrap: wrap;
+    gap: 10px 16px;
+    margin-top: 12px;
+    margin-bottom:12px;
+    padding: 12px 14px;
     background: var(--bg-in);
     border: 1px solid var(--bdr);
-    border-radius: var(--r);
+    border-radius: 8px;
 }
 
 .survey-map-legend-item {
     display: inline-flex;
     align-items: center;
-    gap: var(--sp-3);
+    gap: 8px;
     color: var(--tx-2);
     font-size: var(--fs-sm);
+    line-height: 1.4;
 }
 
 .survey-map-legend-dot {
@@ -248,28 +284,58 @@
    Survey Map — Dataset Summary
    ========================================================= */
 
+
+
+/* Survey Map — Dataset Metric Cards */
+
 .survey-map-summary {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    margin: 0.75rem 0;
-    padding: 0.5rem;
-    background: var(--acc);
-    border: none;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    margin: 10px 0 16px;
+    padding: 0;
+    background: transparent;
+    border: 0;
 }
 
 .survey-map-summary-item {
-    display: inline-flex;
-    align-items: baseline;
-    gap: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
     min-width: 0;
-    padding: 0.4rem 0.65rem;
+    padding: 12px 16px;
+    background: var(--bg-card);
     border: 1px solid var(--bdr);
-    border-radius: var(--r-pill);
-    background: var(--bg-in);
+    border-radius: 12px;
 }
+
+    .survey-map-summary-item:hover {
+        background: var(--bg-in);
+        border-color: var(--acc);
+    }
+
+.survey-map-summary-label {
+    color: var(--tx-2);
+    font-size: var(--fs-sm);
+    line-height: 1.4;
+}
+
+.survey-map-summary-item strong {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    padding: 5px 10px;
+    background: var(--bg-card);
+    border: 1px solid var(--bdr);
+    border-radius: 999px;
+    color: var(--tx);
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-semibold);
+    font-variant-numeric: tabular-nums;
+}
+
 
 .survey-map-summary-label {
     color: var(--tx-2);
@@ -300,6 +366,11 @@
         justify-content: flex-start;
         gap: 0.4rem;
     }
+   
+        .survey-map-summary {
+            grid-template-columns: 1fr;
+        }
+  
 
     .survey-map-summary-item {
         gap: 0.4rem;
@@ -328,39 +399,132 @@
     }
 }
 
+/* Road Elevation vs Datum — Outer Card */
 .survey-datum-summary {
-    margin: 12px 0 16px;
-    padding: 14px 16px;
-    border: 1px solid var(--border-color, #30363d);
-    border-radius: 10px;
-    background: var(--surface-color, rgba(128, 128, 128, 0.06));
+    box-sizing: border-box;
+    width: 100%;
+    margin: 0 0 16px;
+    padding: 20px;
+    background: var(--bg-card);
+    border: 1px solid var(--bdr);
+    border-radius: 12px;
 }
 
-.survey-datum-header,
-.survey-datum-item,
-.survey-datum-extremes {
+/* Header */
+.survey-datum-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
     flex-wrap: wrap;
+    gap: 10px 16px;
+    margin-bottom: 16px;
+    color: var(--tx);
 }
 
-.survey-datum-header {
-    margin-bottom: 12px;
+    .survey-datum-header > strong {
+        font-size: 1rem;
+        font-weight: var(--fw-semibold);
+    }
+
+    .survey-datum-header > span {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 8px 12px;
+        background: var(--bg-in);
+        border: 1px solid var(--bdr);
+        border-radius: 999px;
+        color: var(--tx-2);
+        font-size: var(--fs-sm);
+        line-height: 1.4;
+    }
+
+        .survey-datum-header > span strong {
+            color: var(--tx);
+            font-size: inherit;
+            font-weight: var(--fw-semibold);
+            font-variant-numeric: tabular-nums;
+        }
+
+/* Maximum | Datum statistics | Minimum */
+.survey-datum-stats-row {
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr) max-content;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
 }
 
-.survey-datum-legend {
+.survey-datum-summary .survey-datum-legend {
     display: flex;
-    gap: 18px;
+    align-items: center;
+    justify-content: center;
     flex-wrap: wrap;
+    gap: 8px;
+    min-width: 0;
+    margin: 0;
 }
 
 .survey-datum-item {
+    display: inline-flex;
+    align-items: center;
     justify-content: flex-start;
     gap: 7px;
+    padding: 8px 12px;
+    background: var(--bg-in);
+    border: 1px solid var(--bdr);
+    border-radius: 999px;
+    font-size: var(--fs-sm);
+    line-height: 1.4;
+    white-space: nowrap;
 }
 
+    .survey-datum-item strong {
+        color: var(--tx);
+        font-size: inherit;
+        font-weight: var(--fw-semibold);
+        font-variant-numeric: tabular-nums;
+    }
+
+/* Difference pills */
+.survey-datum-summary .survey-datum-extremes {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+
+.survey-datum-extremes > span {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 12px;
+    background: var(--bg-in);
+    border: 1px solid var(--bdr);
+    border-radius: 999px;
+    font-size: var(--fs-sm);
+    line-height: 1.4;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
+.survey-datum-extremes strong {
+    color: var(--tx);
+    font-size: inherit;
+    font-weight: var(--fw-semibold);
+}
+
+/* Datum RL disclaimer */
+.survey-datum-note {
+    margin: 12px 0 0;
+    color: var(--tx-2);
+    font-size: var(--fs-sm);
+    line-height: 1.6;
+}
+
+/* Datum legend colour swatches */
 .survey-datum-swatch {
     display: inline-block;
     width: 12px;
@@ -381,75 +545,110 @@
         background: #B0BEC5;
     }
 
-.survey-datum-extremes {
-    margin-top: 12px;
-    padding-top: 10px;
-    border-top: 1px solid var(--border-color, #30363d);
-    font-size: 0.9rem;
+/* Stack on narrower screens */
+@media (max-width: 1100px) {
+    .survey-datum-stats-row {
+        grid-template-columns: 1fr;
+        justify-items: start;
+        gap: 10px;
+    }
+
+    .survey-datum-summary .survey-datum-legend {
+        justify-content: flex-start;
+    }
 }
 
+/* Survey Analysis — Typography Refinement */
+
+/* Map card heading */
+.survey-map-header h3 {
+    font-size: 1.2rem;
+}
+
+.survey-map-header p {
+    font-size: 0.85rem;
+}
+
+/* Toolbar buttons */
+.survey-map-toolbar button {
+    font-size: 0.85rem;
+    min-height: 40px;
+    padding: 9px 13px;
+}
+
+/* Dataset cards */
+.survey-map-summary-label {
+    font-size: 0.85rem;
+}
+
+.survey-map-summary-item strong {
+    font-size: 0.85rem;
+    min-width: 48px;
+    padding: 6px 10px;
+}
+
+/* Datum card heading */
+.survey-datum-header > strong {
+    font-size: 1.05rem;
+}
+
+/* Datum RL */
+.survey-datum-header > span {
+    font-size: 0.85rem;
+    padding: 8px 12px;
+}
+
+/* All five datum statistic pills */
+.survey-datum-item,
+.survey-datum-extremes > span {
+    font-size: 0.85rem;
+    padding: 9px 13px;
+}
+
+    /* Datum values */
+    .survey-datum-item strong,
+    .survey-datum-extremes strong,
+    .survey-datum-header > span strong {
+        font-size: inherit;
+    }
+
+/* Datum disclaimer */
 .survey-datum-note {
-    margin: 10px 0 0;
-    color: var(--text-muted, #8b949e);
+    font-size: 0.82rem;
+    line-height: 1.6;
+}
+
+/* Map legend */
+.survey-map-legend-item {
     font-size: 0.82rem;
 }
 
-/* Cyan terrain and diagnostic-line toolbar controls */
+/* Map status and supporting note */
+#survey-map-status,
+.survey-map-note {
+    font-size: 0.82rem;
+    line-height: 1.6;
+}
+
+
+
+/* Cyan Terrain and Rejected Lines — use shared toolbar styling */
+
 .survey-map-toolbar button#survey-map-toggle-cyan-terrain,
 .survey-map-toolbar button#survey-map-toggle-rejected-lines {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    padding: 10px 16px;
-    font: inherit;
-    line-height: inherit;
-    color: var(--tx-2);
-    background: transparent;
-    border: 1px solid var(--bdr);
-    border-radius: 9px;
     box-shadow: none;
     transform: none;
-    cursor: pointer;
-    transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease, transform 0.12s ease;
 }
 
     .survey-map-toolbar button#survey-map-toggle-cyan-terrain:hover,
     .survey-map-toolbar button#survey-map-toggle-rejected-lines:hover {
-        background: #eaf2ff;
-        border-color: #93b4f5;
-        color: #f0883e;
-        box-shadow: 0 3px 7px rgba(37, 99, 235, 0.14);
-        transform: translateY(-1px);
+        background: var(--bg-in);
+        border-color: var(--bdr);
+        color: var(--tx);
+        box-shadow: none;
+        transform: none;
     }
 
-    .survey-map-toolbar button#survey-map-toggle-cyan-terrain:focus,
-    .survey-map-toolbar button#survey-map-toggle-cyan-terrain:active,
-    .survey-map-toolbar button#survey-map-toggle-cyan-terrain[aria-pressed="true"],
-    .survey-map-toolbar button#survey-map-toggle-rejected-lines:focus,
-    .survey-map-toolbar button#survey-map-toggle-rejected-lines:active,
-    .survey-map-toolbar button#survey-map-toggle-rejected-lines[aria-pressed="true"] {
-        box-shadow: 0 0 0 3px rgba(240, 136, 62, 0.22);
-        border-color: #f0883e;
-    }
-
-    .survey-map-toolbar button#survey-map-toggle-cyan-terrain:focus-visible,
-    .survey-map-toolbar button#survey-map-toggle-rejected-lines:focus-visible {
-        outline: 2px solid #2563eb;
-        outline-offset: 2px;
-    }
-
-    .survey-map-toolbar button#survey-map-toggle-cyan-terrain i,
-    .survey-map-toolbar button#survey-map-toggle-rejected-lines i {
-        font-size: 0.9rem;
-    }
-
-@media (prefers-reduced-motion: reduce) {
-    .survey-map-toolbar button#survey-map-toggle-cyan-terrain,
-    .survey-map-toolbar button#survey-map-toggle-rejected-lines {
-        transition: none;
-    }
-}
 
 /* =========================================================
    Selected Survey Point — Map Overlay
@@ -575,3 +774,736 @@
         padding-left: 12px;
     }
 }
+
+/* Survey toolbar — two centered rows */
+
+.survey-map-toolbar {
+    display: grid;
+    grid-template-columns: repeat(6, max-content);
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+    .survey-map-toolbar button {
+        min-height: 40px;
+        padding: 9px 13px;
+        white-space: nowrap;
+    }
+
+        /* First six buttons — row 1 */
+        .survey-map-toolbar button:nth-child(-n + 6) {
+            grid-row: 1;
+        }
+
+        /* Remaining buttons — row 2 */
+        .survey-map-toolbar button:nth-child(n + 7) {
+            grid-row: 2;
+        }
+
+@media (max-width: 1100px) {
+    .survey-map-toolbar {
+        display: flex;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+}
+
+/* Spacing between survey data tables */
+
+.survey-map-body > .card {
+    margin-top: 16px;
+}
+
+    .survey-map-body > .card + .card {
+        margin-top: 16px;
+        overflow: hidden;
+        border-radius: 12px;
+    }
+
+    /* Keep table headers and content inside the card */
+    .survey-map-body > .card .card-hd {
+        padding: 12px 16px;
+    }
+
+    .survey-map-body > .card .dt {
+        margin-bottom: 0;
+    }
+
+/* Reduce card-to-table spacing */
+.survey-map-body > .card {
+    padding: 0;
+    overflow: hidden;
+}
+
+    .survey-map-body > .card > .card-hd {
+        margin: 0;
+        padding: 10px 12px;
+    }
+
+    .survey-map-body > .card > .dt {
+        width: 100%;
+        margin: 0;
+        border-spacing: 0;
+    }
+
+/* Survey Analysis — Statistic Cards */
+
+.stat-grid {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 14px;
+    width: 100%;
+    margin-bottom: 24px;
+}
+
+    .stat-grid > .stat-card {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        min-width: 0;
+        padding: 20px;
+        border: 1px solid var(--bdr);
+        border-radius: 12px;
+        background: var(--bg-card);
+    }
+
+    .stat-grid .stat-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex: 0 0 48px;
+        width: 48px;
+        height: 48px;
+        border-radius: 9px;
+    }
+
+        .stat-grid .stat-icon i {
+            font-size: 1.25rem;
+        }
+
+    .stat-grid .stat-val {
+        font-size: 1.5rem;
+        line-height: 1.25;
+    }
+
+    .stat-grid .stat-lbl {
+        font-size: 0.8rem;
+        line-height: 1.4;
+    }
+
+@media (max-width: 1100px) {
+    .stat-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 700px) {
+    .stat-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 420px) {
+    .stat-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+
+/* UPLOAD PAGE */
+
+
+/* =========================================================
+   Survey Upload — Section Headers
+   ========================================================= */
+
+.survey-upload-section-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin: 0 0 20px;
+}
+
+.survey-upload-step {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 42px;
+    width: 42px;
+    height: 42px;
+    border: 1px solid var(--bdr);
+    border-radius: 10px;
+    background: var(--bg-in);
+    color: var(--acc);
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-bold);
+    font-variant-numeric: tabular-nums;
+}
+
+.survey-upload-section-header h2 {
+    margin: 0;
+    color: var(--tx);
+    font-size: var(--fs-lg);
+    font-weight: var(--fw-semibold);
+    line-height: 1.35;
+}
+
+.survey-upload-section-header p {
+    margin: 4px 0 0;
+    color: var(--tx-2);
+    font-size: var(--fs-sm);
+    line-height: 1.5;
+}
+
+@media (max-width: 480px) {
+    .survey-upload-section-header {
+        align-items: flex-start;
+        gap: 10px;
+    }
+
+    .survey-upload-step {
+        flex-basis: 36px;
+        width: 36px;
+        height: 36px;
+    }
+}
+
+
+/* =========================================================
+   Survey Upload — File Inputs
+   ========================================================= */
+
+#csvFile,
+#dxfFile {
+    display: block;
+    width: 100%;
+    min-height: 48px;
+    padding: 8px;
+    border: 1px solid var(--bdr);
+    border-radius: var(--r);
+    background: var(--bg-in);
+    color: var(--tx);
+    font-family: inherit;
+    font-size: var(--fs-sm);
+    cursor: pointer;
+    transition: border-color .15s ease, background-color .15s ease;
+}
+
+    #csvFile:hover,
+    #dxfFile:hover {
+        border-color: var(--acc);
+    }
+
+    #csvFile:focus-visible,
+    #dxfFile:focus-visible {
+        outline: 2px solid var(--acc);
+        outline-offset: 2px;
+    }
+
+    #csvFile::file-selector-button,
+    #dxfFile::file-selector-button {
+        margin-right: 12px;
+        padding: 7px 12px;
+        border: 1px solid var(--bdr);
+        border-radius: var(--r-sm);
+        background: var(--bg-card);
+        color: var(--tx);
+        font: inherit;
+        font-weight: var(--fw-semibold);
+        cursor: pointer;
+    }
+
+        #csvFile::file-selector-button:hover,
+        #dxfFile::file-selector-button:hover {
+            border-color: var(--acc);
+            background: var(--bg-hov);
+        }
+
+@media (max-width: 480px) {
+    #csvFile,
+    #dxfFile {
+        min-height: 46px;
+        font-size: var(--fs-xs);
+    }
+
+        #csvFile::file-selector-button,
+        #dxfFile::file-selector-button {
+            margin-right: 8px;
+            padding: 7px 9px;
+        }
+}
+
+
+/* =========================================================
+   Survey Upload — Coordinate Settings
+   ========================================================= */
+
+#utmSettings {
+    margin-top: 18px !important;
+}
+
+    #utmSettings > label,
+    #dxfInputCrs + small {
+        display: block;
+    }
+
+#coordinateLatLong,
+#coordinateGrid {
+    accent-color: var(--acc);
+    width: 15px;
+    height: 15px;
+    margin: 0;
+    flex: 0 0 15px;
+}
+
+    #coordinateLatLong + *,
+    #coordinateGrid + * {
+        cursor: pointer;
+    }
+
+#coordinateLatLong,
+#coordinateGrid {
+    vertical-align: middle;
+}
+
+#utmZone,
+#dxfInputCrs {
+    width: 100%;
+    min-height: 46px;
+    padding: 10px 12px;
+    border: 1px solid var(--bdr);
+    border-radius: var(--r);
+    background-color: var(--bg-in);
+    color: var(--tx);
+    font-family: inherit;
+    font-size: var(--fs-sm);
+}
+
+    #utmZone:focus-visible,
+    #dxfInputCrs:focus-visible {
+        outline: 2px solid var(--acc);
+        outline-offset: 2px;
+    }
+
+
+
+/* =========================================================
+   Survey Upload — Coordinate Type Options
+   ========================================================= */
+
+.survey-coordinate-field {
+    margin-top: 20px;
+}
+
+.survey-coordinate-label {
+    display: block;
+    margin-bottom: 10px;
+    color: var(--tx);
+    font-weight: var(--fw-semibold);
+}
+
+.survey-coordinate-options {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.survey-coordinate-option {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    min-width: 0;
+    padding: 14px;
+    border: 1px solid var(--bdr);
+    border-radius: var(--r);
+    background: var(--bg-card);
+    cursor: pointer;
+    transition: border-color .15s ease, background-color .15s ease;
+}
+
+    .survey-coordinate-option:has(input:checked) {
+        border-color: var(--acc);
+        background: var(--bg-in);
+    }
+
+    .survey-coordinate-option input {
+        flex: 0 0 15px;
+        width: 15px;
+        height: 15px;
+        margin: 3px 0 0;
+        accent-color: var(--acc);
+    }
+
+    .survey-coordinate-option strong,
+    .survey-coordinate-option small {
+        display: block;
+    }
+
+    .survey-coordinate-option strong {
+        color: var(--tx);
+        font-size: var(--fs-sm);
+        font-weight: var(--fw-semibold);
+    }
+
+    .survey-coordinate-option small {
+        margin-top: 5px;
+        color: var(--tx-2);
+        font-size: var(--fs-xs);
+        line-height: 1.5;
+    }
+
+@media (max-width: 520px) {
+    .survey-coordinate-options {
+        grid-template-columns: 1fr;
+    }
+}
+
+
+
+/* =========================================================
+   Survey Upload — Form Actions
+   ========================================================= */
+
+.survey-upload-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 28px;
+    padding-top: 20px;
+    border-top: 1px solid var(--bdr);
+}
+
+    .survey-upload-actions .btn-ghost,
+    .survey-upload-actions .btn-primary {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        min-height: 42px;
+        padding: 10px 16px;
+        white-space: nowrap;
+    }
+
+@media (max-width: 480px) {
+    .survey-upload-actions {
+        flex-direction: column-reverse;
+        align-items: stretch;
+    }
+
+        .survey-upload-actions .btn-ghost,
+        .survey-upload-actions .btn-primary {
+            width: 100%;
+        }
+}
+
+
+/* =========================================================
+   Survey Upload — Overall Form Layout
+   ========================================================= */
+
+.survey-upload-card {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 760px;
+    padding: 28px;
+    overflow: hidden;
+}
+
+    .survey-upload-card hr {
+        margin: 28px 0;
+        border: 0;
+        border-top: 1px solid var(--bdr);
+        opacity: 1;
+    }
+
+    .survey-upload-card .fg {
+        margin-bottom: 18px;
+    }
+
+        .survey-upload-card .fg:last-child {
+            margin-bottom: 0;
+        }
+
+        .survey-upload-card .fg > small {
+            display: block;
+            margin-top: 7px;
+            color: var(--tx-2);
+            font-size: var(--fs-xs);
+            line-height: 1.6;
+        }
+
+@media (max-width: 600px) {
+    .survey-upload-card {
+        padding: 18px;
+    }
+
+        .survey-upload-card hr {
+            margin: 22px 0;
+        }
+}
+
+
+
+/* Survey Upload — Validation Summary */
+.survey-upload-card .survey-validation-summary.validation-summary-valid {
+    display: none;
+    margin: 0;
+}
+
+.survey-upload-card .survey-validation-summary.validation-summary-errors {
+    display: flex;
+    margin-bottom: 16px;
+}
+
+/* =========================================================
+   Survey Upload — Two-Column Layout
+   ========================================================= */
+
+.survey-upload-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.8fr) minmax(260px, 0.9fr);
+    align-items: start;
+    gap: 24px;
+    width: 100%;
+}
+
+.survey-upload-card {
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+    padding: 28px;
+    overflow: hidden;
+}
+
+.survey-project-summary {
+    min-width: 0;
+    padding: 0;
+    position: sticky;
+    top: 24px;
+}
+
+.survey-project-summary-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 20px;
+    border-bottom: 1px solid var(--bdr);
+}
+
+    .survey-project-summary-header > i {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 40px;
+        height: 40px;
+        flex: 0 0 40px;
+        border: 1px solid var(--bdr);
+        border-radius: 10px;
+        background: var(--bg-in);
+        color: var(--acc);
+        font-size: 1.1rem;
+    }
+
+    .survey-project-summary-header h2 {
+        margin: 0;
+        color: var(--tx);
+        font-size: var(--fs-lg);
+        font-weight: var(--fw-semibold);
+    }
+
+.survey-project-summary-body {
+    padding: 20px;
+}
+
+.survey-summary-label {
+    display: block;
+    margin: 0 0 8px;
+    color: var(--tx-2);
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-semibold);
+    letter-spacing: .05em;
+    text-transform: uppercase;
+}
+
+.survey-summary-value {
+    margin: 0;
+    color: var(--tx);
+    font-size: var(--fs-md);
+    font-weight: var(--fw-semibold);
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+}
+
+.survey-summary-divider {
+    height: 1px;
+    margin: 22px 0;
+    background: var(--bdr);
+}
+
+.survey-requirements {
+    display: grid;
+    gap: 16px;
+    margin: 14px 0 22px;
+    padding: 0;
+    list-style: none;
+}
+
+    .survey-requirements li {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        color: var(--tx);
+        font-size: var(--fs-sm);
+        line-height: 1.5;
+    }
+
+        .survey-requirements li > i {
+            flex: 0 0 auto;
+            margin-top: 2px;
+            color: var(--acc);
+            font-size: 1rem;
+        }
+
+.survey-summary-note {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 14px;
+    border: 1px solid var(--bdr);
+    border-radius: var(--r);
+    background: var(--bg-in);
+    color: var(--tx-2);
+    font-size: var(--fs-sm);
+    line-height: 1.6;
+}
+
+    .survey-summary-note > i {
+        flex: 0 0 auto;
+        margin-top: 2px;
+        color: var(--acc);
+    }
+
+
+/* Selected upload files in project sidebar */
+
+.survey-file-status {
+    min-width: 0;
+}
+
+.survey-file-info {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+
+    .survey-file-info strong {
+        color: var(--tx);
+        font-size: var(--fs-sm);
+        font-weight: var(--fw-semibold);
+    }
+
+    .survey-file-info span {
+        color: var(--tx-2);
+        font-size: var(--fs-sm);
+        overflow-wrap: anywhere;
+    }
+
+    .survey-file-info small {
+        color: var(--tx-2);
+        font-size: var(--fs-xs);
+    }
+
+.survey-file-status.has-file > i {
+    color: var(--green);
+}
+
+
+@media (max-width: 1000px) {
+    .survey-upload-layout {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .survey-project-summary {
+        position: static;
+    }
+}
+
+@media (max-width: 600px) {
+    .survey-upload-card {
+        padding: 18px;
+    }
+
+    .survey-project-summary-header,
+    .survey-project-summary-body {
+        padding: 16px;
+    }
+}
+
+
+/* =========================================================
+   Survey Upload — Sidebar File Cards
+   ========================================================= */
+
+.survey-project-summary .survey-requirements li.survey-file-status {
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px;
+    border: 1px solid var(--bdr);
+    border-radius: var(--r);
+    background: var(--bg-in);
+}
+
+.survey-project-summary .survey-file-status > i {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 36px;
+    width: 36px;
+    height: 36px;
+    margin-top: 0;
+    border: 1px solid var(--bdr);
+    border-radius: 8px;
+    background: var(--bg-card);
+    color: var(--acc);
+    font-size: 1rem;
+}
+
+.survey-project-summary .survey-file-status.has-file > i {
+    color: var(--green);
+    border-color: var(--green);
+}
+
+.survey-project-summary .survey-file-info {
+    padding-top: 2px;
+}
+
+    .survey-project-summary .survey-file-info span {
+        overflow-wrap: anywhere;
+        line-height: 1.5;
+    }
+
+/* Both-files-required warning */
+.survey-project-summary .survey-summary-note {
+    gap: 10px;
+    padding: 14px;
+    border: 1px solid var(--yellow);
+    border-left: 3px solid var(--yellow);
+    border-radius: var(--r);
+    background: var(--yellow-bg);
+    color: var(--tx);
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-semibold);
+    line-height: 1.6;
+}
+
+    .survey-project-summary .survey-summary-note > i {
+        color: var(--yellow);
+        font-size: 1.05rem;
+    }

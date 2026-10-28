@@ -3,28 +3,27 @@
 
 @{
     ViewData["Title"] = "New Project";
-}
+    ViewData["PageTitle"] = "Create New Project";
+    ViewData["PageSubtitle"] =
+        "Enter the project information to create a new project.";
 
+    ViewData["PageHeaderBreadcrumbs"] = new List<Dictionary<string, string>>
+    {
+        new()
+        {
+            ["Text"] = "Projects",
+            ["Url"] = Url.Action("Index") ?? "#"
+        },
+        new()
+        {
+            ["Text"] = "New Project",
+            ["Url"] = ""
+        }
+    };
+}
 <div class="page">
 
-    <div class="page-header">
-        <div>
-            <div class="breadcrumb">
-                <a asp-action="Index">
-                    <i class="bi bi-folder2-open" aria-hidden="true"></i>
-                    Projects
-                </a>
-                <span>/</span>
-                New Project
-            </div>
-
-            <h1 class="page-title">Create New Project</h1>
-
-            <p class="page-sub">
-                Enter the project information to create a new project.
-            </p>
-        </div>
-    </div>
+    <partial name="_PageHeader" />
 
 
     <form asp-action="Create"

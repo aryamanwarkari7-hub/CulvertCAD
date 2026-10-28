@@ -4,6 +4,47 @@
 @{
     ViewData["Title"] = Model.ProjectName;
 
+    ViewData["PageTitle"] = Model.ProjectName;
+    ViewData["PageSubtitle"] = Model.Location;
+    ViewData["PageRegion"] = Model.State;
+
+    ViewData["PageHeaderBreadcrumbs"] =
+        new List<Dictionary<string, string>>
+        {
+            new()
+            {
+                ["Text"] = "Projects",
+                ["Url"] = Url.Action("Index", "Projects")!
+            },
+            new()
+            {
+                ["Text"] = Model.ProjectCode
+            }
+        };
+
+    ViewData["PageHeaderActions"] =
+        new List<Dictionary<string, string>>
+        {
+            new()
+            {
+                ["Text"] = "Survey Data",
+                ["Url"] = Url.Action(
+                    "Upload", "Survey",
+                    new { projectId = Model.Id })!,
+                ["Icon"] = "bi bi-bar-chart-line",
+                ["CssClass"] = "btn-ghost"
+            },
+            new()
+            {
+                ["Text"] = "New Design",
+                ["Url"] = Url.Action(
+                    "Create", "Designs",
+                    new { projectId = Model.Id })!,
+                ["Icon"] = "bi bi-plus-lg",
+                ["CssClass"] = "btn-primary"
+            }
+        };
+
     var designs =
         ViewBag.Designs as List<CulvertCAD.Core.DTOs.CulvertDesignDto>
         ?? new();
@@ -12,57 +53,14 @@
         ViewBag.SurveySummary as CulvertCAD.Core.DTOs.SurveySummaryDto;
 }
 
+
 <div class="page">
 
     <!-- =====================================================
          Page Header
          ===================================================== -->
 
-    <div class="page-header">
-
-        <div>
-            <div class="breadcrumb">
-                <a asp-action="Index">Projects</a>
-                <span>/</span>
-                @Model.ProjectCode
-            </div>
-
-            <h1 class="page-title">
-                @Model.ProjectName
-            </h1>
-
-            <p class="page-sub">
-                @Model.Location · @Model.State
-            </p>
-        </div>
-
-        <div class="action-row">
-
-            <a asp-controller="Survey"
-               asp-action="Upload"
-               asp-route-projectId="@Model.Id"
-               class="btn-ghost">
-
-                <i class="bi bi-bar-chart-line"
-                   aria-hidden="true"></i>
-
-                <span>Survey Data</span>
-            </a>
-
-            <a asp-controller="Designs"
-               asp-action="Create"
-               asp-route-projectId="@Model.Id"
-               class="btn-primary">
-
-                <i class="bi bi-plus-lg"
-                   aria-hidden="true"></i>
-
-                <span>New Design</span>
-            </a>
-
-        </div>
-
-    </div>
+    <partial name="_PageHeader" />
 
 
     <!-- =====================================================
@@ -105,48 +103,112 @@
             </div>
         }
 
+        
         <div class="mi">
             <span class="mi-lbl">Status</span>
-            <span class="mi-val">@Model.Status</span>
+            <span class="project-status-pill @(string.Equals(Model.Status, "Active", StringComparison.OrdinalIgnoreCase) ? "project-status-active" : "project-status-inactive")">
+                <span class="project-status-dot"></span>
+                @Model.Status
+            </span>
         </div>
+
 
     </div>
 
-
+    
     <!-- =====================================================
          Survey Summary
          ===================================================== -->
-
     @if (summary != null)
     {
-        <div class="info-banner">
+        <section class="survey-summary" aria-label="Survey Summary">
 
-            <i class="bi bi-bar-chart-line"
-               aria-hidden="true"></i>
+            <div class="survey-summary-header">
+                <div>
+                    <h2>Survey Data</h2>
+                    <p>Survey information available for this project</p>
+                </div>
 
-            <span>
-                Survey data loaded:
-                <strong>@summary.TotalPoints</strong> points
-                ·
-                <strong>@summary.DetectedCulverts</strong>
-                culvert locations detected
-                ·
-                Alignment length
-                <strong>
-                    @((summary.AlignmentLengthM / 1000).ToString("0.00"))km
-                </strong>
-                ·
+                <span class="survey-status">
+                    <span class="survey-status-dot"></span>
+                    Loaded
+                </span>
+            </div>
+
+            <div class="survey-metrics">
+
+                <article class="survey-metric-card">
+                    <div class="survey-metric-icon points-icon">
+                        <i class="bi bi-geo-alt" aria-hidden="true"></i>
+                    </div>
+
+                    <div class="survey-metric-content">
+                        <span class="survey-metric-label">Survey Points</span>
+                        <strong class="survey-metric-value">
+                            @summary.TotalPoints.ToString("N0")
+                        </strong>
+                        <span class="survey-metric-description">
+                            Imported data points
+                        </span>
+                    </div>
+                </article>
+
+                <article class="survey-metric-card">
+                    <div class="survey-metric-icon culverts-icon">
+                        <i class="bi bi-geo" aria-hidden="true"></i>
+                    </div>
+
+                    <div class="survey-metric-content">
+                        <span class="survey-metric-label">Culvert Locations</span>
+                        <strong class="survey-metric-value">
+                            @summary.DetectedCulverts.ToString("N0")
+                        </strong>
+                        <span class="survey-metric-description">
+                            Detected locations
+                        </span>
+                    </div>
+                </article>
+
+                <article class="survey-metric-card">
+                    <div class="survey-metric-icon alignment-icon">
+                        <i class="bi bi-signpost-2" aria-hidden="true"></i>
+                    </div>
+
+                    <div class="survey-metric-content">
+                        <span class="survey-metric-label">Alignment Length</span>
+                        <strong class="survey-metric-value">
+                            @((summary.AlignmentLengthM / 1000).ToString("0.00"))
+                            <span class="survey-metric-unit">km</span>
+                        </strong>
+                        <span class="survey-metric-description">
+                            Surveyed road alignment
+                        </span>
+                    </div>
+                </article>
+
+            </div>
+
+            <div class="survey-summary-footer">
+                <span class="survey-summary-note">
+                    <i class="bi bi-info-circle" aria-hidden="true"></i>
+                    Review the imported survey and detected locations.
+                </span>
+
                 <a asp-controller="Survey"
                    asp-action="Review"
-                   asp-route-projectId="@Model.Id">
-                    View Survey Analysis
-                    <i class="bi bi-arrow-right"
-                       aria-hidden="true"></i>
-                </a>
-            </span>
+                   asp-route-projectId="@Model.Id"
+                   class="survey-analysis-link">
 
-        </div>
+                    View Survey Analysis
+
+                    <i class="bi bi-arrow-right" aria-hidden="true"></i>
+                </a>
+            </div>
+
+        </section>
     }
+
+    
 
 
     <!-- =====================================================
