@@ -1,0 +1,563 @@
+﻿@{
+    ViewData["Title"] = "3D CAD Model Viewer";
+}
+
+<link rel="stylesheet"
+      href="~/css/pages/cad-solid-viewer.css"
+      asp-append-version="true" />
+
+<div class="cad-solid-page">
+
+    <!-- PAGE HEADER -->
+    <partial name="_PageHeader" />
+
+    <!-- PAGE INTRODUCTION -->
+    @* <div class="cad-page-intro">
+        <i class="bi bi-info-circle" aria-hidden="true"></i>
+        <span>
+            Import an STL mesh exported from Open CAD Studio,
+            or preview a standalone HTML CAD viewer.
+        </span>
+    </div> *@
+
+
+    <!-- =====================================================
+         UNIFIED VIEWER CARD
+         TABS ARE THE CARD HEADER
+         ===================================================== -->
+
+    <div class="cad-viewer-card">
+
+        <!-- VIEWER TABS -->
+        <div class="cad-viewer-tabs"
+             role="tablist"
+             aria-label="CAD viewer modes">
+
+            <button id="stlTab"
+                    class="cad-viewer-tab is-active"
+                    type="button"
+                    role="tab"
+                    aria-selected="true"
+                    aria-controls="stlPanel"
+                    data-viewer-tab="stlPanel"
+                    tabindex="0">
+
+                <i class="bi bi-box" aria-hidden="true"></i>
+                STL Model Viewer
+
+            </button>
+
+            <button id="htmlTab"
+                    class="cad-viewer-tab"
+                    type="button"
+                    role="tab"
+                    aria-selected="false"
+                    aria-controls="htmlPanel"
+                    data-viewer-tab="htmlPanel"
+                    tabindex="-1">
+
+                <i class="bi bi-filetype-html" aria-hidden="true"></i>
+                HTML Viewer Preview
+
+            </button>
+
+        </div>
+
+
+        <!-- =================================================
+             STL MODEL VIEWER PANEL
+             ================================================= -->
+
+        <section id="stlPanel"
+                 class="cad-viewer-panel"
+                 role="tabpanel"
+                 aria-labelledby="stlTab"
+                 tabindex="0">
+
+            <!-- STL INSTRUCTIONS -->
+            <details class="cad-instructions">
+
+                <summary class="cad-instructions-summary">
+
+                    <span class="cad-instructions-title">
+                        <i class="bi bi-info-circle"
+                           aria-hidden="true"></i>
+                        How to use the STL Viewer
+                    </span>
+
+                    <span class="cad-instructions-toggle">
+                        <span>View instructions</span>
+                        <i class="bi bi-chevron-down"
+                           aria-hidden="true"></i>
+                    </span>
+
+                </summary>
+
+
+                <div class="cad-instructions-content">
+
+                    <!-- GETTING STARTED -->
+                    <div class="cad-instruction-highlight">
+
+                        <i class="bi bi-lightbulb"
+                           aria-hidden="true"></i>
+
+                        <div>
+                            <strong>Getting started</strong>
+
+                            <p>
+                                Select an STL model exported from
+                                Open CAD Studio to display it in
+                                the 3D workspace.
+                            </p>
+                        </div>
+
+                    </div>
+
+
+                    <!-- INSTRUCTION STEPS -->
+                    <div class="cad-instruction-steps">
+
+                        <div class="cad-instruction-step">
+
+                            <span class="cad-step-number">01</span>
+
+                            <div>
+                                <strong>Select an STL file</strong>
+
+                                <p>
+                                    Choose a valid
+                                    <code>.stl</code> file from
+                                    your computer.
+                                </p>
+                            </div>
+
+                        </div>
+
+
+                        <div class="cad-instruction-step">
+
+                            <span class="cad-step-number">02</span>
+
+                            <div>
+                                <strong>Wait for the model to load</strong>
+
+                                <p>
+                                    The selected model will appear
+                                    in the 3D workspace.
+                                </p>
+                            </div>
+
+                        </div>
+
+
+                        <div class="cad-instruction-step">
+
+                            <span class="cad-step-number">03</span>
+
+                            <div>
+                                <strong>Interact with the model</strong>
+
+                                <p>
+                                    Drag to rotate and use the
+                                    mouse wheel to zoom.
+                                </p>
+                            </div>
+
+                        </div>
+
+
+                        <div class="cad-instruction-step">
+
+                            <span class="cad-step-number">04</span>
+
+                            <div>
+                                <strong>Adjust the camera</strong>
+
+                                <p>
+                                    Use Fit Model to frame the
+                                    complete model, or Reset View
+                                    to restore the initial camera position.
+                                </p>
+                            </div>
+
+                        </div>
+
+                    </div>
+
+
+                    <!-- STL WARNING -->
+                    <div class="cad-instruction-warning">
+
+                        <i class="bi bi-exclamation-triangle"
+                           aria-hidden="true"></i>
+
+                        <div>
+                            <strong>Important: STL file compatibility</strong>
+
+                            <p>
+                                Use a valid STL mesh exported from
+                                Open CAD Studio. Ensure the model
+                                has been exported completely and
+                                contains the intended geometry
+                                before loading it.
+                            </p>
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </details>
+
+
+            <!-- STL TOOLBAR -->
+            <div class="cad-solid-toolbar">
+
+                <input id="stlFile"
+                       type="file"
+                       accept=".stl,model/stl"
+                       aria-label="Select STL model file" />
+
+
+                <button id="fitModel"
+                        type="button"
+                        title="Fit model to viewport">
+
+                    <i class="bi bi-arrows-fullscreen"
+                       aria-hidden="true"></i>
+
+                    Fit Model
+
+                </button>
+
+
+                <button id="resetModel"
+                        type="button"
+                        title="Reset camera view">
+
+                    <i class="bi bi-arrow-counterclockwise"
+                       aria-hidden="true"></i>
+
+                    Reset View
+
+                </button>
+
+            </div>
+
+
+            <!-- STL STATUS -->
+            <div id="stlStatus"
+                 class="cad-viewer-status"
+                 role="status"
+                 aria-live="polite">
+
+                Select your exported STL file to begin.
+
+            </div>
+
+
+            <!-- THREE.JS VIEWPORT & DRAG-AND-DROP DROPZONE -->
+            <div id="stlViewport"
+                 class="cad-viewer-viewport"
+                 aria-label="3D STL model viewport">
+
+                <!-- Prominent STL Empty State & Dropzone -->
+                <div id="stlEmptyState" class="cad-solid-empty-overlay">
+                    <div class="cad-solid-empty-card">
+                        <div class="cad-solid-empty-icon">
+                            <i class="bi bi-box"></i>
+                        </div>
+                        <h3>No 3D STL Model Loaded</h3>
+                        <p>
+                            Import an <strong>.STL</strong> model (exported from Open CAD Studio)
+                            to inspect the 3D solid geometry in the interactive viewport.
+                        </p>
+                        <div class="cad-solid-empty-actions">
+                            <label for="stlFile" class="btn btn-primary cad-drop-btn">
+                                <i class="bi bi-folder2-open"></i> Browse STL File
+                            </label>
+                            <span class="cad-drop-hint">or drag and drop your .stl file here</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+
+        <!-- =================================================
+             HTML VIEWER PREVIEW PANEL
+             ================================================= -->
+
+        <section id="htmlPanel"
+                 class="cad-viewer-panel"
+                 role="tabpanel"
+                 aria-labelledby="htmlTab"
+                 tabindex="0"
+                 hidden>
+
+            <!-- HTML INSTRUCTIONS -->
+            <details class="cad-instructions">
+
+                <summary class="cad-instructions-summary">
+
+                    <span class="cad-instructions-title">
+                        <i class="bi bi-info-circle"
+                           aria-hidden="true"></i>
+                        How to use the HTML Viewer
+                    </span>
+
+                    <span class="cad-instructions-toggle">
+                        <span>View instructions</span>
+                        <i class="bi bi-chevron-down"
+                           aria-hidden="true"></i>
+                    </span>
+
+                </summary>
+
+
+                <div class="cad-instructions-content">
+
+                    <!-- GETTING STARTED -->
+                    <div class="cad-instruction-highlight">
+
+                        <i class="bi bi-lightbulb"
+                           aria-hidden="true"></i>
+
+                        <div>
+                            <strong>Before selecting a file</strong>
+
+                            <p>
+                                This viewer previews a standalone
+                                HTML CAD viewer in an isolated
+                                environment. It does not replace
+                                the STL model viewer.
+                            </p>
+                        </div>
+
+                    </div>
+
+
+                    <!-- INSTRUCTION STEPS -->
+                    <div class="cad-instruction-steps">
+
+                        <div class="cad-instruction-step">
+
+                            <span class="cad-step-number">01</span>
+
+                            <div>
+                                <strong>Select an HTML file</strong>
+
+                                <p>
+                                    Choose a standalone
+                                    <code>.html</code> or
+                                    <code>.htm</code> CAD viewer file.
+                                </p>
+                            </div>
+
+                        </div>
+
+
+                        <div class="cad-instruction-step">
+
+                            <span class="cad-step-number">02</span>
+
+                            <div>
+                                <strong>Check its dependencies</strong>
+
+                                <p>
+                                    Prefer self-contained HTML files.
+                                    External dependencies should use
+                                    absolute URLs.
+                                </p>
+                            </div>
+
+                        </div>
+
+
+                        <div class="cad-instruction-step">
+
+                            <span class="cad-step-number">03</span>
+
+                            <div>
+                                <strong>Preview the viewer</strong>
+
+                                <p>
+                                    The selected HTML file will be
+                                    displayed inside the preview
+                                    workspace.
+                                </p>
+                            </div>
+
+                        </div>
+
+
+                        <div class="cad-instruction-step">
+
+                            <span class="cad-step-number">04</span>
+
+                            <div>
+                                <strong>Close the preview</strong>
+
+                                <p>
+                                    Use Close Preview to remove
+                                    the loaded HTML viewer.
+                                </p>
+                            </div>
+
+                        </div>
+
+                    </div>
+
+
+                    <!-- HTML WARNING -->
+                    <div class="cad-instruction-warning">
+
+                        <i class="bi bi-exclamation-triangle"
+                           aria-hidden="true"></i>
+
+                        <div>
+                            <strong>Important: Isolated preview</strong>
+
+                            <p>
+                                The HTML preview runs in a sandboxed
+                                iframe. Features requiring additional
+                                browser permissions or unrestricted
+                                access may not work.
+                            </p>
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </details>
+
+            <!-- HTML TOOLBAR -->
+            <div class="cad-solid-toolbar">
+
+                <input id="htmlViewerFile"
+                       type="file"
+                       accept=".html,.htm,text/html"
+                       aria-label="Select HTML CAD viewer file" />
+
+
+                <button id="fullscreenHtmlViewer"
+                        type="button"
+                        title="View HTML preview in full screen"
+                        aria-label="Enter full screen"
+                        disabled>
+
+                    <i class="bi bi-arrows-fullscreen"
+                       aria-hidden="true"></i>
+
+                    Full Screen
+
+                </button>
+
+
+                <button id="clearHtmlViewer"
+                        type="button"
+                        title="Close HTML preview"
+                        disabled>
+
+                    <i class="bi bi-x-circle"
+                       aria-hidden="true"></i>
+
+                    Close Preview
+
+                </button>
+
+            </div>
+
+
+            <!-- HTML STATUS -->
+            <div id="htmlViewerStatus"
+                 class="cad-viewer-status"
+                 role="status"
+                 aria-live="polite">
+
+                No HTML viewer selected.
+
+            </div>
+
+
+            <!-- HTML EMPTY STATE -->
+            <!-- HTML EMPTY STATE & DRAG-AND-DROP DROPZONE -->
+            <div id="htmlViewerEmptyState"
+                 class=" cad-html-empty-state">
+
+                <div class="cad-solid-empty-card">
+                    <div class="cad-solid-empty-icon">
+                        <i class="bi bi-file-earmark-code"></i>
+                    </div>
+                    <h3>No HTML CAD Viewer Loaded</h3>
+                    <p>
+                        Import an <strong>.HTML</strong> viewer file (exported from CulvertCAD Generation)
+                        to interact with 3D culvert solids, layers, and geometry.
+                    </p>
+                    <div class="cad-solid-empty-actions">
+                        <label for="htmlViewerFile" class="btn btn-primary cad-drop-btn">
+                            <i class="bi bi-folder2-open"></i> Browse HTML File
+                        </label>
+                        <span class="cad-drop-hint">or drag and drop your .html file here</span>
+                    </div>
+                </div>
+
+            </div>
+
+
+            <!-- HTML PREVIEW WORKSPACE -->
+            <div id="htmlViewerFrameContainer"
+                 class="cad-html-frame-container"
+                 hidden>
+
+                <iframe id="htmlViewerFrame"
+                        title="Isolated HTML CAD viewer preview"
+                        sandbox="allow-scripts"
+                        referrerpolicy="no-referrer">
+                </iframe>
+
+            </div>
+
+
+            <noscript>
+                <p>
+                    JavaScript must be enabled to preview an HTML viewer.
+                </p>
+            </noscript>
+
+        </section>
+
+    </div>
+
+</div>
+
+
+<!-- =====================================================
+     THREE.JS IMPORT MAP
+     ===================================================== -->
+
+<script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"
+        }
+    }
+</script>
+
+
+<!-- =====================================================
+     VIEWER SCRIPTS
+     ===================================================== -->
+
+<script type="module"
+        src="~/js/cad/cad-solid-viewer.js"
+        asp-append-version="true">
+</script>
+
+<script src="~/js/cad/cad-solid-viewer-page.js"
+        asp-append-version="true">
+</script>

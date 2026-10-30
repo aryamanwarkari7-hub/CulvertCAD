@@ -26,5 +26,8 @@
 @import url('./pages/revisions.css');
 @import url('./pages/drawings.css');
 @import url('./pages/survey.css');
+@import url('./pages/cad-drawing-viewer.css');
+@import url('./pages/cad-solid-viewer.css');
+
 
 

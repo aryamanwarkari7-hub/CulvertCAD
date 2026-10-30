@@ -13,7 +13,7 @@
 
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
 
-
+   
     <link rel="icon" href="data:,">
 </head>
 
@@ -55,27 +55,63 @@
                     </button>
                 </div>
 
+                @{
+                    var currentController =
+                        ViewContext.RouteData.Values["controller"]?.ToString();
+                }
+
                 <nav class="sidebar-nav">
 
+                    <div class="nav-group-label">OVERVIEW</div>
+
+                    <!-- Dashboard -->
                     <a asp-controller="Home"
                        asp-action="Index"
-                       class="nav-item">
+                       title="Dashboard"
+                       class="nav-item @(currentController == "Home" ? "active" : "")">
                         <i class="bi bi-grid-1x2-fill nav-icon" aria-hidden="true"></i>
                         <span>Dashboard</span>
                     </a>
 
+                    <div class="nav-group-label">  PROJECTS WORKSPACE</div>
+
+                    <!-- Projects -->
                     <a asp-controller="Projects"
                        asp-action="Index"
-                       class="nav-item">
+                       title="Projects"
+                       class="nav-item @(currentController == "Projects" ? "active" : "")">
                         <i class="bi bi-folder-fill nav-icon" aria-hidden="true"></i>
                         <span>Projects</span>
                     </a>
 
+                    <div class="nav-group-label">  CAD WORKSPACE</div>
+                                 
+                    <!-- CAD WORKSPACE -->
+                    <a asp-controller="CadDrawings"
+                       asp-action="Index"
+                       title="Drawings"
+                       class="nav-item @(currentController == "CadDrawings" ? "active" : "")">
+                        <i class="bi bi-vector-pen nav-icon" aria-hidden="true"></i>
+                        <span>2D Drawing Viewer</span>
+                    </a>
+
+                    <a asp-controller="CadSolidViewer"
+                       asp-action="Index"
+                       title="Solid Viewer"
+                       class="nav-item @(currentController == "CadSolidViewer" ? "active" : "")">
+                        <i class="bi bi-box nav-icon" aria-hidden="true"></i>
+                        <span>3D Solid Viewer</span>
+                    </a>
+
+                    <!-- Admin -->
                     @if (User.IsInRole("SuperAdmin") || User.IsInRole("Admin"))
                     {
+                        <div class="nav-group-label">ADMINISTRATION</div>
+
                         <a asp-controller="Account"
                            asp-action="Users"
-                           class="nav-item">
+                           title="Users"
+                           class="nav-item @(currentController == "Account" ? "active" : "")">
                             <i class="bi bi-people-fill nav-icon" aria-hidden="true"></i>
                             <span>Users</span>
                         </a>

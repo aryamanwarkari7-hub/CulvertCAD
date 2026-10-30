@@ -127,75 +127,99 @@
 }
 
 
+
 /* ---------------------------------------------------------
    5. Sidebar Navigation
    --------------------------------------------------------- */
 
-.sidebar-nav
-{
+.sidebar-nav {
     flex: 1;
-    padding: var(--sp-5) 0.45rem;
+    padding: var(--sp-5) 0.65rem;
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 5px;
 }
 
-.nav-item
-{
+/* Navigation item */
+
+.nav-item {
     display: flex;
     align-items: center;
-    gap: 1rem;
-    padding: 0.4rem 0.5rem;
+    gap: 12px;
+    min-height: 48px;
+    padding: 6px 10px;
+    border: 1px solid transparent;
     border-radius: var(--r);
     color: var(--tx-2);
     text-decoration: none;
     font-size: 0.9rem;
     font-weight: var(--fw-medium);
-    transition: background-color var(--transition-fast), color var(--transition-fast);
+    transition: background-color var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
 }
 
-    /* ---------------------------------------------------------
-   Active Navigation State Styling
-   --------------------------------------------------------- */
-
-    .nav-item.active {
+    .nav-item:hover {
         background: var(--bg-hov);
-        color: var(--acc);
-        font-weight: var(--fw-semibold);
+        color: var(--tx);
+        text-decoration: none;
     }
 
-        .nav-item.active .nav-icon {
-            border-color: var(--acc);
-            background: rgba(var(--acc-rgb, 59, 130, 246), 0.1);
-        }
-/* Collapsed state active highlight */
-.app-shell.sidebar-collapsed .sidebar-nav .nav-item.active {
+    .nav-item:focus-visible {
+        outline: 2px solid var(--acc);
+        outline-offset: 2px;
+    }
+
+/* Circular navigation icons */
+
+.nav-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 36px;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border: 1px solid var(--bdr);
+    border-radius: 50%;
+    background: var(--bg-in);
+    color: var(--tx-2);
+    font-size: 1rem;
+    text-align: center;
+    transition: background-color var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+}
+
+/* Icon hover */
+
+.nav-item:hover .nav-icon {
+    color: var(--acc);
+    border-color: var(--acc);
+}
+
+/* Active navigation */
+
+.nav-item.active {
     background: var(--bg-hov);
     color: var(--acc);
+    border-color: var(--bdr);
+    font-weight: var(--fw-semibold);
 }
 
-.nav-item:hover
-{
-    background: var(--bg-hov);
-    color: var(--tx);
-    text-decoration: none;
-}
+    .nav-item.active .nav-icon {
+        color: var(--acc);
+        border-color: var(--acc);
+        background: rgba(240, 136, 62, 0.10);
+    }
 
-.nav-icon
-{
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    font-size: 1.2rem;
-    width: 1.5rem;
-    text-align: center;
-    flex-shrink: 0;
-    
-    padding:0 0.15rem;
-    width:3rem;
-    height:3rem;
-}
+/* CAD workspace section heading */
 
+.nav-group-label,
+.nav-section-label {
+    padding: 17px 10px 6px;
+    color: var(--tx-2);
+    font-size: 0.68rem;
+    font-weight: var(--fw-semibold);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+}
 
 /* ---------------------------------------------------------
    6. Sidebar Footer and User Information
@@ -208,7 +232,7 @@
     align-items: center;
     justify-content: space-between;
     gap: var(--sp-3);
-    width:100%;
+    width: 100%;
 }
 
 .user-chip {
@@ -222,39 +246,7 @@
 
 .user-meta {
     min-width: 0;
-    flex-direction: column;
     flex: 1;
-    overflow: hidden;
-}
-
-.user-name {
-    display: block;
-    font-size: 0.85rem;
-    font-weight: var(--fw-semibold);
-    color: var(--tx);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.avatar
-{
-    width: var(--avatar-sm);
-    height: var(--avatar-sm);
-    border-radius: 50%;
-    background: linear-gradient(135deg, var(--acc), var(--acc-dk));
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: var(--fw-bold);
-    font-size: 0.78rem;
-    color: #fff;
-    flex-shrink: 0;
-}
-
-.user-meta
-{
-    min-width: 0;
     overflow: hidden;
 }
 
@@ -269,9 +261,21 @@
     cursor: pointer;
 }
 
-/* ---------------------------------------------------------
-   Sign-out Button Styling (Filled Background)
-   --------------------------------------------------------- */
+.avatar {
+    width: var(--avatar-sm);
+    height: var(--avatar-sm);
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--acc), var(--acc-dk));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: var(--fw-bold);
+    font-size: 0.78rem;
+    color: #fff;
+    flex-shrink: 0;
+}
+
+/* Sign-out button */
 
 .logout-btn {
     display: inline-flex;
@@ -292,7 +296,7 @@
 }
 
     .logout-btn:hover {
-        background: var(--red-hover, #d93829); /* slightly darker tint on hover or use opacity */
+        background: var(--red-hover, #d93829);
         opacity: 0.9;
         border-color: transparent;
         color: #fff;
@@ -307,142 +311,131 @@
         font-size: 0.95rem;
     }
 
-
 /* ---------------------------------------------------------
-   Collapsed State: Filled Sign-out Icon Button
+   Sidebar Collapse Styles
    --------------------------------------------------------- */
 
-.app-shell.sidebar-collapsed .sidebar-footer {
-    justify-content: center;
-    padding: 1rem 0.4rem;
-}
-
-.app-shell.sidebar-collapsed .sidebar .user-meta,
-.app-shell.sidebar-collapsed .sidebar .logout-btn span {
-    display: none !important;
-}
-
-.app-shell.sidebar-collapsed .sidebar .logout-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 36px;
-    height: 36px;
-    padding: 0;
-    background: var(--red);
-    border: 1px solid var(--red);
-    color: #fff;
-    border-radius: var(--r);
-    margin: 0 auto;
-}
-
-    .app-shell.sidebar-collapsed .sidebar .logout-btn i {
-        margin: 0;
-        font-size: 1.1rem;
-    }
-
-/* =========================================================
-   Sidebar Collapse Styles
-   ========================================================= */
-
-.app-shell.sidebar-collapsed
-{
+.app-shell.sidebar-collapsed {
     --sb-w: 76px;
 }
 
-.app-shell.sidebar-collapsed .sidebar .logo-text,
-.app-shell.sidebar-collapsed .sidebar .nav-item span,
-.app-shell.sidebar-collapsed .sidebar .user-meta,
-.app-shell.sidebar-collapsed .sidebar .logout-btn
-{
-    display: none;
-}
+    .app-shell.sidebar-collapsed .sidebar {
+        width: 72px;
+    }
 
-.app-shell.sidebar-collapsed .sidebar .logo,
-.app-shell.sidebar-collapsed .sidebar .nav-item,
-.app-shell.sidebar-collapsed .sidebar .user-chip
-{
-    justify-content: center;
-}
+        /* Hide text and section headings */
 
-.app-shell.sidebar-collapsed .sidebar
-{
-    width: 72px;
-}
+        .app-shell.sidebar-collapsed .sidebar .logo-text,
+        .app-shell.sidebar-collapsed .sidebar .nav-item span,
+        .app-shell.sidebar-collapsed .sidebar .user-meta,
+        .app-shell.sidebar-collapsed .sidebar .logout-btn span,
+        .app-shell.sidebar-collapsed .nav-group-label,
+        .app-shell.sidebar-collapsed .nav-section-label {
+            display: none !important;
+        }
 
-.app-shell.sidebar-collapsed .sidebar-header
-{
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    padding: 1rem 0.5rem;
-}
+        /* Center sidebar elements */
 
-.app-shell.sidebar-collapsed .sidebar-header-content
-{
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    width: 100%;
-}
+        .app-shell.sidebar-collapsed .sidebar .logo,
+        .app-shell.sidebar-collapsed .sidebar .nav-item,
+        .app-shell.sidebar-collapsed .sidebar .user-chip {
+            justify-content: center;
+        }
 
-.app-shell.sidebar-collapsed .sidebar-header .logo
-{
-    justify-content: center;
-    width: 100%;
-}
+    .app-shell.sidebar-collapsed .sidebar-header {
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        padding: 1rem 0.5rem;
+    }
 
-.app-shell.sidebar-collapsed .sidebar-header .logo-glyph
-{
-    margin-right: 0;
-    font-size: 1.5rem;
-}
+    .app-shell.sidebar-collapsed .sidebar-header-content {
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        width: 100%;
+    }
 
-.app-shell.sidebar-collapsed .sidebar-menu-toggle
-{
-    margin: 0 auto;
-}
+    .app-shell.sidebar-collapsed .sidebar-header .logo {
+        justify-content: center;
+        width: 100%;
+    }
 
-.app-shell.sidebar-collapsed .sidebar-nav .nav-item
-{
-    justify-content: center;
-    padding: 0.75rem 0;
-    margin: 0.25rem 0.5rem;
-}
+    .app-shell.sidebar-collapsed .sidebar-header .logo-glyph {
+        margin-right: 0;
+        font-size: 1.5rem;
+    }
 
-.app-shell.sidebar-collapsed .sidebar-nav .nav-icon
-{
-    margin-right: 0;
-    font-size: 1.25rem;
-}
+    .app-shell.sidebar-collapsed .sidebar-menu-toggle {
+        margin: 0 auto;
+    }
 
-.app-shell.sidebar-collapsed .sidebar-footer
-{
-    padding: 1rem 0.5rem;
-    align-items: center;
-    justify-content: center;
-}
+    /* Collapsed navigation icons */
 
-.app-shell.sidebar-collapsed .user-chip
-{
-    justify-content: center;
-    padding: 0;
-    background: transparent;
-}
+    .app-shell.sidebar-collapsed .sidebar-nav {
+        padding-left: 0.4rem;
+        padding-right: 0.4rem;
+    }
 
-.app-shell.sidebar-collapsed .logout-btn
-{
-    justify-content: center;
-    width: 100%;
-    padding: 0.75rem 0;
-}
+        .app-shell.sidebar-collapsed .sidebar-nav .nav-item {
+            justify-content: center;
+            padding: 5px;
+            margin: 2px 0;
+        }
 
-.app-shell.sidebar-collapsed .logout-btn i
-{
-    margin-right: 0;
-    font-size: 1.25rem;
+        .app-shell.sidebar-collapsed .sidebar-nav .nav-icon {
+            flex: 0 0 36px;
+            margin: 0;
+            font-size: 1.1rem;
+        }
+
+    /* Collapsed footer */
+
+    .app-shell.sidebar-collapsed .sidebar-footer {
+        padding: 1rem 0.4rem;
+        display:flex;
+        flex-direction:column;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .app-shell.sidebar-collapsed .user-chip {
+        justify-content: center;
+        padding: 0;
+        background: transparent;
+    }
+
+    .app-shell.sidebar-collapsed .sidebar .logout-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        padding: 0;
+        background: var(--red);
+        border: 1px solid var(--red);
+        color: #fff;
+        border-radius: var(--r);
+        margin: 0 auto;
+    }
+
+        .app-shell.sidebar-collapsed .sidebar .logout-btn i {
+            margin: 0;
+            font-size: 1.1rem;
+        }
+
+/* ---------------------------------------------------------
+   Reduced Motion
+   --------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+    .nav-item,
+    .nav-icon,
+    .logout-btn {
+        transition: none;
+    }
 }
 
 

@@ -1,0 +1,1303 @@
+﻿
+/* =========================================================
+   CULVERT LOCATOR — CAD SOLID VIEWER
+   Unified tab-headed viewer card
+   Aligned with the application design system
+   ========================================================= */
+
+
+/* ---------------------------------------------------------
+   1. PAGE FOUNDATION
+   --------------------------------------------------------- */
+
+.cad-solid-page {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    padding: var(--sp-6, 24px);
+    box-sizing: border-box;
+    color: var(--tx, #e6edf3);
+    font-family: inherit;
+    font-size: 0.9rem;
+}
+
+    .cad-solid-page *,
+    .cad-solid-page *::before,
+    .cad-solid-page *::after {
+        box-sizing: border-box;
+    }
+
+
+    /* ---------------------------------------------------------
+   2. PAGE INTRODUCTION
+   --------------------------------------------------------- */
+
+    .cad-solid-page .cad-page-intro {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        width: 100%;
+        max-width: none;
+        margin: 10px 0 20px;
+        padding: 12px 15px;
+        color: var(--tx);
+        background: var(--bg-card);
+        border: 1px solid var(--bdr);
+        border-left: 3px solid var(--acc);
+        border-radius: 8px;
+        font-size: 0.84rem;
+        line-height: 1.6;
+    }
+
+        .cad-solid-page .cad-page-intro > i {
+            flex: 0 0 auto;
+            margin-top: 2px;
+            color: var(--acc);
+            font-size: 1rem;
+        }
+
+
+    /* ---------------------------------------------------------
+   3. UNIFIED VIEWER CARD
+   --------------------------------------------------------- */
+
+    .cad-solid-page .cad-viewer-card {
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        min-width: 0;
+        overflow: hidden;
+        background: var(--bg-card);
+        border: 1px solid var(--bdr);
+        border-radius: 11px;
+        box-shadow: var(--shadow-sm, none);
+    }
+
+
+        /* ---------------------------------------------------------
+   4. VIEWER TABS — CARD HEADER
+   --------------------------------------------------------- */
+
+        .cad-solid-page .cad-viewer-card .cad-viewer-tabs {
+            display: flex;
+            align-items: stretch;
+            flex-wrap: wrap;
+            gap: 0;
+            width: 100%;
+            margin: 0;
+            padding: 0 12px;
+            background: var(--bg-in);
+            border: 0;
+            border-bottom: 1px solid var(--bdr);
+            border-radius: 10px 10px 0 0;
+        }
+
+        .cad-solid-page .cad-viewer-card .cad-viewer-tab {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 9px;
+            min-height: 54px;
+            padding: 13px 20px;
+            color: var(--tx-2);
+            background: transparent;
+            border: 0;
+            border-radius: 0;
+            box-shadow: none;
+            font: inherit;
+            font-size: 0.85rem;
+            font-weight: var(--fw-medium, 500);
+            line-height: 1.4;
+            white-space: nowrap;
+            cursor: pointer;
+            transition: color 0.18s ease, background-color 0.18s ease, box-shadow 0.18s ease;
+        }
+
+            .cad-solid-page .cad-viewer-card .cad-viewer-tab i {
+                font-size: 1rem;
+            }
+
+            .cad-solid-page .cad-viewer-card .cad-viewer-tab:hover {
+                color: var(--tx);
+                background: var(--bg-in);
+            }
+
+            .cad-solid-page .cad-viewer-card .cad-viewer-tab.is-active {
+                color: var(--acc);
+                background: var(--bg-in);
+                font-weight: var(--fw-semibold, 600);
+                box-shadow: inset 0 -3px 0 var(--acc);
+            }
+
+            .cad-solid-page .cad-viewer-card .cad-viewer-tab:focus-visible {
+                position: relative;
+                z-index: 1;
+                outline: 2px solid var(--acc);
+                outline-offset: -3px;
+            }
+
+
+        /* ---------------------------------------------------------
+   5. VIEWER PANELS
+   --------------------------------------------------------- */
+
+        .cad-solid-page .cad-viewer-card .cad-viewer-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            width: 100%;
+            min-width: 0;
+            padding: 14px;
+        }
+
+            .cad-solid-page .cad-viewer-card .cad-viewer-panel[hidden] {
+                display: none !important;
+            }
+
+
+    /* ---------------------------------------------------------
+   6. INSTRUCTION PANEL
+   --------------------------------------------------------- */
+
+    .cad-solid-page .cad-instructions {
+        width: 100%;
+        margin: 0;
+        overflow: hidden;
+        background: var(--bg-card);
+        border: 1px solid var(--bdr);
+        border-radius: 9px;
+        transition: border-color 0.2s ease;
+    }
+
+        .cad-solid-page .cad-instructions:hover,
+        .cad-solid-page .cad-instructions[open] {
+            border-color: var(--acc);
+        }
+
+
+    /* Instruction heading */
+
+    .cad-solid-page .cad-instructions-summary {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+        min-height: 46px;
+        padding: 11px 15px;
+        color: var(--tx);
+        background: var(--bg-card);
+        cursor: pointer;
+        list-style: none;
+        user-select: none;
+        transition: background-color 0.18s ease;
+    }
+
+        .cad-solid-page .cad-instructions-summary::marker {
+            content: "";
+        }
+
+        .cad-solid-page .cad-instructions-summary:hover {
+            background: var(--bg-in);
+        }
+
+        .cad-solid-page .cad-instructions-summary:focus-visible {
+            outline: 2px solid var(--acc);
+            outline-offset: -3px;
+        }
+
+
+    /* Instruction title */
+
+    .cad-solid-page .cad-instructions-title {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        min-width: 0;
+        color: var(--tx);
+        font-size: 0.85rem;
+        font-weight: var(--fw-semibold, 600);
+    }
+
+        .cad-solid-page .cad-instructions-title > i {
+            color: var(--acc);
+            font-size: 1rem;
+        }
+
+
+    /* Expand / collapse indicator */
+
+    .cad-solid-page .cad-instructions-toggle {
+        display: inline-flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 9px;
+        flex: 0 0 auto;
+        color: var(--tx-2);
+        font-size: 0.77rem;
+    }
+
+        .cad-solid-page .cad-instructions-toggle i {
+            color: var(--acc);
+            font-size: 0.8rem;
+            transition: transform 0.2s ease;
+        }
+
+    .cad-solid-page .cad-instructions[open] .cad-instructions-toggle i {
+        transform: rotate(180deg);
+    }
+
+
+    /* Expanded content */
+
+    .cad-solid-page .cad-instructions-content {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+        padding: 15px;
+        border-top: 1px solid var(--bdr);
+        animation: cad-instructions-reveal 0.2s ease;
+    }
+
+@keyframes cad-instructions-reveal {
+    from {
+        opacity: 0;
+        transform: translateY(-4px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+
+/* ---------------------------------------------------------
+   7. INSTRUCTION HIGHLIGHT
+   --------------------------------------------------------- */
+
+.cad-solid-page .cad-instruction-highlight {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 13px 15px;
+    color: var(--tx);
+    background: var(--bg-in);
+    border: 1px solid var(--bdr);
+    border-left: 3px solid var(--acc);
+    border-radius: 7px;
+}
+
+    .cad-solid-page .cad-instruction-highlight > i {
+        flex: 0 0 auto;
+        margin-top: 2px;
+        color: var(--acc);
+        font-size: 1.1rem;
+    }
+
+    .cad-solid-page .cad-instruction-highlight strong {
+        display: block;
+        margin-bottom: 4px;
+        color: var(--tx);
+        font-size: 0.84rem;
+    }
+
+    .cad-solid-page .cad-instruction-highlight p {
+        margin: 0;
+        color: var(--tx-2);
+        font-size: 0.81rem;
+        line-height: 1.6;
+    }
+
+
+/* ---------------------------------------------------------
+   8. NUMBERED INSTRUCTION STEPS
+   --------------------------------------------------------- */
+
+.cad-solid-page .cad-instruction-steps {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.cad-solid-page .cad-instruction-step {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    min-width: 0;
+    padding: 12px;
+    background: var(--bg-card);
+    border: 1px solid var(--bdr);
+    border-radius: 7px;
+    transition: background-color 0.18s ease, border-color 0.18s ease;
+}
+
+    .cad-solid-page .cad-instruction-step:hover {
+        background: var(--bg-in);
+        border-color: var(--acc);
+    }
+
+
+/* Step number */
+
+.cad-solid-page .cad-step-number {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 32px;
+    width: 32px;
+    height: 32px;
+    color: var(--acc);
+    background: var(--bg-in);
+    border: 1px solid var(--bdr);
+    border-radius: 7px;
+    font-size: 0.73rem;
+    font-weight: var(--fw-semibold, 600);
+    font-variant-numeric: tabular-nums;
+}
+
+
+/* Step text */
+
+.cad-solid-page .cad-instruction-step > div {
+    min-width: 0;
+}
+
+.cad-solid-page .cad-instruction-step strong {
+    display: block;
+    margin: 1px 0 5px;
+    color: var(--tx);
+    font-size: 0.81rem;
+    font-weight: var(--fw-semibold, 600);
+}
+
+.cad-solid-page .cad-instruction-step p {
+    margin: 0;
+    color: var(--tx-2);
+    font-size: 0.78rem;
+    line-height: 1.55;
+}
+
+.cad-solid-page .cad-instruction-step code {
+    padding: 2px 5px;
+    color: var(--acc);
+    background: var(--bg-in);
+    border: 1px solid var(--bdr);
+    border-radius: 4px;
+    font-size: 0.76rem;
+}
+
+
+/* ---------------------------------------------------------
+   9. IMPORTANT WARNING — YELLOW HIGHLIGHT
+   --------------------------------------------------------- */
+
+.cad-solid-page .cad-instruction-warning {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 13px 15px;
+    color: var(--tx);
+    background: rgba(245, 158, 11, 0.07);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    border-left: 3px solid #f59e0b;
+    border-radius: 7px;
+}
+
+    .cad-solid-page .cad-instruction-warning > i {
+        flex: 0 0 auto;
+        margin-top: 2px;
+        color: #f59e0b;
+        font-size: 1.05rem;
+    }
+
+    .cad-solid-page .cad-instruction-warning strong {
+        display: block;
+        margin-bottom: 4px;
+        color: var(--tx);
+        font-size: 0.82rem;
+    }
+
+    .cad-solid-page .cad-instruction-warning p {
+        margin: 0;
+        color: var(--tx-2);
+        font-size: 0.79rem;
+        line-height: 1.6;
+    }
+
+
+/* ---------------------------------------------------------
+   10. FILE IMPORT TOOLBARS
+   --------------------------------------------------------- */
+
+.cad-solid-page .cad-solid-toolbar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    width: 100%;
+    min-width: 0;
+    margin: 0;
+    padding: 10px;
+    background: var(--bg-in);
+    border: 1px solid var(--bdr);
+    border-radius: 8px;
+}
+
+
+    /* File selection */
+
+    .cad-solid-page .cad-solid-toolbar input[type="file"] {
+        flex: 1 1 300px;
+        width: 100%;
+        min-width: 0;
+        min-height: 42px;
+        padding: 7px 10px;
+        color: var(--tx);
+        background: var(--bg-card);
+        border: 1px solid var(--bdr);
+        border-radius: var(--r, 8px);
+        font: inherit;
+        font-size: 0.82rem;
+        transition: border-color 0.18s ease;
+    }
+
+        .cad-solid-page .cad-solid-toolbar input[type="file"]:hover {
+            border-color: var(--acc);
+        }
+
+        .cad-solid-page .cad-solid-toolbar input[type="file"]::file-selector-button {
+            margin-right: 10px;
+            padding: 7px 11px;
+            color: var(--tx);
+            background: var(--bg-in);
+            border: 1px solid var(--bdr);
+            border-radius: 6px;
+            font: inherit;
+            cursor: pointer;
+            transition: border-color 0.18s ease;
+        }
+
+            .cad-solid-page .cad-solid-toolbar input[type="file"]::file-selector-button:hover {
+                border-color: var(--acc);
+            }
+
+
+    /* Toolbar buttons */
+
+    .cad-solid-page .cad-solid-toolbar button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        flex: 0 0 auto;
+        min-width: 112px;
+        min-height: 40px;
+        padding: 8px 14px;
+        color: var(--tx-2);
+        background: var(--bg-card);
+        border: 1px solid var(--bdr);
+        border-radius: var(--r, 8px);
+        font: inherit;
+        font-size: 0.84rem;
+        font-weight: var(--fw-medium, 500);
+        line-height: 1.4;
+        white-space: nowrap;
+        cursor: pointer;
+        transition: color 0.18s ease, background-color 0.18s ease, border-color 0.18s ease, filter 0.18s ease;
+    }
+
+        .cad-solid-page .cad-solid-toolbar button i {
+            font-size: 0.95rem;
+        }
+
+        .cad-solid-page .cad-solid-toolbar button:hover:not(:disabled) {
+            color: var(--tx);
+            background: var(--bg-in);
+            border-color: var(--acc);
+        }
+
+        .cad-solid-page .cad-solid-toolbar button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+
+/* Primary action */
+
+.cad-solid-page #fitModel {
+    color: #fff;
+    background: var(--acc);
+    border-color: var(--acc);
+    font-weight: var(--fw-semibold, 600);
+}
+
+    .cad-solid-page #fitModel:hover:not(:disabled) {
+        color: #fff;
+        filter: brightness(1.08);
+    }
+
+
+/* Secondary actions */
+
+.cad-solid-page #resetModel,
+.cad-solid-page #clearHtmlViewer {
+    background: var(--bg-in);
+}
+
+
+/* ---------------------------------------------------------
+   11. VIEWER STATUS INFORMATION
+   --------------------------------------------------------- */
+
+.cad-solid-page .cad-viewer-status {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    width: 100%;
+    min-height: 44px;
+    margin: 0;
+    padding: 11px 14px;
+    color: var(--tx);
+    background: var(--bg-in);
+    border: 1px solid var(--bdr);
+    border-left: 3px solid var(--acc);
+    border-radius: 7px;
+    font-size: 0.82rem;
+    font-weight: var(--fw-medium, 500);
+    line-height: 1.6;
+    overflow-wrap: anywhere;
+}
+
+    /* Information symbol */
+
+    .cad-solid-page .cad-viewer-status::before {
+        content: "\f431";
+        display: inline-block;
+        flex: 0 0 auto;
+        margin-top: 1px;
+        color: var(--acc);
+        font-family: "bootstrap-icons";
+        font-size: 0.95rem;
+    }
+
+    /* Empty status */
+
+    .cad-solid-page .cad-viewer-status:empty {
+        display: none;
+    }
+
+
+/* ---------------------------------------------------------
+   12. STL THREE.JS VIEWPORT
+   --------------------------------------------------------- */
+
+.cad-solid-page .cad-viewer-viewport {
+    position: relative;
+    isolation: isolate;
+    width: 100%;
+    height: min(72vh, 900px);
+    min-height: 450px;
+    margin: 0;
+    overflow: hidden;
+    background: var(--bg-in);
+    border: 1px solid var(--bdr);
+    border-radius: 8px;
+    box-shadow: var(--shadow-sm, none);
+}
+
+.cad-solid-page #stlViewport canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+
+/* ---------------------------------------------------------
+   13. HTML PREVIEW
+   --------------------------------------------------------- */
+
+/* Empty state */
+
+.cad-solid-page .cad-html-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    width: 100%;
+    min-height: 420px;
+    margin: 0;
+    padding: 35px 20px;
+    color: var(--tx-2);
+    text-align: center;
+    background: var(--bg-in);
+    border: 1px dashed var(--bdr);
+    border-radius: 8px;
+}
+
+    .cad-solid-page .cad-html-empty-state[hidden] {
+        display: none !important;
+    }
+
+
+/* Empty-state icon */
+
+.cad-solid-page .cad-html-empty-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 68px;
+    height: 68px;
+    color: var(--acc);
+    background: var(--bg-card);
+    border: 1px solid var(--bdr);
+    border-radius: 50%;
+}
+
+    .cad-solid-page .cad-html-empty-icon i {
+        font-size: 1.8rem;
+    }
+
+
+/* Empty-state text */
+
+.cad-solid-page .cad-html-empty-state h3 {
+    margin: 0;
+    color: var(--tx);
+    font-size: 1rem;
+    font-weight: var(--fw-semibold, 600);
+}
+
+.cad-solid-page .cad-html-empty-state p {
+    max-width: 440px;
+    margin: 0;
+    color: var(--tx-2);
+    font-size: 0.83rem;
+    line-height: 1.6;
+}
+
+
+/* HTML iframe container */
+
+.cad-solid-page .cad-html-frame-container {
+    position: relative;
+    width: 100%;
+    height: min(72vh, 900px);
+    min-height: 450px;
+    margin: 0;
+    overflow: hidden;
+    background: var(--bg-in);
+    border: 1px solid var(--bdr);
+    border-radius: 8px;
+    box-shadow: var(--shadow-sm, none);
+}
+
+    .cad-solid-page .cad-html-frame-container[hidden] {
+        display: none !important;
+    }
+
+.cad-solid-page #htmlViewerFrame {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border: 0;
+    background: #1b2029;
+}
+
+
+/* ---------------------------------------------------------
+   14. ACCESSIBILITY AND INTERACTION
+   --------------------------------------------------------- */
+
+.cad-solid-page button:focus-visible,
+.cad-solid-page input:focus-visible,
+.cad-solid-page .cad-instructions-summary:focus-visible,
+.cad-solid-page .cad-viewer-panel:focus-visible {
+    outline: 2px solid var(--acc);
+    outline-offset: 2px;
+}
+
+
+/* ---------------------------------------------------------
+   15. RESPONSIVE LAYOUT
+   --------------------------------------------------------- */
+
+@media (max-width: 900px) {
+
+    .cad-solid-page .cad-viewer-viewport,
+    .cad-solid-page .cad-html-frame-container {
+        height: 65vh;
+        min-height: 400px;
+    }
+}
+
+@media (max-width: 760px) {
+
+    .cad-solid-page .cad-instruction-steps {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 640px) {
+
+    .cad-solid-page {
+        padding: var(--sp-4, 16px);
+    }
+
+        /* Tabs */
+
+        .cad-solid-page .cad-viewer-card .cad-viewer-tabs {
+            padding: 0 6px;
+        }
+
+        .cad-solid-page .cad-viewer-card .cad-viewer-tab {
+            flex: 1 1 auto;
+            min-height: 48px;
+            padding: 10px 8px;
+            font-size: 0.78rem;
+            gap: 6px;
+        }
+
+        /* Viewer panel */
+
+        .cad-solid-page .cad-viewer-card .cad-viewer-panel {
+            gap: 10px;
+            padding: 9px;
+        }
+
+        /* Toolbars */
+
+        .cad-solid-page .cad-solid-toolbar {
+            align-items: stretch;
+            flex-direction: column;
+            gap: 9px;
+            padding: 8px;
+        }
+
+            .cad-solid-page .cad-solid-toolbar input[type="file"] {
+                flex-basis: auto;
+            }
+
+            .cad-solid-page .cad-solid-toolbar button {
+                width: 100%;
+                min-width: 0;
+                min-height: 42px;
+            }
+
+        /* Instructions */
+
+        .cad-solid-page .cad-instructions-summary {
+            align-items: center;
+            padding: 11px 12px;
+        }
+
+        .cad-solid-page .cad-instructions-toggle {
+            font-size: 0;
+        }
+
+            .cad-solid-page .cad-instructions-toggle i {
+                font-size: 0.85rem;
+            }
+
+        .cad-solid-page .cad-instructions-content {
+            padding: 11px;
+            gap: 11px;
+        }
+
+        .cad-solid-page .cad-instruction-highlight,
+        .cad-solid-page .cad-instruction-warning {
+            padding: 11px;
+        }
+
+        /* Status */
+
+        .cad-solid-page .cad-viewer-status {
+            padding: 10px;
+            font-size: 0.78rem;
+        }
+
+        /* Viewports */
+
+        .cad-solid-page .cad-viewer-viewport,
+        .cad-solid-page .cad-html-frame-container {
+            height: 60vh;
+            min-height: 320px;
+        }
+
+        .cad-solid-page .cad-html-empty-state {
+            min-height: 320px;
+            padding: 25px 16px;
+        }
+}
+
+
+/* ---------------------------------------------------------
+   16. REDUCED MOTION
+   --------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+
+    .cad-solid-page .cad-viewer-tab,
+    .cad-solid-page .cad-instructions,
+    .cad-solid-page .cad-instructions-summary,
+    .cad-solid-page .cad-instructions-toggle i,
+    .cad-solid-page .cad-instruction-step,
+    .cad-solid-page .cad-solid-toolbar button,
+    .cad-solid-page .cad-solid-toolbar input {
+        transition: none;
+    }
+
+    .cad-solid-page .cad-instructions-content {
+        animation: none;
+    }
+}
+
+/* ---------------------------------------------------------
+   17. COMPACT STL MODEL STATUS PANEL
+   --------------------------------------------------------- */
+
+.cad-solid-page .cad-viewer-status.is-model-loaded {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 7px;
+    min-height: 0;
+    padding: 9px 12px;
+    border-left: 1px solid var(--bdr);
+    font-size: 0.78rem;
+    line-height: 1.35;
+}
+
+    /* The loaded status has its own icon, so hide the generic one. */
+
+    .cad-solid-page .cad-viewer-status.is-model-loaded::before {
+        display: none;
+    }
+
+/* First row: loaded label on left, filename on right. */
+
+.cad-solid-page .cad-status-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    width: 100%;
+    min-width: 0;
+}
+
+.cad-solid-page .cad-status-loaded {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    flex: 0 0 auto;
+    color: #22c55e;
+    font-weight: var(--fw-semibold, 600);
+    white-space: nowrap;
+}
+
+    .cad-solid-page .cad-status-loaded i {
+        font-size: 0.9rem;
+    }
+
+/* Common pill appearance. */
+
+.cad-solid-page .cad-status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    min-width: 0;
+    padding: 5px 9px;
+    color: var(--tx);
+    background: var(--bg-card);
+    border: 1px solid var(--bdr);
+    border-radius: 6px;
+    font-size: 0.75rem;
+    line-height: 1.3;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Filename pill — positioned at the top-right. */
+
+.cad-solid-page .cad-status-file {
+    flex: 0 1 auto;
+    max-width: min(55%, 420px);
+    color: var(--tx-2);
+}
+
+    .cad-solid-page .cad-status-file i {
+        flex: 0 0 auto;
+        color: var(--acc);
+    }
+
+    .cad-solid-page .cad-status-file span {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+/* Second row: triangle count and X/Y/Z dimensions. */
+
+.cad-solid-page .cad-status-metrics {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    width: 100%;
+}
+
+.cad-solid-page .cad-status-metric-label {
+    color: var(--tx-2);
+    font-size: 0.71rem;
+}
+
+.cad-solid-page .cad-status-metric-value {
+    color: var(--tx);
+    font-size: 0.76rem;
+    font-weight: var(--fw-semibold, 600);
+}
+
+/* Compact engineering warning. */
+
+.cad-solid-page .cad-status-warning {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    width: 100%;
+    padding: 6px 9px;
+    color: var(--tx-2);
+    background: rgba(245, 158, 11, 0.07);
+    border: 1px solid rgba(245, 158, 11, 0.25);
+    border-radius: 5px;
+    font-size: 0.73rem;
+    line-height: 1.4;
+}
+
+    .cad-solid-page .cad-status-warning i {
+        flex: 0 0 auto;
+        color: #f59e0b;
+        font-size: 0.85rem;
+    }
+
+/* Responsive arrangement. */
+
+@media (max-width: 640px) {
+
+    .cad-solid-page .cad-viewer-status.is-model-loaded {
+        gap: 8px;
+        padding: 9px;
+    }
+
+    .cad-solid-page .cad-status-header {
+        flex-wrap: wrap;
+        gap: 7px;
+    }
+
+    .cad-solid-page .cad-status-file {
+        max-width: 100%;
+    }
+
+    .cad-solid-page .cad-status-metrics {
+        gap: 5px;
+    }
+
+    .cad-solid-page .cad-status-pill {
+        padding: 5px 7px;
+    }
+
+    .cad-solid-page .cad-status-warning {
+        align-items: flex-start;
+    }
+}
+
+/* ---------------------------------------------------------
+   18. PROPORTIONAL ENGINEERING STATUS LAYOUT
+   --------------------------------------------------------- */
+
+.cad-solid-page .cad-status-metrics {
+    display: grid;
+    grid-template-columns: minmax(180px, 1fr) minmax(0, 3fr);
+    gap: 9px;
+    width: 100%;
+}
+
+/* Information cards */
+
+.cad-solid-page .cad-status-card {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 8px;
+    min-width: 0;
+    padding: 9px 12px;
+    background: var(--bg-card);
+    border: 1px solid var(--bdr);
+    border-radius: 7px;
+}
+
+.cad-solid-page .cad-status-card-label {
+    color: var(--tx-2);
+    font-size: 0.72rem;
+    font-weight: var(--fw-medium, 500);
+    line-height: 1.3;
+}
+
+/* Triangle count */
+
+.cad-solid-page .cad-status-complexity {
+    border-left: 3px solid var(--acc);
+}
+
+    .cad-solid-page .cad-status-complexity .cad-status-card-value {
+        font-size: 1rem;
+    }
+
+/* Three-axis dimensions */
+
+.cad-solid-page .cad-status-dimension-values {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.cad-solid-page .cad-status-dimension {
+    display: flex;
+    align-items: center;
+    justify-content:flex-start;
+    gap: 8px;
+    min-width: 0;
+    padding-right: 9px;
+    border-right: 1px solid var(--bdr);
+}
+
+    .cad-solid-page .cad-status-dimension:last-child {
+        padding-right: 0;
+        border-right: 0;
+    }
+
+.cad-solid-page .cad-status-axis {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 23px;
+    width: 23px;
+    height: 23px;
+    color: var(--acc);
+    background: var(--bg-in);
+    border: 1px solid var(--bdr);
+    border-radius: 5px;
+    font-size: 0.72rem;
+    font-weight: var(--fw-semibold, 600);
+}
+
+.cad-solid-page .cad-status-card-value {
+    min-width: 0;
+    color: var(--tx);
+    font-size: 0.85rem;
+    font-weight: var(--fw-semibold, 600);
+    font-variant-numeric: tabular-nums;
+    overflow-wrap: anywhere;
+}
+
+.cad-solid-page .cad-status-dimensions-note {
+    color: var(--tx-2);
+    font-size: 0.69rem;
+    line-height: 1.3;
+}
+
+/* Responsive proportions */
+
+@media (max-width: 760px) {
+
+    .cad-solid-page .cad-status-metrics {
+        grid-template-columns: minmax(130px, 1fr) minmax(0, 2fr);
+    }
+
+    .cad-solid-page .cad-status-dimension-values {
+        gap: 6px;
+    }
+
+    .cad-solid-page .cad-status-dimension {
+        gap: 5px;
+        padding-right: 5px;
+    }
+}
+
+@media (max-width: 520px) {
+
+    .cad-solid-page .cad-status-metrics {
+        grid-template-columns: 1fr;
+    }
+
+    .cad-solid-page .cad-status-dimension-values {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+
+/* ---------------------------------------------------------
+   19. HTML PREVIEW — FULL SCREEN MODE
+   --------------------------------------------------------- */
+
+.cad-solid-page .cad-html-frame-container:fullscreen {
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+    width: 100vw;
+    height: 100vh;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background: #1b2029;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+}
+
+    /* Fill the complete full-screen workspace with the HTML viewer. */
+
+    .cad-solid-page .cad-html-frame-container:fullscreen #htmlViewerFrame {
+        display: block;
+        width: 100%;
+        height: 100%;
+        border: 0;
+        background: #1b2029;
+    }
+
+/* Support browsers using the WebKit Fullscreen implementation. */
+
+.cad-solid-page .cad-html-frame-container:-webkit-full-screen {
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: #1b2029;
+}
+
+/* =========================================================
+   Prominent Empty State & Drag-and-Drop Dropzones
+   ========================================================= */
+
+.cad-solid-page .cad-solid-empty-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(13, 17, 23, 0.88);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    transition: opacity 0.2s ease, visibility 0.2s ease;
+}
+
+    .cad-solid-page .cad-solid-empty-overlay.is-hidden {
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+    }
+
+.cad-solid-page .cad-solid-empty-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    max-width: 480px;
+    padding: 36px 32px;
+    background: var(--bg-card, #161b22);
+    border: 2px dashed rgba(88, 166, 255, 0.35);
+    border-radius: 14px;
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45);
+    transition: border-color 0.2s ease, transform 0.2s ease, background 0.2s ease;
+}
+
+.cad-solid-page .cad-viewer-viewport.dragover .cad-solid-empty-card,
+.cad-solid-page .cad-html-empty-state.dragover .cad-solid-empty-card {
+    border-color: #58a6ff;
+    background: rgba(56, 139, 253, 0.1);
+    transform: scale(1.02);
+}
+
+.cad-solid-page .cad-solid-empty-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 64px;
+    height: 64px;
+    border-radius: 16px;
+    background: rgba(88, 166, 255, 0.12);
+    color: #58a6ff;
+    font-size: 2rem;
+    margin-bottom: 18px;
+}
+
+.cad-solid-page .cad-solid-empty-card h3 {
+    margin: 0 0 10px;
+    color: var(--tx, #f0f6fc);
+    font-size: 1.3rem;
+    font-weight: 600;
+}
+
+.cad-solid-page .cad-solid-empty-card p {
+    margin: 0 0 22px;
+    color: var(--tx-2, #8b949e);
+    font-size: 0.88rem;
+    line-height: 1.6;
+}
+
+    .cad-solid-page .cad-solid-empty-card p strong {
+        color: #58a6ff;
+    }
+
+.cad-solid-page .cad-solid-empty-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+}
+/* Keep HTML empty state framed inside the workspace (not a popup) */
+.cad-solid-page .cad-html-empty-state {
+    position: relative;
+    width: 100%;
+    height: min(72vh, 900px);
+    min-height: 450px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-in, #0d1117);
+    border: 1px solid var(--bdr, #30363d);
+    border-radius: 8px;
+}
+
+    .cad-solid-page .cad-html-empty-state[hidden] {
+        display: none !important;
+    }
+
+.cad-solid-page .cad-drop-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 24px;
+    font-size: 0.92rem;
+    font-weight: 600;
+    cursor: pointer;
+    border-radius: 8px;
+    background: var(--acc, #f0883e);
+    border: 1px solid var(--acc, #f0883e);
+    color: #ffffff;
+}
+
+    .cad-solid-page .cad-drop-btn:hover {
+        filter: brightness(1.1);
+    }
+
+.cad-solid-page .cad-drop-hint {
+    color: var(--tx-2, #8b949e);
+    font-size: 0.8rem;
+}

@@ -80,7 +80,7 @@
 .login-card {
     background: var(--bg-card);
     border: 1px solid var(--bdr);
-    border-radius: var(--r-lg);
+    border-radius: var(--r-xl);
     padding: 2.25rem;
     width: 100%;
     max-width: 420px;

@@ -1,0 +1,752 @@
+﻿
+/* =========================================================
+   CULVERT LOCATOR — CAD DRAWING VIEWER
+   Unified page styling
+   Uses existing CulvertCAD design tokens.
+   ========================================================= */
+
+
+/* ---------------------------------------------------------
+   1. Page Container and Header
+   --------------------------------------------------------- */
+
+.cad-drawing-page {
+    display: block;
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    padding: var(--sp-6, 24px);
+    box-sizing: border-box;
+    color: var(--tx, #e6edf3);
+    font-family: inherit;
+    font-size: 0.9rem;
+}
+
+    .cad-drawing-page *,
+    .cad-drawing-page *::before,
+    .cad-drawing-page *::after {
+        box-sizing: border-box;
+    }
+
+    /* Shared application page header */
+
+    .cad-drawing-page > .page-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 18px;
+        margin-bottom: 22px;
+    }
+
+    .cad-drawing-page .page-title {
+        margin: 0;
+        color: var(--tx);
+        font-size: var(--fs-display, 1.75rem);
+        font-weight: var(--fw-bold, 700);
+        line-height: 1.25;
+    }
+
+    .cad-drawing-page .page-sub {
+        margin: 6px 0 0;
+        color: var(--tx-2);
+        font-size: 0.88rem;
+        line-height: 1.6;
+    }
+
+
+    /* ---------------------------------------------------------
+   2. DXF Import Toolbar
+   --------------------------------------------------------- */
+
+    .cad-drawing-page .cad-import-controls {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 12px;
+        width: 100%;
+        margin: 0 0 16px;
+        padding: 14px;
+        background: var(--bg-card);
+        border: 1px solid var(--bdr);
+        border-radius: 10px;
+    }
+
+    /* File selection */
+
+    .cad-drawing-page #cadFile {
+        display: block;
+        flex: 1 1 280px;
+        width: 100%;
+        max-width: 520px;
+        min-width: 0;
+        min-height: 42px;
+        padding: 7px 10px;
+        color: var(--tx);
+        background: var(--bg-in);
+        border: 1px solid var(--bdr);
+        border-radius: var(--r, 8px);
+        font: inherit;
+    }
+
+        .cad-drawing-page #cadFile::file-selector-button {
+            margin-right: 12px;
+            padding: 7px 12px;
+            color: var(--tx);
+            background: var(--bg-card);
+            border: 1px solid var(--bdr);
+            border-radius: 6px;
+            font: inherit;
+            cursor: pointer;
+        }
+
+            .cad-drawing-page #cadFile::file-selector-button:hover {
+                border-color: var(--acc);
+            }
+
+    /* General buttons */
+
+    .cad-drawing-page button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 38px;
+        padding: 8px 14px;
+        color: var(--tx-2);
+        background: var(--bg-card);
+        border: 1px solid var(--bdr);
+        border-radius: var(--r, 8px);
+        font: inherit;
+        font-size: 0.84rem;
+        line-height: 1.4;
+        cursor: pointer;
+        transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+    }
+
+        .cad-drawing-page button:hover:not(:disabled) {
+            color: var(--tx);
+            background: var(--bg-in);
+            border-color: var(--acc);
+        }
+
+        .cad-drawing-page button:focus-visible,
+        .cad-drawing-page input:focus-visible {
+            outline: 2px solid var(--acc);
+            outline-offset: 2px;
+        }
+
+        .cad-drawing-page button:disabled {
+            opacity: 0.55;
+            cursor: not-allowed;
+        }
+
+    /* Primary DXF import button */
+
+    .cad-drawing-page #loadCad {
+        min-height: 42px;
+        padding: 9px 18px;
+        color: #fff;
+        background: var(--acc);
+        border: 1px solid var(--acc);
+        border-radius: var(--r, 8px);
+        font-weight: var(--fw-semibold, 600);
+    }
+
+        .cad-drawing-page #loadCad:hover:not(:disabled) {
+            color: #fff;
+            filter: brightness(1.08);
+        }
+
+
+    /* ---------------------------------------------------------
+   3. Import Status
+   --------------------------------------------------------- */
+
+    .cad-drawing-page #cadStatus {
+        display: block;
+        min-height: 42px;
+        margin: 0 0 18px;
+        padding: 11px 14px;
+        color: var(--tx-2);
+        background: var(--bg-card);
+        border: 1px solid var(--bdr);
+        border-radius: var(--r, 8px);
+        font-size: 0.84rem;
+        line-height: 1.5;
+        overflow-wrap: anywhere;
+    }
+
+        .cad-drawing-page #cadStatus:empty {
+            display: none;
+        }
+
+
+    /* ---------------------------------------------------------
+   4. Main Drawing Layout
+   --------------------------------------------------------- */
+
+    .cad-drawing-page .cad-layout {
+        display: grid;
+        grid-template-columns: 260px minmax(0, 1fr);
+        align-items: start;
+        gap: 16px;
+        width: 100%;
+        min-width: 0;
+    }
+
+    /* Left-side tools */
+
+    .cad-drawing-page .cad-sidebar {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+        min-width: 0;
+    }
+
+    /* Main workspace */
+
+    .cad-drawing-page .cad-workspace {
+        min-width: 0;
+    }
+
+
+    /* =========================================================
+   5. CAD Inspector — Collapsible Panels
+   ========================================================= */
+
+    .cad-drawing-page .cad-inspector-panel {
+        min-width: 0;
+        margin: 0;
+        overflow: hidden;
+        color: var(--tx);
+        background: var(--bg-card);
+        border: 1px solid var(--bdr);
+        border-radius: 10px;
+        box-shadow: none;
+    }
+
+        /* Collapsible panel header */
+
+        .cad-drawing-page .cad-inspector-panel > summary {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            min-height: 46px;
+            padding: 11px 14px;
+            color: var(--tx);
+            background: var(--bg-in);
+            border-bottom: 1px solid var(--bdr);
+            font-size: 0.86rem;
+            font-weight: var(--fw-semibold, 600);
+            cursor: pointer;
+            list-style: none;
+            user-select: none;
+        }
+
+            /* Remove browser's default disclosure marker */
+
+            .cad-drawing-page .cad-inspector-panel > summary::-webkit-details-marker {
+                display: none;
+            }
+
+            .cad-drawing-page .cad-inspector-panel > summary::marker {
+                content: "";
+            }
+
+            .cad-drawing-page .cad-inspector-panel > summary > span {
+                display: inline-flex;
+                align-items: center;
+                gap: 9px;
+                min-width: 0;
+            }
+
+                .cad-drawing-page .cad-inspector-panel > summary > span > i {
+                    color: var(--acc);
+                    font-size: 1rem;
+                }
+
+            /* Header hover and keyboard focus */
+
+            .cad-drawing-page .cad-inspector-panel > summary:hover {
+                background: var(--bg-hov);
+            }
+
+            .cad-drawing-page .cad-inspector-panel > summary:focus-visible {
+                outline: 2px solid var(--acc);
+                outline-offset: -3px;
+            }
+
+    /* Chevron indicator */
+
+    .cad-drawing-page .panel-chevron {
+        flex: 0 0 auto;
+        color: var(--tx-2);
+        font-size: 0.75rem;
+        transition: transform 0.18s ease;
+    }
+
+    .cad-drawing-page .cad-inspector-panel[open] .panel-chevron {
+        transform: rotate(180deg);
+    }
+
+    /* Closed panel should not retain a bottom divider */
+
+    .cad-drawing-page .cad-inspector-panel:not([open]) > summary {
+        border-bottom: 0;
+    }
+
+    /* Panel content */
+
+    .cad-drawing-page .cad-inspector-panel > .card-body {
+        min-width: 0;
+        padding: 12px;
+    }
+
+
+    /* =========================================================
+   6. Drawing Tools — Compact 2 × 2 Grid
+   ========================================================= */
+
+    .cad-drawing-page .cad-tools {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+    }
+
+        .cad-drawing-page .cad-tools button {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            width: 100%;
+            min-width: 0;
+            min-height: 66px;
+            padding: 8px 5px;
+            text-align: center;
+        }
+
+            .cad-drawing-page .cad-tools button i {
+                color: var(--acc);
+                font-size: 1.15rem;
+                line-height: 1;
+            }
+
+            .cad-drawing-page .cad-tools button span {
+                font-size: 0.76rem;
+                line-height: 1.25;
+            }
+
+    /* Drawing Tools: Static header, never collapsible */
+
+    .cad-drawing-page .cad-tools-panel > .card-header {
+        display: flex;
+        align-items: center;
+        min-height: 46px;
+        padding: 11px 14px;
+        color: var(--tx);
+        background: var(--bg-in);
+        border-bottom: 1px solid var(--bdr);
+        font-size: 0.86rem;
+        font-weight: var(--fw-semibold, 600);
+    }
+
+        .cad-drawing-page .cad-tools-panel > .card-header > span {
+            display: inline-flex;
+            align-items: center;
+            gap: 9px;
+        }
+
+            .cad-drawing-page .cad-tools-panel > .card-header > span > i {
+                color: var(--acc);
+            }
+
+
+    /* =========================================================
+   7. Layers
+   ========================================================= */
+
+    .cad-drawing-page #cadLayers {
+        max-height: 260px;
+        overflow-x: hidden;
+        overflow-y: auto;
+        scrollbar-width: thin;
+        scrollbar-color: var(--bdr) transparent;
+    }
+
+        .cad-drawing-page #cadLayers label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-width: 0;
+            margin: 0;
+            padding: 6px 0;
+            color: var(--tx-2);
+            border-bottom: 1px solid var(--bdr);
+            font-size: 0.78rem;
+            line-height: 1.4;
+            cursor: pointer;
+        }
+
+            .cad-drawing-page #cadLayers label:last-child {
+                border-bottom: 0;
+            }
+
+            .cad-drawing-page #cadLayers label:hover {
+                color: var(--tx);
+            }
+
+        .cad-drawing-page #cadLayers input[type="checkbox"] {
+            flex: 0 0 15px;
+            width: 15px;
+            height: 15px;
+            margin: 0;
+            accent-color: var(--acc);
+        }
+
+        .cad-drawing-page #cadLayers label span:last-child {
+            min-width: 0;
+            overflow-wrap: anywhere;
+        }
+
+
+
+    /* =========================================================
+   8. Drawing Information — CAD Properties Inspector
+   ========================================================= */
+
+    .cad-drawing-page #cadInfo {
+        display: flex;
+        flex-direction: column;
+        gap: 0;
+        max-height: 460px;
+        padding: 10px 12px;
+        overflow-x: hidden;
+        overflow-y: auto;
+        color: var(--tx-2);
+        font-size: 0.78rem;
+        line-height: 1.45;
+        overflow-wrap: anywhere;
+        scrollbar-width: thin;
+        scrollbar-color: var(--bdr) transparent;
+    }
+
+        /* Individual property rows */
+
+        .cad-drawing-page #cadInfo > div:not(.alert) {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 10px;
+            min-width: 0;
+            padding: 8px 2px;
+            border-bottom: 1px solid var(--bdr);
+        }
+
+        /* Property name */
+
+        .cad-drawing-page #cadInfo strong {
+            flex: 0 0 44%;
+            color: var(--tx);
+            font-size: 0.76rem;
+            font-weight: var(--fw-semibold, 600);
+        }
+
+        /* Property value */
+
+        .cad-drawing-page #cadInfo > div:not(.alert) span {
+            flex: 1;
+            min-width: 0;
+            color: var(--tx-2);
+            text-align: right;
+            overflow-wrap: anywhere;
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* Filename gets more room */
+
+        .cad-drawing-page #cadInfo > div:first-child {
+            align-items: flex-start;
+            padding-top: 5px;
+            padding-bottom: 10px;
+        }
+
+            .cad-drawing-page #cadInfo > div:first-child span {
+                text-align: right;
+            }
+
+        /* Last property */
+
+        .cad-drawing-page #cadInfo > div:not(.alert):last-of-type {
+            border-bottom: 0;
+        }
+
+        /* Skipped entity warning */
+
+        .cad-drawing-page #cadInfo .alert-warning {
+            display: flex;
+            align-items: flex-start;
+            gap: 9px;
+            width: 100%;
+            margin: 12px 0 2px;
+            padding: 11px 12px;
+            color: var(--tx);
+            background: rgba(217, 119, 6, 0.08);
+            border: 1px solid rgba(217, 119, 6, 0.55);
+            border-radius: 8px;
+            font-size: 0.76rem;
+            line-height: 1.5;
+            overflow-wrap: anywhere;
+        }
+
+        /* Scrollbar */
+
+        .cad-drawing-page #cadInfo::-webkit-scrollbar {
+            width: 5px;
+        }
+
+        .cad-drawing-page #cadInfo::-webkit-scrollbar-thumb {
+            background: var(--bdr);
+            border-radius: 10px;
+        }
+
+
+    /* ---------------------------------------------------------
+   9. Drawing Workspace
+   --------------------------------------------------------- */
+
+    .cad-drawing-page .cad-workspace .card {
+        margin: 0;
+        overflow: hidden;
+    }
+
+    .cad-drawing-page .cad-workspace .card-header {
+        min-height: 46px;
+        padding: 12px 16px;
+    }
+
+    .cad-drawing-page .cad-workspace .card-body {
+        padding: 0;
+    }
+
+    /* 2D drawing canvas */
+
+    .cad-drawing-page #cadCanvas {
+        display: block;
+        width: 100%;
+        height: min(72vh, 850px);
+        min-height: 450px;
+        background: #fff;
+        cursor: grab;
+        touch-action: none;
+    }
+
+        .cad-drawing-page #cadCanvas:active {
+            cursor: grabbing;
+        }
+
+
+    /* Workspace container & Empty State Overlay */
+    .cad-drawing-page .cad-workspace-body {
+        position: relative;
+        width: 100%;
+    }
+
+    .cad-drawing-page .cad-empty-state-overlay {
+        position: absolute;
+        inset: 0;
+        z-index: 5;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(13, 17, 23, 0.88);
+        backdrop-filter: blur(6px);
+        -webkit-backdrop-filter: blur(6px);
+        transition: opacity 0.2s ease, visibility 0.2s ease;
+    }
+
+        .cad-drawing-page .cad-empty-state-overlay.is-hidden {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+    .cad-drawing-page .cad-empty-card {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        max-width: 480px;
+        padding: 36px 32px;
+        background: var(--bg-card, #161b22);
+        border: 2px dashed rgba(88, 166, 255, 0.35);
+        border-radius: 14px;
+        box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45);
+        transition: border-color 0.2s ease, transform 0.2s ease, background 0.2s ease;
+    }
+
+    .cad-drawing-page .cad-workspace-body.dragover .cad-empty-card {
+        border-color: #58a6ff;
+        background: rgba(56, 139, 253, 0.1);
+        transform: scale(1.02);
+    }
+
+    .cad-drawing-page .cad-empty-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 64px;
+        height: 64px;
+        border-radius: 16px;
+        background: rgba(88, 166, 255, 0.12);
+        color: #58a6ff;
+        font-size: 2rem;
+        margin-bottom: 18px;
+    }
+
+    .cad-drawing-page .cad-empty-card h3 {
+        margin: 0 0 10px;
+        color: var(--tx, #f0f6fc);
+        font-size: 1.3rem;
+        font-weight: 600;
+    }
+
+    .cad-drawing-page .cad-empty-card p {
+        margin: 0 0 22px;
+        color: var(--tx-2, #8b949e);
+        font-size: 0.88rem;
+        line-height: 1.6;
+    }
+
+        .cad-drawing-page .cad-empty-card p strong {
+            color: #58a6ff;
+        }
+
+    .cad-drawing-page .cad-empty-actions {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+        width: 100%;
+    }
+
+    .cad-drawing-page .cad-drop-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 24px;
+        font-size: 0.92rem;
+        font-weight: 600;
+        cursor: pointer;
+        border-radius: 8px;
+        background: var(--acc, #f0883e);
+        border: 1px solid var(--acc, #f0883e);
+        color: #ffffff;
+    }
+
+        .cad-drawing-page .cad-drop-btn:hover {
+            filter: brightness(1.1);
+        }
+
+    .cad-drawing-page .cad-drop-hint {
+        color: var(--tx-2, #8b949e);
+        font-size: 0.8rem;
+    }
+
+    /* ---------------------------------------------------------
+   10. Warnings
+   --------------------------------------------------------- */
+
+    .cad-drawing-page .alert-warning {
+        color: var(--tx);
+        background: var(--bg-in);
+        border: 1px solid #b77928;
+        border-radius: var(--r, 8px);
+    }
+
+
+/* ---------------------------------------------------------
+   11. Tablet Layout
+   --------------------------------------------------------- */
+
+@media (max-width: 900px) {
+
+    .cad-drawing-page .cad-layout {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    /* Keep the drawing workspace above the tools */
+
+    .cad-drawing-page .cad-workspace {
+        grid-row: 1;
+    }
+
+    .cad-drawing-page .cad-sidebar {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        align-items: start;
+        gap: 12px;
+    }
+
+    .cad-drawing-page #cadCanvas {
+        height: 65vh;
+        min-height: 400px;
+    }
+}
+
+
+/* ---------------------------------------------------------
+   12. Mobile Layout
+   --------------------------------------------------------- */
+
+@media (max-width: 560px) {
+
+    .cad-drawing-page {
+        padding: 14px;
+    }
+
+        .cad-drawing-page > .page-header {
+            align-items: flex-start;
+            margin-bottom: 18px;
+        }
+
+        .cad-drawing-page .page-title {
+            font-size: 1.3rem;
+        }
+
+        .cad-drawing-page .cad-import-controls {
+            align-items: stretch;
+            flex-direction: column;
+            padding: 12px;
+        }
+
+        .cad-drawing-page #cadFile {
+            max-width: none;
+        }
+
+        .cad-drawing-page #loadCad {
+            width: 100%;
+        }
+
+        .cad-drawing-page .cad-sidebar {
+            grid-template-columns: minmax(0, 1fr);
+        }
+
+        .cad-drawing-page #cadCanvas {
+            height: 58vh;
+            min-height: 320px;
+        }
+}
+
+
+/* ---------------------------------------------------------
+   13. Reduced Motion
+   --------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+
+    .cad-drawing-page button {
+        transition: none;
+    }
+}

@@ -124,124 +124,106 @@
                     detected culvert locations.
                 </p>
             </div>
-        </div>
-
-        <div class="survey-map-body">
-
-            <div class="survey-map-toolbar">
-                <button type="button"
-                        id="survey-map-recenter"
-                        class="btn-primary">
-                    <i class="bi bi-arrows-fullscreen"></i>
-                    Recenter
-                </button>
-
-                <button type="button"
-                        id="survey-map-fullscreen"
-                        class="btn-ghost">
-                    <i class="bi bi-arrows-angle-expand"></i>
-                    Expand Map
-                </button>
-
-
-                <button type="button"
-                        id="survey-map-top-view"
-                        class="btn-ghost">
-                    <i class="bi bi-map"></i>
-                    Top View
-                </button>
-
-                <button type="button"
-                        id="survey-map-3d-view"
-                        class="btn-ghost">
-                    <i class="bi bi-box"></i>
-                    3D View
-                </button>
-
-                <button type="button"
-                        id="survey-map-north-up"
-                        class="btn-ghost">
-                    <i class="bi bi-compass"></i>
-                    North Up
-                </button>
-
-                <button type="button"
-                        id="survey-map-toggle-terrain"
-                        class="btn-ghost"
-                        aria-pressed="true">
-                    <i class="bi bi-layers"></i>
-                    Terrain: On
-                </button>
-
-                <button type="button"
-                        id="survey-map-toggle-alignment"
-                        class="btn-ghost"
-                        aria-pressed="true">
-                    <i class="bi bi-signpost-split"></i>
-                    Alignment: On
-                </button>
-
-                <button type="button"
-                        id="survey-map-toggle-survey"
-                        class="btn-ghost"
-                        aria-pressed="true">
-                    <i class="bi bi-geo"></i>
-                    Survey Data: On
-                </button>
-                <button type="button"
-                        id="survey-map-toggle-ground-sheet"
-                        class="btn-ghost"
-                        aria-pressed="true">
-                    <i class="bi bi-square"></i>
-                    Ground Sheet: On
-                </button>
-                <button type="button"
-                        id="survey-map-toggle-datum"
-                        class="btn-ghost"
-                        aria-pressed="true">
-                    <i class="bi bi-layers"></i>
-                    Datum Sheet: On
-                </button>
-                <!-- Cyan terrain overlay: visible by default -->
-                <button type="button"
-                        id="survey-map-toggle-cyan-terrain"
-                        class="btn-ghost"
-                        aria-pressed="false">
-                    <i class="bi bi-layers"></i>
-                    Cyan Terrain: On
-                </button>
-                <!-- Rejected-triangle diagnostic lines: off by default -->
-                <button type="button"
-                        id="survey-map-toggle-rejected-lines"
-                        class="btn btn-sm btn-outline-info"
-                        aria-pressed="true">
-                    <i class="bi bi-diagram-3"></i> Cyan Lines: On
-                </button>
-            </div>
-
-
+            <!-- Compact Header Badges for Survey Stats -->
             <div class="survey-map-summary">
                 <div class="survey-map-summary-item">
                     <span class="survey-map-summary-label">Survey Points</span>
                     <strong id="survey-map-point-count">0</strong>
                 </div>
-
                 <div class="survey-map-summary-item">
                     <span class="survey-map-summary-label">Alignment Points</span>
                     <strong id="survey-map-alignment-count">0</strong>
                 </div>
-
                 <div class="survey-map-summary-item">
                     <span class="survey-map-summary-label">Culvert Groups</span>
                     <strong id="survey-map-culvert-count">0</strong>
                 </div>
             </div>
+        </div>
 
-
+        <div class="survey-map-body">
 
             <div id="survey-map-container">
                 <div id="survey-leaflet-map"></div>
                 <canvas id="survey-map-canvas"></canvas>
+
+                <!-- Floating CAD Navigation Pill Bar (Top-Left) -->
+                <div class="survey-cad-nav-strip">
+                    <button type="button" id="survey-map-recenter" class="cad-nav-btn primary" title="Recenter View">
+                        <i class="bi bi-arrows-fullscreen"></i> <span>Recenter</span>
+                    </button>
+                    <div class="cad-nav-divider"></div>
+                    <button type="button" id="survey-map-top-view" class="cad-nav-btn" title="Top View (2D Plan)">
+                        <i class="bi bi-map"></i> <span>Top</span>
+                    </button>
+                    <button type="button" id="survey-map-3d-view" class="cad-nav-btn" title="Isometric 3D View">
+                        <i class="bi bi-box"></i> <span>3D</span>
+                    </button>
+                    <button type="button" id="survey-map-north-up" class="cad-nav-btn" title="Orient North Up">
+                        <i class="bi bi-compass"></i> <span>North</span>
+                    </button>
+                    <div class="cad-nav-divider"></div>
+                    <button type="button" id="survey-map-fullscreen" class="cad-nav-btn" title="Expand / Maximize Map">
+                        <i class="bi bi-arrows-angle-expand"></i>
+                    </button>
+                    <button type="button" id="survey-cad-layers-toggle" class="cad-nav-btn" title="Toggle Layers Panel">
+                        <i class="bi bi-layers-half"></i> <span>Layers</span>
+                    </button>
+                </div>
+
+                <!-- Floating CAD Layers Drawer (Top-Right) -->
+                <div id="survey-cad-layers-drawer" class="survey-cad-layers-drawer">
+                    <div class="cad-layers-header">
+                        <span><i class="bi bi-stack"></i> Map Layers</span>
+                        <button type="button" id="survey-cad-layers-close" class="cad-layers-close-btn" title="Close">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
+
+                    <!-- Accordion Group 1: Terrain & Road -->
+                    <div class="cad-layers-accordion-group">
+                        <button type="button" class="cad-layers-group-toggle" data-target="cad-group-terrain">
+                            <span><i class="bi bi-chevron-down cad-accordion-arrow"></i> Terrain &amp; Road</span>
+                            <span class="cad-group-badge">4</span>
+                        </button>
+                        <div id="cad-group-terrain" class="cad-layers-list">
+                            <button type="button" id="survey-map-toggle-terrain" class="cad-layer-row" aria-pressed="true">
+                                <i class="bi bi-layers"></i> Terrain: On
+                            </button>
+                            <button type="button" id="survey-map-toggle-alignment" class="cad-layer-row" aria-pressed="true">
+                                <i class="bi bi-signpost-split"></i> Alignment: On
+                            </button>
+                            <button type="button" id="survey-map-toggle-survey" class="cad-layer-row" aria-pressed="true">
+                                <i class="bi bi-geo"></i> Survey Data: On
+                            </button>
+                            <button type="button" id="survey-map-toggle-culvert-solids" class="cad-layer-row" aria-pressed="true">
+                                <i class="bi bi-box"></i> 3D Culvert: On
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Accordion Group 2: Diagnostic Sheets -->
+                    <div class="cad-layers-accordion-group">
+                        <button type="button" class="cad-layers-group-toggle" data-target="cad-group-sheets">
+                            <span><i class="bi bi-chevron-right cad-accordion-arrow"></i> Diagnostic Sheets</span>
+                            <span class="cad-group-badge">4</span>
+                        </button>
+                        <div id="cad-group-sheets" class="cad-layers-list cad-group-collapsed">
+                            <button type="button" id="survey-map-toggle-ground-sheet" class="cad-layer-row" aria-pressed="true">
+                                <i class="bi bi-square"></i> Ground Sheet: On
+                            </button>
+                            <button type="button" id="survey-map-toggle-datum" class="cad-layer-row" aria-pressed="true">
+                                <i class="bi bi-layers"></i> Datum Sheet: On
+                            </button>
+                            <button type="button" id="survey-map-toggle-cyan-terrain" class="cad-layer-row" aria-pressed="false">
+                                <i class="bi bi-layers"></i> Cyan Terrain: On
+                            </button>
+                            <button type="button" id="survey-map-toggle-rejected-lines" class="cad-layer-row" aria-pressed="true">
+                                <i class="bi bi-diagram-3"></i> Cyan Lines: On
+                            </button>
+                        </div>
+                    </div>
+                </div>
 
                 <div id="selected-survey-point" class="selected-survey-point" hidden>
                     <div class="selected-survey-point-header">
@@ -465,5 +447,6 @@
         console.log("Delaunator loaded:", typeof Delaunator);
     </script>
 
+    <script src="~/js/survey/culvert-sample-solid.js" asp-append-version="true"></script>
     <script src="~/js/survey/survey-map.js" asp-append-version="true"></script>
 }

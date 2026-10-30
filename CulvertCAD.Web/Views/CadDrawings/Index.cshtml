@@ -1,0 +1,181 @@
+﻿
+
+@{
+    ViewData["Title"] = "CAD Drawing Viewer";
+    ViewData["PageTitle"] = "CAD Drawing Viewer";
+    ViewData["PageSubtitle"] =
+        "Import and inspect CAD drawings before survey-map integration.";
+    ViewData["PageRegion"] = null;
+    ViewData["PageHeaderBreadcrumbs"] =
+        new List<Dictionary<string, string>>
+        {
+            new()
+            {
+                ["Text"] = "CAD Drawing Viewer"
+            }
+        };
+    ViewData["PageHeaderActions"] =
+        new List<Dictionary<string, string>>();
+
+}
+
+
+<div class="page cad-drawing-page">
+    <partial name="_PageHeader" />
+
+   
+<div class="cad-import-controls">
+    <input id="cadFile"
+           type="file"
+           accept=".dxf"
+           aria-label="Select DXF file" />
+
+    <button id="loadCad" type="button">
+        Import DXF
+    </button>
+</div>
+
+<div id="cadStatus" class="alert alert-secondary" role="status">
+    Select a DXF file to begin.
+</div>
+
+<div class="cad-layout">
+
+    
+<aside class="cad-sidebar">
+
+    <!-- Drawing Tools: Expanded by default -->
+    <!-- Drawing Tools: Always visible -->
+<div class="card cad-inspector-panel cad-tools-panel">
+
+    <div class="card-header">
+        <span>
+            <i class="bi bi-sliders" aria-hidden="true"></i>
+            Drawing tools
+        </span>
+    </div>
+
+    <div class="card-body cad-tools">
+
+        <button id="fitCad" type="button" title="Fit drawing">
+            <i class="bi bi-arrows-fullscreen" aria-hidden="true"></i>
+            <span>Fit drawing</span>
+        </button>
+
+        <button id="zoomInCad" type="button" title="Zoom in">
+            <i class="bi bi-zoom-in" aria-hidden="true"></i>
+            <span>Zoom in</span>
+        </button>
+
+        <button id="zoomOutCad" type="button" title="Zoom out">
+            <i class="bi bi-zoom-out" aria-hidden="true"></i>
+            <span>Zoom out</span>
+        </button>
+
+        <button id="resetCad" type="button" title="Reset view">
+            <i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i>
+            <span>Reset view</span>
+        </button>
+
+    </div>
+</div>
+
+
+    <!-- Layers: Expanded by default -->
+    <details class="card cad-inspector-panel" open>
+
+        <summary class="card-header">
+            <span>
+                <i class="bi bi-layers" aria-hidden="true"></i>
+                Layers
+            </span>
+            <i class="bi bi-chevron-down panel-chevron"
+               aria-hidden="true"></i>
+        </summary>
+
+        <div id="cadLayers" class="card-body">
+            <span class="text-muted">
+                Import a drawing to see its layers.
+            </span>
+        </div>
+
+    </details>
+
+
+    <!-- Drawing Information: Collapsed by default -->
+    <details class="card cad-inspector-panel">
+
+        <summary class="card-header">
+            <span>
+                <i class="bi bi-info-circle" aria-hidden="true"></i>
+                Drawing information
+            </span>
+            <i class="bi bi-chevron-down panel-chevron"
+               aria-hidden="true"></i>
+        </summary>
+
+        <div id="cadInfo" class="card-body">
+            No drawing loaded.
+        </div>
+
+    </details>
+
+</aside>
+
+
+        <section class="cad-workspace">
+
+        <div class="card">
+
+            <div class="card-header">
+                <span>Drawing workspace</span>
+
+                <span class="text-muted">
+                    Mouse wheel: zoom · Drag: pan
+                </span>
+            </div>
+
+            <div class="card-body p-0 cad-workspace-body" id="cadDropZone">
+                <canvas id="cadCanvas"
+                        data-parse-url="@Url.Action("Parse", "CadDrawings")"
+                        aria-label="Imported CAD drawing"
+                        role="img">
+                </canvas>
+
+                <!-- Prominent DXF Empty State & Dropzone -->
+                <div id="cadEmptyState" class="cad-empty-state-overlay">
+                    <div class="cad-empty-card">
+                        <div class="cad-empty-icon">
+                            <i class="bi bi-file-earmark-ruled"></i>
+                        </div>
+                        <h3>No 2D Drawing Loaded</h3>
+                        <p>
+                            Import a <strong>.DXF</strong> file (exported from CulvertCAD Generation or AutoCAD)
+                            to inspect culvert cross-sections, longitudinal profiles, and plan layers.
+                        </p>
+                        <div class="cad-empty-actions">
+                            <label for="cadFile" class="btn btn-primary cad-drop-btn">
+                                <i class="bi bi-folder2-open"></i> Browse DXF File
+                            </label>
+                            <span class="cad-drop-hint">or drag and drop your .dxf file here</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </section>
+
+</div>
+
+</div>
+
+<form id="cadAntiforgeryForm" class="d-none">
+    @Html.AntiForgeryToken()
+</form>
+
+@section Scripts {
+    <script src="~/js/cad/cad-drawing-viewer.js"
+            asp-append-version="true"></script>
+}

@@ -1,6 +1,10 @@
 ﻿(() => {
     "use strict";
 
+    /* Step 1 : Read survey point data prepared by the app
+
+    Three input - Survey points, alignmentpoints , culverts*/
+
     const canvas = document.getElementById("survey-map-canvas");
     const leafletContainer = document.getElementById("survey-leaflet-map");
     const status = document.getElementById("survey-map-status");
@@ -109,6 +113,10 @@
         light.position.set(100, 200, 150);
         scene.add(light);
 
+        /*  Step 2 : Checks whether the coordinates are usable : Numeric validity
+
+        Filters survey points to keep records with numeric Easting, Northing and RL values */
+
         const validSurvey = surveyPoints.filter(p =>
             Number.isFinite(Number(p.Easting)) &&
             Number.isFinite(Number(p.Northing)) &&
@@ -147,8 +155,11 @@
             Number.isFinite(Number(p.Northing))
         );
 
-        // Horizontal bounds use both survey and alignment coordinates.
-        // Elevation bounds use only actual surveyed RL values.
+        /* Step 3: Calculate viewers horizontal bound  = survey horizontal + alignment horiontal
+
+        Horizontal bounds use both survey and alignment coordinates.
+        Elevation bounds use only actual surveyed RL values. */
+
         const horizontalPoints = [
             ...validSurvey.map(p => ({
                 x: Number(p.Easting),
@@ -195,13 +206,16 @@
                 : null
         });
 
-        // Local origin keeps large UTM coordinates numerically manageable.
+        /* Step 4 : Transformation from Real Survey to coordinate system of three.js
+
+        Local origin keeps large UTM coordinates numerically manageable. */
+
         const centerE = (minE + maxE) / 2;
         const centerN = (minN + maxN) / 2;
         const baseRL = minRL;
 
-        const terrainScale = 1;
-        const verticalExaggeration = 3;
+        const terrainScale = 1; // Horizontal preserved numerically
+        const verticalExaggeration = 3; // Scale vertically enlarged 3x
 
         const toWorld = (easting, northing, rl) => new THREE.Vector3(
             (Number(easting) - centerE) * terrainScale,
@@ -209,7 +223,9 @@
             (Number(northing) - centerN) * terrainScale
         );
 
-        // Simple rectangular grid below the survey terrain.
+        /* 5. GRID BELOW SURVEY TERRAIN
+
+        Add simple rectangular grid below the survey terrain. */
         const gridWidth = Math.max(maxE - minE, 10);
         const gridLength = Math.max(maxN - minN, 10);
         const gridSpacing = 50;
@@ -264,8 +280,9 @@
                 : '<i class="bi bi-grid-3x3"></i> Ground Grid: Off';
         });
 
-        // Transparent datum reference sheet.
-        // Default datum RL: median of the actual surveyed elevations.
+        /* 5. TRANSPARENT DATUM SHEET
+
+        Default datum RL: median of the actual surveyed elevations.  */
         const sortedElevations = [...elevations].sort((a, b) => a - b);
         const middleIndex = Math.floor(sortedElevations.length / 2);
 
@@ -332,7 +349,7 @@
         const DATUM_ELEVATION_TOLERANCE_M = 0.10;
 
         // Survey points: observed survey locations and elevations.
-        const surveyGeometry = new THREE.BufferGeometry();
+        const surveyGeometry = new THREE.BufferGeometry(); // Stores Geometric data
         const surveyPositions = [];
 
         validSurvey.forEach(p => {
@@ -340,12 +357,12 @@
             surveyPositions.push(v.x, v.y, v.z);
         });
 
-        surveyGeometry.setAttribute(
+        surveyGeometry.setAttribute(  // Tells that data consists of 3 points
             "position",
             new THREE.Float32BufferAttribute(surveyPositions, 3)
         );
 
-        const surveyMaterial = new THREE.PointsMaterial({
+        const surveyMaterial = new THREE.PointsMaterial({ // Look of survey points
             color: 0x2f81f7,
             size: 6,
             sizeAttenuation: true
@@ -681,8 +698,6 @@
                 terrainEdgeGapDiagnostic;
             window.__terrainTriangleEvidence = triangleEvidence;
 
-
-
             console.info(
                 "[Survey Terrain] Long-edge gap diagnostic:",
                 terrainEdgeGapDiagnostic
@@ -931,7 +946,6 @@
                 diagnosticAcceptedEdgeCounts
             );
 
-
             // Read-only diagnostic: map accepted terrain boundary edges
             // to rejected triangles sharing those exact edges.
             const rejectedTrianglesByAcceptedBoundaryEdge = new Map();
@@ -939,7 +953,6 @@
             for (let triangleIndex = 0;
                 triangleIndex < rejectedTriangleDiagnostics.length;
                 triangleIndex++) {
-
                 const triangle = rejectedTriangleDiagnostics[triangleIndex];
                 const [a, b, c] = triangle.indices;
 
@@ -1007,7 +1020,6 @@
                         .slice(0, 20)
                 }
             );
-
 
             // Generalized rejected-region analysis.
             // Groups rejected triangles by shared edges and classifies each connected
@@ -1463,8 +1475,6 @@
                 window.__terrainGapDiagnostic
             );
 
-
-
             // AMBER TERRAIN — FULL VISUAL FILL
             // All rejected Delaunay triangles are displayed as provisional terrain.
             // This does not change the authoritative green terrain or calculations.
@@ -1548,7 +1558,6 @@
             //     window.__provisionalVisualTerrain
             // );
 
-
             // CYAN TERRAIN OVERLAY — VISUAL ONLY
             // Shows rejected Delaunay facets as a separate cyan surface.
             // Uses measured survey vertices only; not authoritative terrain.
@@ -1624,8 +1633,6 @@
                 engineeringUse: false,
                 note: "Rejected facets shown using measured vertices for visual diagnosis only."
             };
-
-
 
             // Visualization-only coverage guide. Boundary edges are derived from
             // accepted triangles only; this does not add terrain or elevations.
@@ -1804,7 +1811,6 @@
                 });
             }
 
-
             // TEMPORARY READ-ONLY DIAGNOSTIC:
             // Verify that every accepted-mesh boundary edge is accounted
             // for exactly once as either a closed-loop edge or an
@@ -1815,7 +1821,6 @@
             for (let loopIndex = 0;
                 loopIndex < boundaryLoops.length;
                 loopIndex++) {
-
                 for (const edgeId of boundaryLoops[loopIndex].edgeIds) {
                     boundaryEdgeMembership.set(
                         edgeId,
@@ -1837,7 +1842,6 @@
             for (let edgeId = 0;
                 edgeId < boundaryEdges.length;
                 edgeId++) {
-
                 const membershipCount =
                     boundaryEdgeMembership.get(edgeId) || 0;
 
@@ -1883,7 +1887,6 @@
                 "[Survey Terrain] Boundary completeness:",
                 window.__boundaryCompletenessDiagnostic
             );
-
 
             // TEMPORARY READ-ONLY DIAGNOSTIC:
             // Summarize every accepted-mesh boundary loop and its
@@ -1986,8 +1989,6 @@
                 boundaryLoopSummary
             );
 
-
-
             boundaryLoops.sort((a, b) => b.area - a.area);
             const primaryPerimeterEdgeIds = boundaryLoops.length
                 ? boundaryLoops[0].edgeIds
@@ -2088,7 +2089,6 @@
                 return inside;
             }
 
-
             const outerLoop = boundaryLoops[0] ?? null;
 
             // Identify nested boundary loops conservatively.
@@ -2169,7 +2169,6 @@
                 }
             }
 
-
             const gapFillMeshes = [];
             const gapOutlinePositions = [];
 
@@ -2242,8 +2241,6 @@
                     }))
                 )
             );
-
-
 
             const gapOutlineGeometry = new THREE.BufferGeometry();
             gapOutlineGeometry.setAttribute(
@@ -2368,7 +2365,6 @@
                         : '<i class="bi bi-diagram-3"></i> Cyan Lines: Off';
                 });
 
-
                 rejectedLines.renderOrder = 999;
 
                 terrainLayer.add(rejectedLines);
@@ -2408,14 +2404,11 @@
 
             for (const gapFillMesh of gapFillMeshes) terrainLayer.add(gapFillMesh);
 
-
             if (candidateGapOutline.visible) terrainLayer.add(candidateGapOutline);
             scene.add(terrainLayer);
 
             console.info("[Survey Terrain] Candidate interior coverage gaps:",
                 window.__terrainCoverageGaps);
-
-
 
             console.info("[Survey Terrain] Coverage guide:", {
                 boundaryEdgeSegments: boundaryEdges.length,
@@ -2863,6 +2856,301 @@
 
             scene.add(markers);
 
+            // ─────────────────────────────────────────────────────────────────
+            // 3D Culvert Solid Model Placement (Test Implementation)
+            // ─────────────────────────────────────────────────────────────────
+            if (window.CULVERT_TEST_SOLID_DATA && culvertMarkerData.length) {
+                const solidData = window.CULVERT_TEST_SOLID_DATA;
+
+                // Function to build Three.js meshes from the 33-solid definition
+                function buildCulvertSolidMeshGroup() {
+                    const group = new THREE.Group();
+                    group.name = "Culvert_3D_Solid_Assembly";
+
+                    function buildPartMesh(part, color, layer) {
+                        const geom = new THREE.BufferGeometry();
+                        const positions = [];
+
+                        for (const f of part.faces) {
+                            if (layer === 'PipeBaseArea' && f.length > 3) {
+                                const pts = f.map(ix => part.vertices[ix]);
+                                let nx = 0, ny = 0, nz = 0;
+                                for (let i = 0; i < pts.length; i++) {
+                                    const a = pts[i], b = pts[(i + 1) % pts.length];
+                                    nx += (a[1] - b[1]) * (a[2] + b[2]);
+                                    ny += (a[2] - b[2]) * (a[0] + b[0]);
+                                    nz += (a[0] - b[0]) * (a[1] + b[1]);
+                                }
+                                const ax = Math.abs(nx), ay = Math.abs(ny), az = Math.abs(nz);
+                                const contour = pts.map(v =>
+                                    ax >= ay && ax >= az ? new THREE.Vector2(v[1], v[2])
+                                        : ay >= az ? new THREE.Vector2(v[0], v[2])
+                                            : new THREE.Vector2(v[0], v[1])
+                                );
+                                let tris = [];
+                                try { tris = THREE.ShapeUtils.triangulateShape(contour, []); } catch (e) { }
+                                if (tris.length) {
+                                    for (const tri of tris) for (const j of tri) positions.push(...pts[j]);
+                                } else {
+                                    for (let i = 1; i < f.length - 1; i++) {
+                                        for (const ix of [f[0], f[i], f[i + 1]]) positions.push(...part.vertices[ix]);
+                                    }
+                                }
+                            } else {
+                                for (let i = 1; i < f.length - 1; i++) {
+                                    for (const ix of [f[0], f[i], f[i + 1]]) positions.push(...part.vertices[ix]);
+                                }
+                            }
+                        }
+
+                        geom.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+                        geom.computeVertexNormals();
+
+                        // Distinct color per key engineering component
+                        // let partColor = color;
+                        // if (layer === 'Pipe') {
+                        //     partColor = '#4a90e2';          Blue pipe bore
+                        // } else if (layer === 'PipeBaseArea') {
+                        //     partColor = '#d4a574';          Warm sandy bedding cradle
+                        // }
+                        // const mat = new THREE.MeshStandardMaterial({
+                        //     color: new THREE.Color(partColor),
+                        //     roughness: (layer === 'Pipe') ? 0.35 : 0.75,
+                        //     metalness: (layer === 'Pipe') ? 0.15 : 0.05,
+                        //     side: THREE.DoubleSide
+                        // });
+
+                        // const mesh = new THREE.Mesh(geom, mat);
+                        // mesh.userData.layer = layer;
+                        // return mesh;
+
+                        // Solid, dark, non-transparent engineering palette
+                        let partColor = color;
+                        if (layer === 'Pipe') {
+                            partColor = '#1d4ed8';           // Deep solid blue barrel
+                        } else if (layer === 'PipeBaseArea') {
+                            partColor = '#785634';           // Dark rich bedding cradle
+                        } else if (layer === 'LeftWall' || layer === 'RightWall') {
+                            partColor = '#475569';           // Dark solid concrete slate
+                        } else if (layer === 'PCC' || layer === 'Apron') {
+                            partColor = '#334155';           // Deep solid foundation slab
+                        } else if (layer === 'StonePitching') {
+                            partColor = '#574838';           // Dark solid stone pitching
+                        } else if (layer === 'StoneGuard' || layer === 'IncribingPillar') {
+                            partColor = '#94a3b8';           // Guide pillars
+                        } else if (layer === 'BC' || layer === 'DBM') {
+                            partColor = '#0f172a';           // Dark black asphalt road top
+                        } else if (layer.startsWith('WMM') || layer.startsWith('GSB') || layer === 'Subgrade') {
+                            partColor = '#3f4854';           // Compacted road courses
+                        }
+                        // 100% Opaque, solid, filled material (no transparency)
+                        const mat = new THREE.MeshStandardMaterial({
+                            color: new THREE.Color(partColor),
+                            roughness: 0.65,
+                            metalness: 0.15,
+                            transparent: false,
+                            opacity: 1.0,
+                            depthWrite: true,
+                            depthTest: true,
+                            side: THREE.DoubleSide
+                        });
+                        const mesh = new THREE.Mesh(geom, mat);
+                        mesh.userData.layer = layer;
+                        // Add crisp dark edge outlines so facets look sharp and solid
+                        const edgeGeom = new THREE.EdgesGeometry(geom, 28);
+                        const edgeLines = new THREE.LineSegments(
+                            edgeGeom,
+                            new THREE.LineBasicMaterial({ color: 0x0a0e14, linewidth: 1 })
+                        );
+                        mesh.add(edgeLines);
+                        return mesh;
+                    }
+
+                    for (const s of solidData.solids) {
+                        const solidGroup = new THREE.Group();
+                        solidGroup.name = `${s.layer} [${s.handle}]`;
+                        for (const p of s.parts) {
+                            solidGroup.add(buildPartMesh(p, s.color, s.layer));
+                        }
+                        group.add(solidGroup);
+                    }
+
+                    return group;
+                }
+
+                // Helper to get alignment tangent direction at a given chainage
+                function getAlignmentDirectionAtChainage(chainage) {
+                    if (!validAlignment || validAlignment.length < 2) return 0;
+                    let p1 = validAlignment[0];
+                    let p2 = validAlignment[1];
+
+                    for (let i = 0; i < validAlignment.length - 1; i++) {
+                        if (validAlignment[i + 1].Chainage >= chainage) {
+                            p1 = validAlignment[i];
+                            p2 = validAlignment[i + 1];
+                            break;
+                        }
+                    }
+
+                    const dE = Number(p2.Easting) - Number(p1.Easting);
+                    const dN = Number(p2.Northing) - Number(p1.Northing);
+                    return Math.atan2(dE, dN); // Road heading angle
+                }
+
+                // Master group for all 3D culvert solids
+                const culvertSolidsGroup = new THREE.Group();
+                culvertSolidsGroup.name = "All_Culvert_3D_Solids";
+
+                culvertMarkerData.forEach(marker => {
+                    const culvertModel = buildCulvertSolidMeshGroup();
+
+                    // 1. Keep true 1:1 scale so the circular pipe is NOT distorted
+                    culvertModel.scale.set(1, 1, 1);
+
+                    // 2. Find the road formation elevation at this culvert
+                    const roadRL = (marker.data && marker.data.RoadRL)
+                        ? Number(marker.data.RoadRL)
+                        : (Number(marker.rl) + 1.34);
+
+                    const roadWorldPos = toWorld(marker.easting, marker.northing, roadRL);
+
+                    // 3. Position so the top road layer (Y = +1.34m in the model) is flush with the road
+                    culvertModel.position.set(
+                        roadWorldPos.x,
+                        roadWorldPos.y - 1.34,
+                        roadWorldPos.z
+                    );
+
+                    // 4. Align local Z with the road alignment heading
+                    const roadHeading = getAlignmentDirectionAtChainage(marker.data.Chainage || 0);
+                    culvertModel.rotation.y = roadHeading;
+
+                    culvertSolidsGroup.add(culvertModel);
+                });
+
+                scene.add(culvertSolidsGroup);
+
+                // 3D Culvert Structure Toolbar Toggle Button
+                const toggleSolidsBtn = document.getElementById("survey-map-toggle-culvert-solids");
+                if (toggleSolidsBtn) {
+                    toggleSolidsBtn.addEventListener("click", () => {
+                        culvertSolidsGroup.visible = !culvertSolidsGroup.visible;
+                        toggleSolidsBtn.setAttribute("aria-pressed", String(culvertSolidsGroup.visible));
+                        toggleSolidsBtn.innerHTML = culvertSolidsGroup.visible
+                            ? '<i class="bi bi-box"></i> 3D Culvert: On'
+                            : '<i class="bi bi-box"></i> 3D Culvert: Off';
+                    });
+                }
+
+                // ─────────────────────────────────────────────────────────────
+                // Floating Culvert Layer Controller (HTML-Style)
+                // ─────────────────────────────────────────────────────────────
+                // Remove legacy standalone panel if present
+                const existingLayerPanel = document.getElementById("culvert-layers-box");
+                if (existingLayerPanel) existingLayerPanel.remove();
+
+                // Integrate Culvert Parts directly into the unified CAD Layers Drawer
+                const layersDrawer = document.getElementById("survey-cad-layers-drawer");
+                if (layersDrawer) {
+                    const oldSection = document.getElementById("culvert-parts-container");
+                    if (oldSection) oldSection.remove();
+
+                    const culvertSection = document.createElement("div");
+                    culvertSection.id = "culvert-parts-container";
+                    culvertSection.className = "cad-layers-accordion-group";
+
+                    // Collect unique layers and their colors & part counts
+                    const layerStats = new Map();
+                    solidData.solids.forEach(s => {
+                        const lyr = s.layer;
+                        const clr = (lyr === 'Pipe') ? '#4a90e2' : (lyr === 'PipeBaseArea' ? '#d4a574' : s.color);
+                        const current = layerStats.get(lyr) || { count: 0, color: clr };
+                        current.count += s.parts.length;
+                        layerStats.set(lyr, current);
+                    });
+
+                    // Collapsible header with arrow, count badge, and All/None buttons
+                    culvertSection.innerHTML = `
+                        <div style="display:flex;align-items:center;justify-content:space-between;">
+                            <button type="button" class="cad-layers-group-toggle" data-target="cad-group-culvert-parts" style="flex:1;">
+                                <span><i class="bi bi-chevron-down cad-accordion-arrow"></i> Culvert Parts</span>
+                                <span class="cad-group-badge">${layerStats.size}</span>
+                            </button>
+                            <div style="display:flex;gap:4px;padding-right:10px;">
+                                <button type="button" id="culvert-layers-all" style="background:#21262d;color:#c9d1d9;border:1px solid #30363d;border-radius:3px;padding:1px 5px;font-size:10px;cursor:pointer;">All</button>
+                                <button type="button" id="culvert-layers-none" style="background:#21262d;color:#c9d1d9;border:1px solid #30363d;border-radius:3px;padding:1px 5px;font-size:10px;cursor:pointer;">None</button>
+                            </div>
+                        </div>
+                    `;
+
+                    const partsList = document.createElement("div");
+                    partsList.id = "cad-group-culvert-parts";
+                    partsList.className = "cad-layers-list";
+
+                    // Collect unique layers and their colors & part counts
+                    
+
+                    const checkboxMap = new Map();
+
+                    Array.from(layerStats.keys()).sort().forEach(layerName => {
+                        const stat = layerStats.get(layerName);
+                        const row = document.createElement("div");
+                        row.style.cssText = "display:flex;align-items:center;gap:7px;padding:3px 2px;";
+
+                        const chk = document.createElement("input");
+                        chk.type = "checkbox";
+                        chk.checked = true;
+                        chk.id = "lyr_chk_" + layerName;
+                        chk.style.cursor = "pointer";
+
+                        chk.addEventListener("change", () => {
+                            culvertSolidsGroup.traverse(mesh => {
+                                if (mesh.userData && mesh.userData.layer === layerName) {
+                                    mesh.visible = chk.checked;
+                                }
+                            });
+                        });
+
+                        checkboxMap.set(layerName, chk);
+
+                        const swatch = document.createElement("span");
+                        swatch.style.cssText = `width:10px;height:10px;border-radius:2px;background:${stat.color};flex:none;`;
+
+                        const lbl = document.createElement("label");
+                        lbl.htmlFor = chk.id;
+                        lbl.textContent = `${layerName} (${stat.count})`;
+                        lbl.style.cssText = "flex:1;cursor:pointer;user-select:none;color:#cfd8e3;font-size:11px;";
+
+                        row.append(chk, swatch, lbl);
+                        partsList.appendChild(row);
+                    });
+
+                    culvertSection.appendChild(partsList);
+                    layersDrawer.appendChild(culvertSection);
+
+                    // Wire All / None buttons
+                    document.getElementById("culvert-layers-all")?.addEventListener("click", () => {
+                        checkboxMap.forEach((chk, layerName) => {
+                            chk.checked = true;
+                            culvertSolidsGroup.traverse(m => {
+                                if (m.userData && m.userData.layer === layerName) m.visible = true;
+                            });
+                        });
+                    });
+
+                    document.getElementById("culvert-layers-none")?.addEventListener("click", () => {
+                        checkboxMap.forEach((chk, layerName) => {
+                            chk.checked = false;
+                            culvertSolidsGroup.traverse(m => {
+                                if (m.userData && m.userData.layer === layerName) m.visible = false;
+                            });
+                        });
+                    });
+                }
+
+                console.info("[CulvertCAD] 3D Solid Models rendered at detected culvert locations:", culvertMarkerData.length);
+            }
+
             // Temporary labels for identifying culvert locations during terrain diagnostics.
             const culvertLabels = new THREE.Group();
             culvertLabels.name = "Temporary culvert location labels";
@@ -2871,18 +3159,18 @@
                 const label = document.createElement("div");
                 label.textContent = String(marker.data.LocationIndex);
                 label.style.cssText = `
-        color: #ffffff;
-        background: #198754;
-        border: 1px solid #ffffff;
-        border-radius: 50%;
-        width: 24px;
-        height: 24px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 12px;
-        font-weight: bold;
-    `;
+                 color: #ffffff;
+                 background: #198754;
+                 border: 1px solid #ffffff;
+                 border-radius: 50%;
+                 width: 24px;
+                 height: 24px;
+                 display: flex;
+                 align-items: center;
+                 justify-content: center;
+                 font-size: 12px;
+                 font-weight: bold;
+                 `;
             });
 
             // Culvert specification information box.
@@ -3081,25 +3369,68 @@
                 return hits.length ? hits[0].index : -1;
             };
 
+            // Change cursor to hand/pointer on hover so user knows it is clickable
             renderer.domElement.addEventListener("pointermove", (event) => {
-                if (selectedCulvertIndex !== -1) return;
-
                 const index = findCulvertAtPointer(event);
-
-                if (index !== -1) {
-                    showCulvertInfo(index, event);
-                } else if (!infoBox.matches(":hover")) {
-                    infoBox.style.display = "none";
-                }
+                renderer.domElement.style.cursor = (index !== -1) ? "pointer" : "default";
             });
 
+            // Show card ONLY when explicitly clicked
+            // Smooth Camera Glide Function
+            let cameraGlideAnimation = null;
+            function glideCameraTo(targetPos, viewDistance = 16) {
+                if (!controls) return;
+
+                const startTarget = controls.target.clone();
+                const endTarget = targetPos.clone();
+
+                const startCameraPos = camera.position.clone();
+                // Position camera offset at a natural 3D view angle
+                const endCameraPos = new THREE.Vector3(
+                    endTarget.x + viewDistance * 0.7,
+                    endTarget.y + viewDistance * 0.5,
+                    endTarget.z + viewDistance * 0.7
+                );
+
+                const startTime = performance.now();
+                const duration = 1000; // 1 second smooth glide
+
+                function updateGlide(now) {
+                    const progress = Math.min((now - startTime) / duration, 1.0);
+                    // Smooth cubic ease-in-out
+                    const ease = progress < 0.5
+                        ? 4 * progress * progress * progress
+                        : 1 - Math.pow(-2 * progress + 2, 3) / 2;
+
+                    controls.target.lerpVectors(startTarget, endTarget, ease);
+                    camera.position.lerpVectors(startCameraPos, endCameraPos, ease);
+                    controls.update();
+
+                    if (progress < 1.0) {
+                        cameraGlideAnimation = requestAnimationFrame(updateGlide);
+                    } else {
+                        cameraGlideAnimation = null;
+                    }
+                }
+
+                if (cameraGlideAnimation) cancelAnimationFrame(cameraGlideAnimation);
+                cameraGlideAnimation = requestAnimationFrame(updateGlide);
+            }
+
+            // Show card AND smoothly glide camera to culvert when clicked
             renderer.domElement.addEventListener("click", (event) => {
                 const index = findCulvertAtPointer(event);
 
                 if (index !== -1) {
-                    selectedCulvertIndex = index;
-                    showCulvertInfo(index, event);
-                } else {
+                    // selectedCulvertIndex = index;
+                    // showCulvertInfo(index, event);
+
+                    // Smoothly focus camera on this culvert
+                    const marker = culvertMarkerData[index];
+                    if (marker) {
+                        glideCameraTo(marker.position, 16);
+                    }
+                } else if (!infoBox.contains(event.target)) {
                     selectedCulvertIndex = -1;
                     infoBox.style.display = "none";
                 }
@@ -3188,15 +3519,15 @@
             controls.target.copy(target);
             controls.enableDamping = true;
             controls.dampingFactor = 0.08;
-            controls.zoomSpeed = 1.0;
+            controls.zoomSpeed = 0.75;
             controls.panSpeed = 1.0;
             controls.rotateSpeed = 0.8;
 
             // Prevent the camera from getting too close to the terrain.
-            controls.minDistance = Math.max(0.5, span * 0.005);
+            controls.minDistance = 0.000005;
 
             // Prevent zooming so far out that the model becomes difficult to find.
-            controls.maxDistance = Math.max(100, span * 10);
+            controls.maxDistance = Math.max(500, span * 10);
 
             // Enable rotation, zoom and panning.
             controls.enableRotate = true;
@@ -3278,6 +3609,35 @@
 
         document.getElementById("survey-map-north-up")?.addEventListener("click", () => {
             setCameraView("north");
+        });
+
+        // Toggle & Close Floating CAD Layers Drawer
+        const cadLayersDrawer = document.getElementById("survey-cad-layers-drawer");
+        document.getElementById("survey-cad-layers-toggle")?.addEventListener("click", () => {
+            if (cadLayersDrawer) {
+                cadLayersDrawer.classList.toggle("collapsed");
+            }
+        });
+        document.getElementById("survey-cad-layers-close")?.addEventListener("click", () => {
+            if (cadLayersDrawer) {
+                cadLayersDrawer.classList.add("collapsed");
+            }
+        });
+
+        // Generic accordion collapse/expand for all layer groups
+        document.getElementById("survey-cad-layers-drawer")?.addEventListener("click", (e) => {
+            const toggleBtn = e.target.closest(".cad-layers-group-toggle");
+            if (!toggleBtn) return;
+            const targetId = toggleBtn.getAttribute("data-target");
+            const targetList = document.getElementById(targetId);
+            if (!targetList) return;
+
+            const isCollapsed = targetList.classList.toggle("cad-group-collapsed");
+            const arrow = toggleBtn.querySelector(".cad-accordion-arrow");
+            if (arrow) {
+                arrow.classList.toggle("bi-chevron-down", !isCollapsed);
+                arrow.classList.toggle("bi-chevron-right", isCollapsed);
+            }
         });
 
         window.addEventListener("resize", resize);
