@@ -22,6 +22,8 @@ public class MongoDbContext
         _db.GetCollection<AlignmentDocument>("alignments");
     public IMongoCollection<BatchDesignRunDocument> BatchRuns =>
         _db.GetCollection<BatchDesignRunDocument>("batch_runs");
+    public IMongoCollection<CulvertSolidDocument> CulvertSolids =>
+        _db.GetCollection<CulvertSolidDocument>("culvert_solids");
 }
 
 public class SurveyRepository : ISurveyRepository
@@ -164,4 +166,29 @@ public class BatchRunRepository : IBatchRunRepository
 
     public async Task UpdateAsync(BatchDesignRunDocument doc) =>
         await _ctx.BatchRuns.ReplaceOneAsync(b => b.Id == doc.Id, doc);
+}
+
+public class CulvertSolidRepository : ICulvertSolidRepository
+{
+    private readonly MongoDbContext _ctx;
+
+    public CulvertSolidRepository(MongoDbContext ctx) => _ctx = ctx;
+
+    public async Task<CulvertSolidDocument?> GetByProjectAsync(int projectId, string modelType = "3D_SOLID") =>
+        await _ctx.CulvertSolids
+            .Find(s => s.ProjectId == projectId && s.ModelType == modelType)
+            .SortByDescending(s => s.UploadedAt)
+            .FirstOrDefaultAsync();
+
+    public async Task<string> UpsertByProjectAsync(CulvertSolidDocument doc)
+    {
+        var filter = Builders<CulvertSolidDocument>.Filter.And(
+            Builders<CulvertSolidDocument>.Filter.Eq(s => s.ProjectId, doc.ProjectId),
+            Builders<CulvertSolidDocument>.Filter.Eq(s => s.ModelType, doc.ModelType)
+        );
+
+        var options = new ReplaceOptions { IsUpsert = true };
+        await _ctx.CulvertSolids.ReplaceOneAsync(filter, doc, options);
+        return doc.Id;
+    }
 }

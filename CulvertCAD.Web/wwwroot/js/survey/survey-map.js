@@ -2859,296 +2859,408 @@
             // ─────────────────────────────────────────────────────────────────
             // 3D Culvert Solid Model Placement (Test Implementation)
             // ─────────────────────────────────────────────────────────────────
-            if (window.CULVERT_TEST_SOLID_DATA && culvertMarkerData.length) {
-                const solidData = window.CULVERT_TEST_SOLID_DATA;
+            // Dynamic culvert solid data: checks DB first, then sessionStorage, falls back to default sample
+            const currentProjectId = (() => {
+                const el = document.getElementById("survey-map-project-id");
+                if (el && el.textContent.trim()) return parseInt(el.textContent.trim(), 10);
+                const p = new URLSearchParams(window.location.search).get("projectId");
+                return p ? parseInt(p, 10) : 0;
+            })();
 
-                // Function to build Three.js meshes from the 33-solid definition
-                function buildCulvertSolidMeshGroup() {
-                    const group = new THREE.Group();
-                    group.name = "Culvert_3D_Solid_Assembly";
+            let currentSolidData = null;
+            try {
+                const cachedSolid = sessionStorage.getItem("culvert_cad_active_solid");
+                if (cachedSolid) {
+                    currentSolidData = JSON.parse(cachedSolid);
+                }
+            } catch (e) {
+                console.warn("[CulvertCAD] Failed to read cached culvert solid from sessionStorage:", e);
+            }
+            if (!currentSolidData && window.CULVERT_TEST_SOLID_DATA) {
+                currentSolidData = window.CULVERT_TEST_SOLID_DATA;
+            }
 
-                    function buildPartMesh(part, color, layer) {
-                        const geom = new THREE.BufferGeometry();
-                        const positions = [];
+            // Master group for all 3D culvert solids
+            const culvertSolidsGroup = new THREE.Group();
+            culvertSolidsGroup.name = "All_Culvert_3D_Solids";
+            scene.add(culvertSolidsGroup);
 
-                        for (const f of part.faces) {
-                            if (layer === 'PipeBaseArea' && f.length > 3) {
-                                const pts = f.map(ix => part.vertices[ix]);
-                                let nx = 0, ny = 0, nz = 0;
-                                for (let i = 0; i < pts.length; i++) {
-                                    const a = pts[i], b = pts[(i + 1) % pts.length];
-                                    nx += (a[1] - b[1]) * (a[2] + b[2]);
-                                    ny += (a[2] - b[2]) * (a[0] + b[0]);
-                                    nz += (a[0] - b[0]) * (a[1] + b[1]);
-                                }
-                                const ax = Math.abs(nx), ay = Math.abs(ny), az = Math.abs(nz);
-                                const contour = pts.map(v =>
-                                    ax >= ay && ax >= az ? new THREE.Vector2(v[1], v[2])
-                                        : ay >= az ? new THREE.Vector2(v[0], v[2])
-                                            : new THREE.Vector2(v[0], v[1])
-                                );
-                                let tris = [];
-                                try { tris = THREE.ShapeUtils.triangulateShape(contour, []); } catch (e) { }
-                                if (tris.length) {
-                                    for (const tri of tris) for (const j of tri) positions.push(...pts[j]);
-                                } else {
-                                    for (let i = 1; i < f.length - 1; i++) {
-                                        for (const ix of [f[0], f[i], f[i + 1]]) positions.push(...part.vertices[ix]);
-                                    }
-                                }
+            // Helper to get alignment tangent direction at a given chainage
+            function getAlignmentDirectionAtChainage(chainage) {
+                if (!validAlignment || validAlignment.length < 2) return 0;
+                let p1 = validAlignment[0];
+                let p2 = validAlignment[1];
+
+                for (let i = 0; i < validAlignment.length - 1; i++) {
+                    if (validAlignment[i + 1].Chainage >= chainage) {
+                        p1 = validAlignment[i];
+                        p2 = validAlignment[i + 1];
+                        break;
+                    }
+                }
+
+                const dE = Number(p2.Easting) - Number(p1.Easting);
+                const dN = Number(p2.Northing) - Number(p1.Northing);
+                return Math.atan2(dE, dN); // Road heading angle
+            }
+
+            // Function to build Three.js meshes from a solid definition
+            function buildCulvertSolidMeshGroup(sourceData) {
+                const data = sourceData || currentSolidData || window.CULVERT_TEST_SOLID_DATA;
+                const group = new THREE.Group();
+                group.name = "Culvert_3D_Solid_Assembly";
+                if (!data || !data.solids) return group;
+
+                function buildPartMesh(part, color, layer) {
+                    const geom = new THREE.BufferGeometry();
+                    const positions = [];
+
+                    for (const f of part.faces) {
+                        if (layer === 'PipeBaseArea' && f.length > 3) {
+                            const pts = f.map(ix => part.vertices[ix]);
+                            let nx = 0, ny = 0, nz = 0;
+                            for (let i = 0; i < pts.length; i++) {
+                                const a = pts[i], b = pts[(i + 1) % pts.length];
+                                nx += (a[1] - b[1]) * (a[2] + b[2]);
+                                ny += (a[2] - b[2]) * (a[0] + b[0]);
+                                nz += (a[0] - b[0]) * (a[1] + b[1]);
+                            }
+                            const ax = Math.abs(nx), ay = Math.abs(ny), az = Math.abs(nz);
+                            const contour = pts.map(v =>
+                                ax >= ay && ax >= az ? new THREE.Vector2(v[1], v[2])
+                                    : ay >= az ? new THREE.Vector2(v[0], v[2])
+                                        : new THREE.Vector2(v[0], v[1])
+                            );
+                            let tris = [];
+                            try { tris = THREE.ShapeUtils.triangulateShape(contour, []); } catch (e) { }
+                            if (tris.length) {
+                                for (const tri of tris) for (const j of tri) positions.push(...pts[j]);
                             } else {
                                 for (let i = 1; i < f.length - 1; i++) {
                                     for (const ix of [f[0], f[i], f[i + 1]]) positions.push(...part.vertices[ix]);
                                 }
                             }
+                        } else {
+                            for (let i = 1; i < f.length - 1; i++) {
+                                for (const ix of [f[0], f[i], f[i + 1]]) positions.push(...part.vertices[ix]);
+                            }
                         }
-
-                        geom.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-                        geom.computeVertexNormals();
-
-                        // Distinct color per key engineering component
-                        // let partColor = color;
-                        // if (layer === 'Pipe') {
-                        //     partColor = '#4a90e2';          Blue pipe bore
-                        // } else if (layer === 'PipeBaseArea') {
-                        //     partColor = '#d4a574';          Warm sandy bedding cradle
-                        // }
-                        // const mat = new THREE.MeshStandardMaterial({
-                        //     color: new THREE.Color(partColor),
-                        //     roughness: (layer === 'Pipe') ? 0.35 : 0.75,
-                        //     metalness: (layer === 'Pipe') ? 0.15 : 0.05,
-                        //     side: THREE.DoubleSide
-                        // });
-
-                        // const mesh = new THREE.Mesh(geom, mat);
-                        // mesh.userData.layer = layer;
-                        // return mesh;
-
-                        // Solid, dark, non-transparent engineering palette
-                        let partColor = color;
-                        if (layer === 'Pipe') {
-                            partColor = '#1d4ed8';           // Deep solid blue barrel
-                        } else if (layer === 'PipeBaseArea') {
-                            partColor = '#785634';           // Dark rich bedding cradle
-                        } else if (layer === 'LeftWall' || layer === 'RightWall') {
-                            partColor = '#475569';           // Dark solid concrete slate
-                        } else if (layer === 'PCC' || layer === 'Apron') {
-                            partColor = '#334155';           // Deep solid foundation slab
-                        } else if (layer === 'StonePitching') {
-                            partColor = '#574838';           // Dark solid stone pitching
-                        } else if (layer === 'StoneGuard' || layer === 'IncribingPillar') {
-                            partColor = '#94a3b8';           // Guide pillars
-                        } else if (layer === 'BC' || layer === 'DBM') {
-                            partColor = '#0f172a';           // Dark black asphalt road top
-                        } else if (layer.startsWith('WMM') || layer.startsWith('GSB') || layer === 'Subgrade') {
-                            partColor = '#3f4854';           // Compacted road courses
-                        }
-                        // 100% Opaque, solid, filled material (no transparency)
-                        const mat = new THREE.MeshStandardMaterial({
-                            color: new THREE.Color(partColor),
-                            roughness: 0.65,
-                            metalness: 0.15,
-                            transparent: false,
-                            opacity: 1.0,
-                            depthWrite: true,
-                            depthTest: true,
-                            side: THREE.DoubleSide
-                        });
-                        const mesh = new THREE.Mesh(geom, mat);
-                        mesh.userData.layer = layer;
-                        // Add crisp dark edge outlines so facets look sharp and solid
-                        const edgeGeom = new THREE.EdgesGeometry(geom, 28);
-                        const edgeLines = new THREE.LineSegments(
-                            edgeGeom,
-                            new THREE.LineBasicMaterial({ color: 0x0a0e14, linewidth: 1 })
-                        );
-                        mesh.add(edgeLines);
-                        return mesh;
                     }
 
-                    for (const s of solidData.solids) {
-                        const solidGroup = new THREE.Group();
-                        solidGroup.name = `${s.layer} [${s.handle}]`;
-                        for (const p of s.parts) {
-                            solidGroup.add(buildPartMesh(p, s.color, s.layer));
-                        }
-                        group.add(solidGroup);
+                    geom.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+                    geom.computeVertexNormals();
+
+                    // Solid, dark, non-transparent engineering palette
+                    let partColor = color;
+                    if (layer === 'Pipe') {
+                        partColor = '#1d4ed8';           // Deep solid blue barrel
+                    } else if (layer === 'PipeBaseArea') {
+                        partColor = '#785634';           // Dark rich bedding cradle
+                    } else if (layer === 'LeftWall' || layer === 'RightWall') {
+                        partColor = '#475569';           // Dark solid concrete slate
+                    } else if (layer === 'PCC' || layer === 'Apron') {
+                        partColor = '#334155';           // Deep solid foundation slab
+                    } else if (layer === 'StonePitching') {
+                        partColor = '#574838';           // Dark solid stone pitching
+                    } else if (layer === 'StoneGuard' || layer === 'IncribingPillar') {
+                        partColor = '#94a3b8';           // Guide pillars
+                    } else if (layer === 'BC' || layer === 'DBM') {
+                        partColor = '#0f172a';           // Dark black asphalt road top
+                    } else if (layer.startsWith('WMM') || layer.startsWith('GSB') || layer === 'Subgrade') {
+                        partColor = '#3f4854';           // Compacted road courses
                     }
 
-                    return group;
+                    // 100% Opaque, solid, filled material (no transparency)
+                    const mat = new THREE.MeshStandardMaterial({
+                        color: new THREE.Color(partColor),
+                        roughness: 0.65,
+                        metalness: 0.15,
+                        transparent: false,
+                        opacity: 1.0,
+                        depthWrite: true,
+                        depthTest: true,
+                        side: THREE.DoubleSide
+                    });
+                    const mesh = new THREE.Mesh(geom, mat);
+                    mesh.userData.layer = layer;
+
+                    // Add crisp dark edge outlines so facets look sharp and solid
+                    const edgeGeom = new THREE.EdgesGeometry(geom, 28);
+                    const edgeLines = new THREE.LineSegments(
+                        edgeGeom,
+                        new THREE.LineBasicMaterial({ color: 0x0a0e14, linewidth: 1 })
+                    );
+                    mesh.add(edgeLines);
+                    return mesh;
                 }
 
-                // Helper to get alignment tangent direction at a given chainage
-                function getAlignmentDirectionAtChainage(chainage) {
-                    if (!validAlignment || validAlignment.length < 2) return 0;
-                    let p1 = validAlignment[0];
-                    let p2 = validAlignment[1];
-
-                    for (let i = 0; i < validAlignment.length - 1; i++) {
-                        if (validAlignment[i + 1].Chainage >= chainage) {
-                            p1 = validAlignment[i];
-                            p2 = validAlignment[i + 1];
-                            break;
-                        }
+                for (const s of data.solids) {
+                    const solidGroup = new THREE.Group();
+                    solidGroup.name = `${s.layer} [${s.handle}]`;
+                    for (const p of s.parts) {
+                        solidGroup.add(buildPartMesh(p, s.color, s.layer));
                     }
-
-                    const dE = Number(p2.Easting) - Number(p1.Easting);
-                    const dN = Number(p2.Northing) - Number(p1.Northing);
-                    return Math.atan2(dE, dN); // Road heading angle
+                    group.add(solidGroup);
                 }
 
-                // Master group for all 3D culvert solids
-                const culvertSolidsGroup = new THREE.Group();
-                culvertSolidsGroup.name = "All_Culvert_3D_Solids";
+                return group;
+            }
+
+            // Function to render / re-render culvert solids across all detected culverts
+            function renderCulvertSolids(solidData) {
+                // Clear existing culvert models
+                while (culvertSolidsGroup.children.length > 0) {
+                    const child = culvertSolidsGroup.children[0];
+                    culvertSolidsGroup.remove(child);
+                    child.traverse(obj => {
+                        if (obj.geometry) obj.geometry.dispose();
+                        if (obj.material) {
+                            if (Array.isArray(obj.material)) obj.material.forEach(m => m.dispose());
+                            else obj.material.dispose();
+                        }
+                    });
+                }
+
+                if (!solidData || !solidData.solids || !culvertMarkerData.length) return;
 
                 culvertMarkerData.forEach(marker => {
-                    const culvertModel = buildCulvertSolidMeshGroup();
-
-                    // 1. Keep true 1:1 scale so the circular pipe is NOT distorted
+                    const culvertModel = buildCulvertSolidMeshGroup(solidData);
                     culvertModel.scale.set(1, 1, 1);
 
-                    // 2. Find the road formation elevation at this culvert
                     const roadRL = (marker.data && marker.data.RoadRL)
                         ? Number(marker.data.RoadRL)
                         : (Number(marker.rl) + 1.34);
 
                     const roadWorldPos = toWorld(marker.easting, marker.northing, roadRL);
 
-                    // 3. Position so the top road layer (Y = +1.34m in the model) is flush with the road
                     culvertModel.position.set(
                         roadWorldPos.x,
                         roadWorldPos.y - 1.34,
                         roadWorldPos.z
                     );
 
-                    // 4. Align local Z with the road alignment heading
                     const roadHeading = getAlignmentDirectionAtChainage(marker.data.Chainage || 0);
                     culvertModel.rotation.y = roadHeading;
 
                     culvertSolidsGroup.add(culvertModel);
                 });
 
-                scene.add(culvertSolidsGroup);
+                // Update Culvert Parts in unified CAD Layers Drawer
+                updateCulvertLayersDrawer(solidData);
+            }
 
-                // 3D Culvert Structure Toolbar Toggle Button
-                const toggleSolidsBtn = document.getElementById("survey-map-toggle-culvert-solids");
-                if (toggleSolidsBtn) {
-                    toggleSolidsBtn.addEventListener("click", () => {
-                        culvertSolidsGroup.visible = !culvertSolidsGroup.visible;
-                        toggleSolidsBtn.setAttribute("aria-pressed", String(culvertSolidsGroup.visible));
-                        toggleSolidsBtn.innerHTML = culvertSolidsGroup.visible
-                            ? '<i class="bi bi-box"></i> 3D Culvert: On'
-                            : '<i class="bi bi-box"></i> 3D Culvert: Off';
-                    });
-                }
-
-                // ─────────────────────────────────────────────────────────────
-                // Floating Culvert Layer Controller (HTML-Style)
-                // ─────────────────────────────────────────────────────────────
-                // Remove legacy standalone panel if present
-                const existingLayerPanel = document.getElementById("culvert-layers-box");
-                if (existingLayerPanel) existingLayerPanel.remove();
-
-                // Integrate Culvert Parts directly into the unified CAD Layers Drawer
+            function updateCulvertLayersDrawer(solidData) {
                 const layersDrawer = document.getElementById("survey-cad-layers-drawer");
-                if (layersDrawer) {
-                    const oldSection = document.getElementById("culvert-parts-container");
-                    if (oldSection) oldSection.remove();
+                if (!layersDrawer) return;
 
-                    const culvertSection = document.createElement("div");
-                    culvertSection.id = "culvert-parts-container";
-                    culvertSection.className = "cad-layers-accordion-group";
+                const oldSection = document.getElementById("culvert-parts-container");
+                if (oldSection) oldSection.remove();
 
-                    // Collect unique layers and their colors & part counts
-                    const layerStats = new Map();
-                    solidData.solids.forEach(s => {
-                        const lyr = s.layer;
-                        const clr = (lyr === 'Pipe') ? '#4a90e2' : (lyr === 'PipeBaseArea' ? '#d4a574' : s.color);
-                        const current = layerStats.get(lyr) || { count: 0, color: clr };
-                        current.count += s.parts.length;
-                        layerStats.set(lyr, current);
-                    });
+                const culvertSection = document.createElement("div");
+                culvertSection.id = "culvert-parts-container";
+                culvertSection.className = "cad-layers-accordion-group";
 
-                    // Collapsible header with arrow, count badge, and All/None buttons
-                    culvertSection.innerHTML = `
-                        <div style="display:flex;align-items:center;justify-content:space-between;">
-                            <button type="button" class="cad-layers-group-toggle" data-target="cad-group-culvert-parts" style="flex:1;">
-                                <span><i class="bi bi-chevron-down cad-accordion-arrow"></i> Culvert Parts</span>
-                                <span class="cad-group-badge">${layerStats.size}</span>
-                            </button>
-                            <div style="display:flex;gap:4px;padding-right:10px;">
-                                <button type="button" id="culvert-layers-all" style="background:#21262d;color:#c9d1d9;border:1px solid #30363d;border-radius:3px;padding:1px 5px;font-size:10px;cursor:pointer;">All</button>
-                                <button type="button" id="culvert-layers-none" style="background:#21262d;color:#c9d1d9;border:1px solid #30363d;border-radius:3px;padding:1px 5px;font-size:10px;cursor:pointer;">None</button>
-                            </div>
+                const layerStats = new Map();
+                solidData.solids.forEach(s => {
+                    const lyr = s.layer;
+                    const clr = (lyr === 'Pipe') ? '#4a90e2' : (lyr === 'PipeBaseArea' ? '#d4a574' : s.color);
+                    const current = layerStats.get(lyr) || { count: 0, color: clr };
+                    current.count += s.parts.length;
+                    layerStats.set(lyr, current);
+                });
+
+                culvertSection.innerHTML = `
+                    <div style="display:flex;align-items:center;justify-content:space-between;">
+                        <button type="button" class="cad-layers-group-toggle" data-target="cad-group-culvert-parts" style="flex:1;">
+                            <span><i class="bi bi-chevron-down cad-accordion-arrow"></i> Culvert Parts</span>
+                            <span class="cad-group-badge">${layerStats.size}</span>
+                        </button>
+                        <div style="display:flex;gap:4px;padding-right:10px;">
+                            <button type="button" id="culvert-layers-all" style="background:#21262d;color:#c9d1d9;border:1px solid #30363d;border-radius:3px;padding:1px 5px;font-size:10px;cursor:pointer;">All</button>
+                            <button type="button" id="culvert-layers-none" style="background:#21262d;color:#c9d1d9;border:1px solid #30363d;border-radius:3px;padding:1px 5px;font-size:10px;cursor:pointer;">None</button>
                         </div>
-                    `;
+                    </div>
+                `;
 
-                    const partsList = document.createElement("div");
-                    partsList.id = "cad-group-culvert-parts";
-                    partsList.className = "cad-layers-list";
+                const partsList = document.createElement("div");
+                partsList.id = "cad-group-culvert-parts";
+                partsList.className = "cad-layers-list";
 
-                    // Collect unique layers and their colors & part counts
-                    
+                const checkboxMap = new Map();
 
-                    const checkboxMap = new Map();
+                Array.from(layerStats.keys()).sort().forEach(layerName => {
+                    const stat = layerStats.get(layerName);
+                    const row = document.createElement("div");
+                    row.style.cssText = "display:flex;align-items:center;gap:7px;padding:3px 2px;";
 
-                    Array.from(layerStats.keys()).sort().forEach(layerName => {
-                        const stat = layerStats.get(layerName);
-                        const row = document.createElement("div");
-                        row.style.cssText = "display:flex;align-items:center;gap:7px;padding:3px 2px;";
+                    const chk = document.createElement("input");
+                    chk.type = "checkbox";
+                    chk.checked = true;
+                    chk.id = "lyr_chk_" + layerName;
+                    chk.style.cursor = "pointer";
 
-                        const chk = document.createElement("input");
-                        chk.type = "checkbox";
+                    chk.addEventListener("change", () => {
+                        culvertSolidsGroup.traverse(mesh => {
+                            if (mesh.userData && mesh.userData.layer === layerName) {
+                                mesh.visible = chk.checked;
+                            }
+                        });
+                    });
+
+                    checkboxMap.set(layerName, chk);
+
+                    const swatch = document.createElement("span");
+                    swatch.style.cssText = `width:10px;height:10px;border-radius:2px;background:${stat.color};flex:none;`;
+
+                    const lbl = document.createElement("label");
+                    lbl.htmlFor = chk.id;
+                    lbl.textContent = `${layerName} (${stat.count})`;
+                    lbl.style.cssText = "flex:1;cursor:pointer;user-select:none;color:#cfd8e3;font-size:11px;";
+
+                    row.append(chk, swatch, lbl);
+                    partsList.appendChild(row);
+                });
+
+                culvertSection.appendChild(partsList);
+                layersDrawer.appendChild(culvertSection);
+
+                // Wire All / None buttons
+                document.getElementById("culvert-layers-all")?.addEventListener("click", () => {
+                    checkboxMap.forEach((chk, layerName) => {
                         chk.checked = true;
-                        chk.id = "lyr_chk_" + layerName;
-                        chk.style.cursor = "pointer";
-
-                        chk.addEventListener("change", () => {
-                            culvertSolidsGroup.traverse(mesh => {
-                                if (mesh.userData && mesh.userData.layer === layerName) {
-                                    mesh.visible = chk.checked;
-                                }
-                            });
-                        });
-
-                        checkboxMap.set(layerName, chk);
-
-                        const swatch = document.createElement("span");
-                        swatch.style.cssText = `width:10px;height:10px;border-radius:2px;background:${stat.color};flex:none;`;
-
-                        const lbl = document.createElement("label");
-                        lbl.htmlFor = chk.id;
-                        lbl.textContent = `${layerName} (${stat.count})`;
-                        lbl.style.cssText = "flex:1;cursor:pointer;user-select:none;color:#cfd8e3;font-size:11px;";
-
-                        row.append(chk, swatch, lbl);
-                        partsList.appendChild(row);
-                    });
-
-                    culvertSection.appendChild(partsList);
-                    layersDrawer.appendChild(culvertSection);
-
-                    // Wire All / None buttons
-                    document.getElementById("culvert-layers-all")?.addEventListener("click", () => {
-                        checkboxMap.forEach((chk, layerName) => {
-                            chk.checked = true;
-                            culvertSolidsGroup.traverse(m => {
-                                if (m.userData && m.userData.layer === layerName) m.visible = true;
-                            });
+                        culvertSolidsGroup.traverse(m => {
+                            if (m.userData && m.userData.layer === layerName) m.visible = true;
                         });
                     });
+                });
 
-                    document.getElementById("culvert-layers-none")?.addEventListener("click", () => {
-                        checkboxMap.forEach((chk, layerName) => {
-                            chk.checked = false;
-                            culvertSolidsGroup.traverse(m => {
-                                if (m.userData && m.userData.layer === layerName) m.visible = false;
-                            });
+                document.getElementById("culvert-layers-none")?.addEventListener("click", () => {
+                    checkboxMap.forEach((chk, layerName) => {
+                        chk.checked = false;
+                        culvertSolidsGroup.traverse(m => {
+                            if (m.userData && m.userData.layer === layerName) m.visible = false;
                         });
                     });
+                });
+            }
+
+            // Initial render of culverts if data is available
+            if (currentSolidData && culvertMarkerData.length) {
+                renderCulvertSolids(currentSolidData);
+                console.info("[CulvertCAD] Initial 3D Culvert Solids rendered at detected culvert locations:", culvertMarkerData.length);
+            }
+
+            // Fetch saved 3D solid model from MongoDB for this project if available
+            if (currentProjectId > 0) {
+                fetch(`/Survey/GetCulvertSolid?projectId=${currentProjectId}`)
+                    .then(res => res.ok ? res.json() : null)
+                    .then(dbSolid => {
+                        if (dbSolid && dbSolid.solids && dbSolid.solids.length > 0) {
+                            currentSolidData = dbSolid;
+                            try {
+                                sessionStorage.setItem("culvert_cad_active_solid", JSON.stringify(dbSolid));
+                            } catch (e) {}
+                            renderCulvertSolids(dbSolid);
+                            console.info(`[CulvertCAD] Rendered 3D culvert solid model loaded from MongoDB for project ${currentProjectId}.`);
+                        }
+                    })
+                    .catch(err => {
+                        console.warn("[CulvertCAD] Failed to fetch culvert solid from MongoDB:", err);
+                    });
+            }
+
+            // 3D Culvert Structure Toolbar Toggle Button
+            const toggleSolidsBtn = document.getElementById("survey-map-toggle-culvert-solids");
+            if (toggleSolidsBtn) {
+                toggleSolidsBtn.addEventListener("click", () => {
+                    culvertSolidsGroup.visible = !culvertSolidsGroup.visible;
+                    toggleSolidsBtn.setAttribute("aria-pressed", String(culvertSolidsGroup.visible));
+                    toggleSolidsBtn.innerHTML = culvertSolidsGroup.visible
+                        ? '<i class="bi bi-box"></i> 3D Culvert: On'
+                        : '<i class="bi bi-box"></i> 3D Culvert: Off';
+                });
+            }
+
+            // Wire Import Culvert Button & File Input
+            async function handleCulvertHtmlFile(file) {
+                if (!window.CulvertHtmlReader) {
+                    console.error("[CulvertCAD] CulvertHtmlReader is not loaded.");
+                    return;
                 }
+                try {
+                    const solidModel = await window.CulvertHtmlReader.parse(file);
+                    currentSolidData = solidModel;
+                    try {
+                        sessionStorage.setItem("culvert_cad_active_solid", JSON.stringify(solidModel));
+                    } catch (e) {}
+                    renderCulvertSolids(solidModel);
+                    console.info(`[CulvertCAD] Successfully loaded culvert model '${file.name}' with ${solidModel.solids.length} solids.`);
 
-                console.info("[CulvertCAD] 3D Solid Models rendered at detected culvert locations:", culvertMarkerData.length);
+                    // Background persist to MongoDB for this project
+                    if (currentProjectId > 0) {
+                        fetch('/Survey/SaveCulvertSolid', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                projectId: currentProjectId,
+                                fileName: file.name,
+                                modelType: '3D_SOLID',
+                                solidDataJson: JSON.stringify(solidModel)
+                            })
+                        })
+                        .then(res => res.json())
+                        .then(data => {
+                            if (data.success) {
+                                console.info(`[CulvertCAD] 3D culvert model saved to MongoDB for project ${currentProjectId}:`, data);
+                            }
+                        })
+                        .catch(err => console.warn("[CulvertCAD] Failed to persist solid model to DB:", err));
+                    }
+                } catch (err) {
+                    console.error("[CulvertCAD] Failed to parse culvert HTML:", err);
+                    alert("Failed to parse culvert HTML file: " + (err.message || err));
+                }
+            }
+
+            const importCulvertBtn = document.getElementById("survey-map-import-culvert");
+            const importCulvertInput = document.getElementById("survey-culvert-html-file");
+            if (importCulvertBtn && importCulvertInput) {
+                importCulvertBtn.addEventListener("click", () => importCulvertInput.click());
+                importCulvertInput.addEventListener("change", async (e) => {
+                    const file = e.target.files && e.target.files[0];
+                    if (!file) return;
+                    await handleCulvertHtmlFile(file);
+                    importCulvertInput.value = "";
+                });
+            }
+
+            // Canvas drag and drop for Culvert HTML
+            const mapContainerEl = document.getElementById("survey-map-container") || document.getElementById("survey-map-canvas");
+            if (mapContainerEl) {
+                mapContainerEl.addEventListener("dragenter", (e) => {
+                    e.preventDefault();
+                    mapContainerEl.style.outline = "3px dashed #00b4d8";
+                    mapContainerEl.style.outlineOffset = "-6px";
+                });
+                mapContainerEl.addEventListener("dragover", (e) => {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = "copy";
+                    mapContainerEl.style.outline = "3px dashed #00b4d8";
+                    mapContainerEl.style.outlineOffset = "-6px";
+                });
+                mapContainerEl.addEventListener("dragleave", (e) => {
+                    if (e.target === mapContainerEl) {
+                        mapContainerEl.style.outline = "";
+                    }
+                });
+                mapContainerEl.addEventListener("drop", async (e) => {
+                    e.preventDefault();
+                    mapContainerEl.style.outline = "";
+                    const file = e.dataTransfer.files && e.dataTransfer.files[0];
+                    if (file && (file.name.endsWith(".html") || file.name.endsWith(".htm"))) {
+                        await handleCulvertHtmlFile(file);
+                    }
+                });
             }
 
             // Temporary labels for identifying culvert locations during terrain diagnostics.

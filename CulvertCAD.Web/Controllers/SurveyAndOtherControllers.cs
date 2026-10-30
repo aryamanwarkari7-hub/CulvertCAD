@@ -28,17 +28,20 @@ public class SurveyController : Controller
     private readonly ISurveyImportService _importSvc;
     private readonly ISurveyRepository _surveyRepo;
     private readonly IAlignmentRepository _alignmentRepo;
+    private readonly ICulvertSolidRepository _solidRepo;
 
     public SurveyController(
         AppDbContext db,
         ISurveyImportService importSvc,
         ISurveyRepository surveyRepo,
-        IAlignmentRepository alignmentRepo)
+        IAlignmentRepository alignmentRepo,
+        ICulvertSolidRepository solidRepo)
     {
         _db = db;
         _importSvc = importSvc;
         _surveyRepo = surveyRepo;
         _alignmentRepo = alignmentRepo;
+        _solidRepo = solidRepo;
     }
 
     private int CurrentUserId => int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -761,6 +764,48 @@ public class SurveyController : Controller
             await _surveyRepo.UpdateAsync(survey);
         }
         return RedirectToAction("Review", new { projectId });
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetCulvertSolid(int projectId, string modelType = "3D_SOLID")
+    {
+        var doc = await _solidRepo.GetByProjectAsync(projectId, modelType);
+        if (doc == null || string.IsNullOrWhiteSpace(doc.SolidDataJson))
+        {
+            return Json(new { success = false, message = "No saved culvert solid model found." });
+        }
+
+        return Content(doc.SolidDataJson, "application/json");
+    }
+
+    public class SaveCulvertSolidRequest
+    {
+        public int ProjectId { get; set; }
+        public string? FileName { get; set; }
+        public string? ModelType { get; set; }
+        public string? SolidDataJson { get; set; }
+    }
+
+    [HttpPost]
+    [IgnoreAntiforgeryToken]
+    public async Task<IActionResult> SaveCulvertSolid([FromBody] SaveCulvertSolidRequest request)
+    {
+        if (request == null || request.ProjectId <= 0 || string.IsNullOrWhiteSpace(request.SolidDataJson))
+        {
+            return BadRequest(new { success = false, message = "Invalid project ID or solid data." });
+        }
+
+        var doc = new CulvertSolidDocument
+        {
+            ProjectId = request.ProjectId,
+            FileName = request.FileName ?? "culvert_model.html",
+            ModelType = string.IsNullOrWhiteSpace(request.ModelType) ? "3D_SOLID" : request.ModelType,
+            UploadedAt = DateTime.UtcNow,
+            SolidDataJson = request.SolidDataJson
+        };
+
+        var id = await _solidRepo.UpsertByProjectAsync(doc);
+        return Json(new { success = true, id, message = "Culvert solid model saved successfully." });
     }
 }
 

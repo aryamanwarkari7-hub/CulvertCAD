@@ -166,6 +166,11 @@
                     <button type="button" id="survey-map-fullscreen" class="cad-nav-btn" title="Expand / Maximize Map">
                         <i class="bi bi-arrows-angle-expand"></i>
                     </button>
+                    <!-- Import 3D Culvert Model (.html) -->
+                    <button type="button" id="survey-map-import-culvert" class="cad-nav-btn" title="Import / Replace 3D Culvert Model (.html)">
+                        <i class="bi bi-box-arrow-in-down"></i> <span>Import Culvert</span>
+                    </button>
+                    <input type="file" id="survey-culvert-html-file" accept=".html,.htm" style="display:none;" />
                     <button type="button" id="survey-cad-layers-toggle" class="cad-nav-btn" title="Toggle Layers Panel">
                         <i class="bi bi-layers-half"></i> <span>Layers</span>
                     </button>
@@ -367,6 +372,10 @@
             @Html.Raw(surveyMapCulvertsJson)
     </script>
 
+    <script id="survey-map-project-id" type="application/json">
+            @Model.ProjectId
+    </script>
+
 
 
 
@@ -447,6 +456,7 @@
         console.log("Delaunator loaded:", typeof Delaunator);
     </script>
 
+    <script src="~/js/cad/culvert-html-reader.js" asp-append-version="true"></script>
     <script src="~/js/survey/culvert-sample-solid.js" asp-append-version="true"></script>
     <script src="~/js/survey/survey-map.js" asp-append-version="true"></script>
 }

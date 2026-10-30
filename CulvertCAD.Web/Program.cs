@@ -69,6 +69,7 @@ builder.Services.AddScoped<IRevisionInputRepository, RevisionInputRepository>();
 builder.Services.AddScoped<IDrawingRepository, DrawingRepository>();
 builder.Services.AddScoped<IAlignmentRepository, AlignmentRepository>();
 builder.Services.AddScoped<IBatchRunRepository, BatchRunRepository>();
+builder.Services.AddScoped<ICulvertSolidRepository, CulvertSolidRepository>();
 builder.Services.AddScoped<IPipeCatalogRepository, PipeCatalogRepository>();
 builder.Services.AddScoped<IRevisionRepository, RevisionRepository>();
 
@@ -101,9 +102,15 @@ builder.Services.AddSingleton(
     builder
         .Configuration.GetSection("EngineeringCalculationSettings")
         .Get<EngineeringCalculationSettings>()
-        ?? throw new InvalidOperationException(
-            "EngineeringCalculationSettings configuration is missing."
-        )
+        ?? new EngineeringCalculationSettings
+        {
+            ManningN = 0.015,
+            TrenchWidthClearanceM = 0.6,
+            StructuralKmu = 0.150,
+            BeddingClass = "ClassB",
+            BeddingFactor = 1.9,
+            StructuralFosMinimum = 1.5
+        }
 );
 
 var app = builder.Build();

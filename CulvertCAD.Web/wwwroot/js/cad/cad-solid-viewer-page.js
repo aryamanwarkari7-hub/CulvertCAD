@@ -346,8 +346,7 @@
        10. Load HTML Preview
        ========================================================= */
 
-    fileInput.addEventListener("change", () => {
-
+    fileInput.addEventListener("change", async () => {
         const file = fileInput.files?.[0];
 
         if (!file) {
@@ -362,35 +361,48 @@
         }
 
         try {
-
             // Release the previous preview.
             frame.removeAttribute("src");
-
             revokeCurrentObjectUrl();
 
-            // Create a temporary URL for the selected HTML file.
+            // Create a temporary URL for the iframe preview
             currentObjectUrl = URL.createObjectURL(file);
-
             frame.setAttribute("src", currentObjectUrl);
-
             showPreview();
 
             clearButton.disabled = false;
             updateFullscreenButton();
 
+            status.textContent = `Loading & verifying 3D CAD geometry from ${file.name}...`;
 
-            status.textContent =
-                `Previewing: ${file.name}. ` +
-                "The preview is sandboxed. Relative local assets " +
-                "may not load unless packaged appropriately.";
+            // Parse solid geometry with CulvertHtmlReader
+            if (window.CulvertHtmlReader) {
+                try {
+                    const solidModel = await window.CulvertHtmlReader.parse(file);
+                    window.ACTIVE_CULVERT_SOLID_MODEL = solidModel;
+
+                    // Cache in session storage for the Survey Map
+                    try {
+                        sessionStorage.setItem("culvert_cad_active_solid", JSON.stringify(solidModel));
+                    } catch (e) { }
+
+                    status.innerHTML = `
+                        <strong style="color:#58a6ff;">✓ 3D Culvert Verified:</strong> 
+                        ${solidModel.solidCount} Solids · ${solidModel.partCount} Parts · ${solidModel.solids.length} Layers 
+                        <span style="color:#8b949e;margin-left:8px;">(${file.name})</span>
+                    `;
+                    console.info("[CulvertCAD] Generic HTML Reader parsed solid model:", solidModel);
+                } catch (parseErr) {
+                    console.warn("[CulvertCAD] HTML preview loaded in iframe, but solid extraction had a note:", parseErr);
+                    status.textContent = `Previewing: ${file.name} (Standalone Viewer)`;
+                }
+            } else {
+                status.textContent = `Previewing: ${file.name}`;
+            }
 
         } catch (error) {
-
             console.error("HTML preview failed:", error);
-
-            clearPreview(
-                `Could not open HTML preview: ${error.message}`
-            );
+            clearPreview(`Could not open HTML preview: ${error.message}`);
         }
     });
 

@@ -258,3 +258,20 @@ public class BatchCulvertResult
     public int? DesignId { get; set; }
     public int? RevisionId { get; set; }
 }
+
+// Save CULVERT SOLID VIEWER 
+
+public class CulvertSolidDocument
+{
+    [BsonId]
+    [BsonRepresentation(BsonType.ObjectId)]
+    public string Id { get; set; } = string.Empty;
+
+    public int ProjectId { get; set; }
+    public int? RevisionId { get; set; }
+    public int? LocationIndex { get; set; }
+    public string FileName { get; set; } = string.Empty;
+    public string ModelType { get; set; } = "3D_SOLID"; // "3D_SOLID", "2D_DXF", "3D_STL"
+    public DateTime UploadedAt { get; set; } = DateTime.UtcNow;
+    public string SolidDataJson { get; set; } = string.Empty; // Complete geometry array
+}

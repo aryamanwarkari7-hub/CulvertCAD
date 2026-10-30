@@ -49,3 +49,9 @@ public interface IBatchRunRepository
     Task<string> InsertAsync(BatchDesignRunDocument doc);
     Task UpdateAsync(BatchDesignRunDocument doc);
 }
+
+public interface ICulvertSolidRepository
+{
+    Task<CulvertSolidDocument?> GetByProjectAsync(int projectId, string modelType = "3D_SOLID");
+    Task<string> UpsertByProjectAsync(CulvertSolidDocument doc);
+}
