@@ -11,6 +11,9 @@ using Microsoft.EntityFrameworkCore;
 using MongoDB.Driver;
 using Serilog;
 
+using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.RateLimiting;
+
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
     .WriteTo.File("logs/culvertcad-.log", rollingInterval: RollingInterval.Day)
@@ -116,6 +119,28 @@ builder.Services.AddSingleton(
         }
 );
 
+// ── Rate Limiting (DoS Protection) ───────────────────────────────────────────
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    // Heavy CAD & Survey processing policy (30 requests per minute per IP)
+    options.AddPolicy("HeavyCadOps", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "anonymous",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 30,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0
+            }));
+});
+
+builder.Services.AddAntiforgery(options =>
+{
+    options.HeaderName = "RequestVerificationToken";
+});
+
 var app = builder.Build();
 
 // ── Migrate & Seed ────────────────────────────────────────────────────────────
@@ -149,6 +174,7 @@ app.Use(async (context, next) =>
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseRouting();
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 

@@ -18,6 +18,7 @@ using System.Security.Claims;
 using static netDxf.Entities.HatchBoundaryPath;
 using ProjNet.CoordinateSystems;
 using ProjNet.CoordinateSystems.Transformations;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace CulvertCAD.Web.Controllers;
 
@@ -252,6 +253,7 @@ public class SurveyController : Controller
     [HttpPost]
     [ValidateAntiForgeryToken]
     [RequestSizeLimit(50_000_000)]
+    [EnableRateLimiting("HeavyCadOps")]
     public async Task<IActionResult> UploadAndAnalyze(
         int projectId,
         IFormFile? csvFile,
@@ -394,6 +396,7 @@ public class SurveyController : Controller
     [HttpPost]
     [ValidateAntiForgeryToken]
     [RequestSizeLimit(50_000_000)]
+    [EnableRateLimiting("HeavyCadOps")]
     public async Task<IActionResult> ImportDxfAlignment(
     int projectId,
     IFormFile? dxfFile,
@@ -1003,7 +1006,8 @@ public class SurveyController : Controller
     }
 
     [HttpPost]
-    [IgnoreAntiforgeryToken]
+    [ValidateAntiForgeryToken]
+    [EnableRateLimiting("HeavyCadOps")]
     public async Task<IActionResult> SaveCulvertSolid([FromBody] SaveCulvertSolidRequest request)
     {
         if (request == null || request.ProjectId <= 0 || string.IsNullOrWhiteSpace(request.SolidDataJson))

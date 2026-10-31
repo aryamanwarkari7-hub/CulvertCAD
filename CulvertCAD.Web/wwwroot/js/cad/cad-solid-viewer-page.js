@@ -1,5 +1,4 @@
-﻿
-(() => {
+﻿(() => {
     "use strict";
 
     /* =========================================================
@@ -70,13 +69,11 @@
        ========================================================= */
 
     tabButtons.forEach((button, index) => {
-
         button.addEventListener("click", () => {
             activateTab(button.dataset.viewerTab);
         });
 
         button.addEventListener("keydown", event => {
-
             const supportedKeys = [
                 "ArrowLeft",
                 "ArrowRight",
@@ -93,7 +90,6 @@
             let nextIndex = index;
 
             switch (event.key) {
-
                 case "ArrowRight":
                     nextIndex = (index + 1) % tabButtons.length;
                     break;
@@ -177,7 +173,6 @@
        ========================================================= */
 
     function showEmptyState() {
-
         if (emptyState) {
             emptyState.hidden = false;
         }
@@ -186,7 +181,6 @@
     }
 
     function showPreview() {
-
         if (emptyState) {
             emptyState.hidden = true;
         }
@@ -199,7 +193,6 @@
        ========================================================= */
 
     function revokeCurrentObjectUrl() {
-
         if (!currentObjectUrl) {
             return;
         }
@@ -214,7 +207,6 @@
    ========================================================= */
 
     function updateFullscreenButton() {
-
         const isFullscreen =
             document.fullscreenElement === frameContainer;
 
@@ -249,25 +241,17 @@
     }
 
     async function toggleFullscreen() {
-
         if (!currentObjectUrl) {
             return;
         }
 
         try {
-
             if (document.fullscreenElement === frameContainer) {
-
                 await document.exitFullscreen();
-
             } else {
-
                 await frameContainer.requestFullscreen();
-
             }
-
         } catch (error) {
-
             console.error("HTML preview full screen failed:", error);
 
             status.textContent =
@@ -292,7 +276,6 @@
     async function clearPreview(
         message = "No HTML viewer selected."
     ) {
-
         frame.removeAttribute("src");
 
         revokeCurrentObjectUrl();
@@ -316,7 +299,6 @@
        ========================================================= */
 
     function validateHtmlFile(file) {
-
         if (!file) {
             return "Please select an HTML file.";
         }
@@ -395,8 +377,8 @@
                     } catch (e) { }
 
                     status.innerHTML = `
-                        <strong style="color:#58a6ff;">✓ 3D Culvert Verified:</strong> 
-                        ${solidModel.solidCount} Solids · ${solidModel.partCount} Parts · ${solidModel.solids.length} Layers 
+                        <strong style="color:#58a6ff;">✓ 3D Culvert Verified:</strong>
+                        ${solidModel.solidCount} Solids · ${solidModel.partCount} Parts · ${solidModel.solids.length} Layers
                         <span style="color:#8b949e;margin-left:8px;">(${file.name})</span>
                     `;
                     console.info("[CulvertCAD] Generic HTML Reader parsed solid model:", solidModel);
@@ -407,7 +389,6 @@
             } else {
                 status.textContent = `Previewing: ${file.name}`;
             }
-
         } catch (error) {
             console.error("HTML preview failed:", error);
             clearPreview(`Could not open HTML preview: ${error.message}`);
@@ -440,7 +421,6 @@
        ========================================================= */
 
     window.addEventListener("pagehide", () => {
-
         frame.removeAttribute("src");
 
         revokeCurrentObjectUrl();
@@ -475,7 +455,6 @@
             }
         });
     }
-
 })();
 
 /* =========================================================
@@ -509,9 +488,14 @@ window.saveSolidModelToMongo = async function (file, content, modelType = "3D_SO
             solidDataJson: content
         };
 
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+
         const resp = await fetch("/Survey/SaveCulvertSolid", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+                "Content-Type": "application/json",
+                "RequestVerificationToken": csrfToken
+            },
             body: JSON.stringify(payload)
         });
 
@@ -691,7 +675,7 @@ async function loadSolidFromDatabase(projectId, modelType = "3D_SOLID") {
         if (htmlStatus) {
             const solidCount = solidModel?.solidCount || solidModel?.solids?.length || "3D";
             htmlStatus.innerHTML = `
-                <strong style="color:#3fb950;">✓ Loaded from Database:</strong> 
+                <strong style="color:#3fb950;">✓ Loaded from Database:</strong>
                 ${solidCount} Solids · Project #${projectId}
                 <span style="color:#8b949e;margin-left:8px;">(${solidModel?.name || 'Culvert Model'})</span>
             `;

@@ -168,7 +168,6 @@
             ctx.stroke();
         }
 
-
         for (const label of drawing.texts ?? []) {
             if (!state.visibleLayers.has(label.layer)) continue;
             if (!label.value) continue;
@@ -200,7 +199,6 @@
 
             ctx.restore();
         }
-
 
         ctx.restore();
 
@@ -518,9 +516,13 @@
                 solidDataJson: JSON.stringify(drawingResult)
             };
 
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
             const resp = await fetch("/Survey/SaveCulvertSolid", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                    "Content-Type": "application/json",
+                    "RequestVerificationToken": csrfToken
+                },
                 body: JSON.stringify(payload)
             });
 
@@ -602,7 +604,6 @@
             historyList.querySelectorAll(".cad-btn-load").forEach(btn => {
                 btn.addEventListener("click", () => loadDrawingFromDatabase(btn.dataset.projectId));
             });
-
         } catch (err) {
             historyList.innerHTML = `<div class="cad-history-empty"><span style="color:#f85149;">Error: ${err.message}</span></div>`;
         }
@@ -680,5 +681,9 @@
                 el.style.display = (!q || code.includes(q) || name.includes(q) || file.includes(q)) ? "" : "none";
             });
         });
+    }
+
+    function getCsrfToken() {
+        return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
     }
 })();
