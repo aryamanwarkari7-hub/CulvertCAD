@@ -44,6 +44,46 @@ public class FakeCulvertSolidRepository : ICulvertSolidRepository
     }
 }
 
+public class FakeSurveyRepository : ISurveyRepository
+{
+    public readonly Dictionary<int, SurveyDocument> Surveys = new();
+
+    public Task<SurveyDocument?> GetByProjectAsync(int projectId)
+    {
+        Surveys.TryGetValue(projectId, out var doc);
+        return Task.FromResult(doc);
+    }
+
+    public Task<SurveyDocument?> GetByIdAsync(string id) =>
+        Task.FromResult(Surveys.Values.FirstOrDefault(s => s.Id == id));
+
+    public Task<string> InsertAsync(SurveyDocument doc)
+    {
+        if (string.IsNullOrWhiteSpace(doc.Id)) doc.Id = Guid.NewGuid().ToString("N");
+        Surveys[doc.ProjectId] = doc;
+        return Task.FromResult(doc.Id);
+    }
+
+    public Task UpdateAsync(SurveyDocument doc)
+    {
+        Surveys[doc.ProjectId] = doc;
+        return Task.CompletedTask;
+    }
+
+    public Task DeleteAsync(string id)
+    {
+        var item = Surveys.Values.FirstOrDefault(s => s.Id == id);
+        if (item != null) Surveys.Remove(item.ProjectId);
+        return Task.CompletedTask;
+    }
+
+    public Task<List<SurveyDocument>> GetSurveysByProjectIdsAsync(IEnumerable<int> projectIds)
+    {
+        var ids = new HashSet<int>(projectIds);
+        return Task.FromResult(Surveys.Values.Where(s => ids.Contains(s.ProjectId)).ToList());
+    }
+}
+
 public class CulvertSolidEndpointTests
 {
     private static (AppDbContext Db, FakeCulvertSolidRepository SolidRepo, SurveyController Controller) CreateTestFixture()
@@ -63,10 +103,11 @@ public class CulvertSolidEndpointTests
         });
         db.SaveChanges();
 
+        var surveyRepo = new FakeSurveyRepository();
         var solidRepo = new FakeCulvertSolidRepository();
 
         // Pass null! for dependencies not exercised by the solid endpoints
-        var controller = new SurveyController(db, null!, null!, null!, solidRepo);
+        var controller = new SurveyController(db, null!, surveyRepo, null!, solidRepo);
 
         return (db, solidRepo, controller);
     }
@@ -179,5 +220,80 @@ public class CulvertSolidEndpointTests
         var contentResult = Assert.IsType<ContentResult>(result);
         Assert.Equal("application/json", contentResult.ContentType);
         Assert.Equal("{\"solids\":[{\"layer\":\"BC\"}]}", contentResult.Content);
+    }
+
+    [Fact]
+    public async Task SaveCulvertSolid_WithInvalidModelType_ReturnsBadRequest()
+    {
+        var (_, _, controller) = CreateTestFixture();
+        var request = new SurveyController.SaveCulvertSolidRequest
+        {
+            ProjectId = 1,
+            FileName = "model.bin",
+            ModelType = "INVALID_TYPE",
+            SolidDataJson = "{\"test\":true}"
+        };
+
+        var result = await controller.SaveCulvertSolid(request);
+
+        var badRequest = Assert.IsType<BadRequestObjectResult>(result);
+        Assert.NotNull(badRequest.Value);
+    }
+
+    [Fact]
+    public async Task SaveCulvertSolid_Separates_2D_and_3D_Models()
+    {
+        var (_, solidRepo, controller) = CreateTestFixture();
+
+        // 1. Save a 2D DXF model for Project 1
+        await controller.SaveCulvertSolid(new SurveyController.SaveCulvertSolidRequest
+        {
+            ProjectId = 1,
+            FileName = "plan_view.dxf",
+            ModelType = "2D_DXF",
+            SolidDataJson = "{\"type\":\"2D_Entities\"}"
+        });
+
+        // 2. Save a 3D Solid model for Project 1
+        await controller.SaveCulvertSolid(new SurveyController.SaveCulvertSolidRequest
+        {
+            ProjectId = 1,
+            FileName = "culvert_mesh.html",
+            ModelType = "3D_SOLID",
+            SolidDataJson = "{\"type\":\"3D_Mesh\"}"
+        });
+
+        // Verify both models exist independently without overwriting each other
+        var doc2D = await solidRepo.GetByProjectAsync(1, "2D_DXF");
+        var doc3D = await solidRepo.GetByProjectAsync(1, "3D_SOLID");
+
+        Assert.NotNull(doc2D);
+        Assert.Equal("plan_view.dxf", doc2D.FileName);
+
+        Assert.NotNull(doc3D);
+        Assert.Equal("culvert_mesh.html", doc3D.FileName);
+    }
+
+    [Fact]
+    public async Task ConfirmLocation_WithInvalidParameters_ReturnsBadRequest()
+    {
+        var (_, _, controller) = CreateTestFixture();
+
+        var resultZeroProj = await controller.ConfirmLocation(0, 1);
+        Assert.IsType<BadRequestObjectResult>(resultZeroProj);
+
+        var resultNegIndex = await controller.ConfirmLocation(1, -1);
+        Assert.IsType<BadRequestObjectResult>(resultNegIndex);
+    }
+
+    [Fact]
+    public async Task ConfirmLocation_WithNonExistentSurvey_ReturnsNotFound()
+    {
+        var (_, _, controller) = CreateTestFixture();
+
+        // Project has no survey in fake repo
+        var result = await controller.ConfirmLocation(1, 0);
+
+        Assert.IsType<NotFoundObjectResult>(result);
     }
 }

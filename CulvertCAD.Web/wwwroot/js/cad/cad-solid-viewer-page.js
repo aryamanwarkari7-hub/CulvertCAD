@@ -526,7 +526,17 @@ window.saveSolidModelToMongo = async function (file, content, modelType = "3D_SO
                 statusEl.appendChild(saveBadge);
             }
         } else {
-            console.warn("[CulvertCAD] Auto-save response not OK:", resp.status);
+            const errData = await resp.json().catch(() => null);
+            const errMsg = errData?.message || `Server returned status ${resp.status}`;
+            console.warn("[CulvertCAD] Auto-save failed:", errMsg);
+            const statusEl = document.getElementById(modelType === "3D_SOLID" ? "htmlViewerStatus" : "stlStatus");
+            if (statusEl) {
+                const errBadge = document.createElement("span");
+                errBadge.style.color = "#f85149";
+                errBadge.style.marginLeft = "10px";
+                errBadge.innerHTML = `<i class="bi bi-exclamation-triangle"></i> Save failed: ${errMsg}`;
+                statusEl.appendChild(errBadge);
+            }
         }
     } catch (e) {
         console.warn("[CulvertCAD] Auto-save network error:", e);

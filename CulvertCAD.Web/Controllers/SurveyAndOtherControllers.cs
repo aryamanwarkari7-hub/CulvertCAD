@@ -61,8 +61,19 @@ public class SurveyController : Controller
         var projects = await query.OrderByDescending(p => p.CreatedAt).ToListAsync();
         var projectIds = projects.Select(p => p.Id).ToList();
 
-        var surveys = await _surveyRepo.GetSurveysByProjectIdsAsync(projectIds);
-        var alignments = await _alignmentRepo.GetAlignmentsByProjectIdsAsync(projectIds);
+        var surveys = new List<SurveyDocument>();
+        var alignments = new List<AlignmentDocument>();
+
+        try
+        {
+            surveys = await _surveyRepo.GetSurveysByProjectIdsAsync(projectIds);
+            alignments = await _alignmentRepo.GetAlignmentsByProjectIdsAsync(projectIds);
+        }
+        catch (Exception)
+        {
+            // If MongoDB is restarting or temporarily offline, allow projects to still load
+            ViewBag.DatabaseWarning = "Document database is temporarily unreachable. Survey points cannot be loaded.";
+        }
 
         var surveyMap = surveys
             .GroupBy(s => s.ProjectId)
@@ -75,7 +86,11 @@ public class SurveyController : Controller
         var items = new List<SurveyDirectoryItemDto>();
         foreach (var proj in projects)
         {
-            var hasSurvey = surveyMap.TryGetValue(proj.Id, out var s);
+            // Only consider loaded if valid survey data (filename or points) exists
+            var hasSurvey = surveyMap.TryGetValue(proj.Id, out var s)
+                            && s != null
+                            && (s.TotalPoints > 0 || !string.IsNullOrWhiteSpace(s.FileName));
+
             var hasAlign = alignmentMap.TryGetValue(proj.Id, out var a);
 
             items.Add(new SurveyDirectoryItemDto
@@ -821,15 +836,29 @@ public class SurveyController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ConfirmLocation(int projectId, int locationIndex)
     {
+        if (projectId <= 0 || locationIndex < 0)
+        {
+            return BadRequest("Invalid project or location index parameter.");
+        }
+
         var survey = await _surveyRepo.GetByProjectAsync(projectId);
-        if (survey == null) return NotFound();
+        if (survey == null)
+        {
+            return NotFound($"No survey data found for Project #{projectId}.");
+        }
 
         var loc = survey.DetectedCulverts.FirstOrDefault(l => l.LocationIndex == locationIndex);
-        if (loc != null)
+        if (loc == null)
+        {
+            return NotFound($"Culvert Location #{locationIndex} was not found in this survey.");
+        }
+
+        if (!loc.IsConfirmed)
         {
             loc.IsConfirmed = true;
             await _surveyRepo.UpdateAsync(survey);
         }
+
         return RedirectToAction("Review", new { projectId });
     }
 
@@ -881,10 +910,18 @@ public class SurveyController : Controller
             return Json(new { success = true, items = new List<object>() });
         }
 
-        var solids = await _solidRepo.GetRecentSolidsAsync(accessibleProjects.Keys, limit: 20);
+        List<CulvertSolidDocument> solids = new();
+        try
+        {
+            solids = await _solidRepo.GetRecentSolidsAsync(accessibleProjects.Keys, limit: 20);
+        }
+        catch (Exception ex)
+        {
+            return Json(new { success = false, message = "Document database is temporarily unreachable.", items = new List<object>() });
+        }
 
         var items = solids
-    .Where(s => string.IsNullOrEmpty(modelType)
+       .Where(s => string.IsNullOrEmpty(modelType)
              || (modelType == "3D" && (s.ModelType == "3D_SOLID" || s.ModelType == "3D_STL"))
              || string.Equals(s.ModelType, modelType, StringComparison.OrdinalIgnoreCase))
             .Select(s => new
@@ -924,6 +961,13 @@ public class SurveyController : Controller
             return BadRequest(new { success = false, message = "Solid geometry payload exceeds the maximum 15 MB limit." });
         }
 
+        var allowedTypes = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "3D_SOLID", "3D_STL", "2D_DXF" };
+        var modelType = string.IsNullOrWhiteSpace(request.ModelType) ? "3D_SOLID" : request.ModelType.Trim().ToUpperInvariant();
+        if (!allowedTypes.Contains(modelType))
+        {
+            return BadRequest(new { success = false, message = $"Unsupported model type '{request.ModelType}'. Allowed: 3D_SOLID, 3D_STL, 2D_DXF." });
+        }
+
         var project = await _db.Projects.FindAsync(request.ProjectId);
         if (project == null)
         {
@@ -933,8 +977,8 @@ public class SurveyController : Controller
         var doc = new CulvertSolidDocument
         {
             ProjectId = request.ProjectId,
-            FileName = request.FileName ?? "culvert_model.html",
-            ModelType = string.IsNullOrWhiteSpace(request.ModelType) ? "3D_SOLID" : request.ModelType,
+            FileName = request.FileName ?? (modelType == "3D_STL" ? "culvert_model.stl" : "culvert_model.html"),
+            ModelType = modelType, // Uses the validated uppercase type
             UploadedAt = DateTime.UtcNow,
             SolidDataJson = request.SolidDataJson
         };

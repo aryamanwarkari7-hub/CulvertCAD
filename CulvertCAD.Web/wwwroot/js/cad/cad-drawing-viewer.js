@@ -531,6 +531,18 @@
                 if (statusEl) {
                     statusEl.innerHTML = `<span>Imported <strong>${escapeHtml(drawingResult.fileName || 'Drawing')}</strong> (${drawingResult.entityCount || 0} entities)</span> <span style="color: #3fb950; font-weight: 600; margin-left: 12px;"><i class="bi bi-cloud-check"></i> Saved to Database (Project #${projId})</span>`;
                 }
+            } else {
+                const errData = await resp.json().catch(() => null);
+                const errMsg = errData?.message || `Save failed (${resp.status})`;
+                console.warn("[CulvertCAD] 2D Drawing auto-save failed:", errMsg);
+                const statusEl = document.getElementById("cadStatus");
+                if (statusEl) {
+                    const errBadge = document.createElement("span");
+                    errBadge.style.color = "#f85149";
+                    errBadge.style.marginLeft = "12px";
+                    errBadge.innerHTML = `<i class="bi bi-exclamation-triangle"></i> ${escapeHtml(errMsg)}`;
+                    statusEl.appendChild(errBadge);
+                }
             }
         } catch (err) {
             console.warn("[CulvertCAD] 2D Auto-save to MongoDB error:", err);
