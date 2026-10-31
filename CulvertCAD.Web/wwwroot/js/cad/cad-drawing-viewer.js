@@ -368,6 +368,9 @@
                 (skippedCount ? ` ${skippedCount} entities were skipped.` : ""),
                 skippedCount ? "warning" : "success"
             );
+
+            // AUTO-SAVE 2D DXF DRAWING TO MONGODB
+            saveDxfDrawingToMongo(result);
         } catch (error) {
             setStatus(
                 error instanceof Error ? error.message : "DXF import failed.",
@@ -493,4 +496,177 @@
     }
 
     resizeCanvas();
+
+    function escapeHtml(str) {
+        if (!str) return "";
+        return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+
+    /* =========================================================
+       Auto-Save 2D DXF Drawing to MongoDB
+       ========================================================= */
+    async function saveDxfDrawingToMongo(drawingResult) {
+        const projSelect = document.getElementById("cadActiveProjectId");
+        const projId = projSelect ? parseInt(projSelect.value, 10) : 0;
+        if (!projId || projId <= 0) return;
+
+        try {
+            const payload = {
+                projectId: projId,
+                fileName: drawingResult.fileName || "drawing.dxf",
+                modelType: "2D_DXF",
+                solidDataJson: JSON.stringify(drawingResult)
+            };
+
+            const resp = await fetch("/Survey/SaveCulvertSolid", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+
+            // AFTER
+            if (resp.ok) {
+                console.info(`[CulvertCAD] 2D Drawing saved to MongoDB for Project #${projId}`);
+                const statusEl = document.getElementById("cadStatus");
+                if (statusEl) {
+                    statusEl.innerHTML = `<span>Imported <strong>${escapeHtml(drawingResult.fileName || 'Drawing')}</strong> (${drawingResult.entityCount || 0} entities)</span> <span style="color: #3fb950; font-weight: 600; margin-left: 12px;"><i class="bi bi-cloud-check"></i> Saved to Database (Project #${projId})</span>`;
+                }
+            }
+        } catch (err) {
+            console.warn("[CulvertCAD] 2D Auto-save to MongoDB error:", err);
+        }
+    }
+
+    /* =========================================================
+       Recent Drawings Drawer Integration
+       ========================================================= */
+    const btnOpenHistory = document.getElementById("btnOpenHistory");
+    const btnCloseHistory = document.getElementById("btnCloseHistory");
+    const historyDrawer = document.getElementById("cadHistoryDrawer");
+    const historyList = document.getElementById("cadHistoryList");
+    const historySearch = document.getElementById("cadHistorySearch");
+
+    async function fetchRecentDrawings() {
+        if (!historyList) return;
+        historyList.innerHTML = `
+            <div class="cad-history-loading">
+                <i class="bi bi-arrow-repeat spin"></i>
+                <span>Loading saved drawings...</span>
+            </div>
+        `;
+
+        try {
+            const resp = await fetch("/api/cad/recent-models?modelType=2D_DXF");
+            if (!resp.ok) throw new Error("Failed to load drawings");
+            const data = await resp.json();
+            const items = data.items || [];
+
+            if (items.length === 0) {
+                historyList.innerHTML = `
+                    <div class="cad-history-empty">
+                        <i class="bi bi-file-earmark-ruled" style="font-size:24px;"></i>
+                        <span>No saved 2D drawings found yet.</span>
+                    </div>
+                `;
+                return;
+            }
+
+            historyList.innerHTML = items.map(item => `
+                <div class="cad-history-item" data-code="${(item.projectCode || '').toLowerCase()}" data-name="${(item.projectName || '').toLowerCase()}" data-file="${(item.fileName || '').toLowerCase()}">
+                    <div class="cad-item-top">
+                        <span class="cad-item-badge">${item.projectCode}</span>
+                        <span class="cad-item-date">${new Date(item.uploadedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                    </div>
+                    <h4 class="cad-item-name">${item.projectName}</h4>
+                    <p class="cad-item-sub"><i class="bi bi-file-earmark-ruled"></i> ${item.fileName || '2D Drawing'}</p>
+                    <div class="cad-item-footer">
+                        <button type="button" class="cad-btn-load" data-project-id="${item.projectId}">
+                            <i class="bi bi-box-arrow-in-down-right"></i> Load in Viewer
+                        </button>
+                    </div>
+                </div>
+            `).join("");
+
+            historyList.querySelectorAll(".cad-btn-load").forEach(btn => {
+                btn.addEventListener("click", () => loadDrawingFromDatabase(btn.dataset.projectId));
+            });
+
+        } catch (err) {
+            historyList.innerHTML = `<div class="cad-history-empty"><span style="color:#f85149;">Error: ${err.message}</span></div>`;
+        }
+    }
+
+    async function loadDrawingFromDatabase(projectId) {
+        if (historyDrawer) {
+            historyDrawer.setAttribute("hidden", "");
+            historyDrawer.style.display = "none";
+        }
+        setStatus(`Loading 2D drawing from Project #${projectId}...`, "secondary");
+
+        try {
+            const resp = await fetch(`/Survey/GetCulvertSolid?projectId=${encodeURIComponent(projectId)}&modelType=2D_DXF`);
+            if (!resp.ok) throw new Error("Could not fetch drawing data");
+            const raw = await resp.text();
+            const result = JSON.parse(raw);
+
+            if (!result.bounds || !Array.isArray(result.paths)) {
+                throw new Error("Invalid drawing format received.");
+            }
+
+            state.drawing = result;
+            state.bounds = result.bounds;
+            state.visibleLayers = new Set(result.layers ?? []);
+            layerColors.clear();
+
+            showLayers(result.layers ?? []);
+            showInfo(result);
+            fitDrawing();
+
+            const emptyOverlay = document.getElementById("cadEmptyState");
+            if (emptyOverlay) emptyOverlay.classList.add("is-hidden");
+
+            setStatus(`✓ Loaded from Database: ${result.fileName || 'Drawing'} (Project #${projectId})`, "success");
+        } catch (err) {
+            setStatus(`Load failed: ${err.message}`, "danger");
+        }
+    }
+
+    if (btnOpenHistory && historyDrawer) {
+        btnOpenHistory.addEventListener("click", (e) => {
+            e.preventDefault();
+            historyDrawer.removeAttribute("hidden");
+            historyDrawer.style.display = "flex";
+            fetchRecentDrawings();
+        });
+    }
+
+    if (btnCloseHistory && historyDrawer) {
+        btnCloseHistory.addEventListener("click", (e) => {
+            e.preventDefault();
+            historyDrawer.setAttribute("hidden", "");
+            historyDrawer.style.display = "none";
+        });
+    }
+
+    if (historyDrawer) {
+        historyDrawer.addEventListener("click", (e) => {
+            if (e.target === historyDrawer) {
+                historyDrawer.setAttribute("hidden", "");
+                historyDrawer.style.display = "none";
+            }
+        });
+    }
+
+    if (historySearch) {
+        historySearch.addEventListener("input", (e) => {
+            const q = e.target.value.trim().toLowerCase();
+            const items = historyList.querySelectorAll(".cad-history-item");
+            items.forEach(el => {
+                const code = el.dataset.code || "";
+                const name = el.dataset.name || "";
+                const file = el.dataset.file || "";
+                el.style.display = (!q || code.includes(q) || name.includes(q) || file.includes(q)) ? "" : "none";
+            });
+        });
+    }
 })();

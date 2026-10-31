@@ -4,8 +4,7 @@
 @{
     ViewData["Title"] = "Projects";
     ViewData["PageTitle"] = "Projects";
-    ViewData["PageSubtitle"] =
-        $"{Model.Count} project{(Model.Count != 1 ? "s" : "")}";
+    ViewData["PageSubtitle"] = $"{Model.Count} project{(Model.Count != 1 ? "s" : "")}";
 
     ViewData["PageHeaderActions"] = new List<Dictionary<string, string>>
     {
@@ -23,36 +22,68 @@
 
     <partial name="_PageHeader" />
 
-
     @if (!Model.Any())
     {
         <div class="empty-state">
-
-            <i class="bi bi-folder2-open es-icon"
-               aria-hidden="true"></i>
-
+            <i class="bi bi-folder2-open es-icon" aria-hidden="true"></i>
             <p>No projects yet. Create your first project.</p>
-
-            <a asp-action="Create"
-               class="btn-primary">
+            <a asp-action="Create" class="btn-primary">
                 <i class="bi bi-plus-lg" aria-hidden="true"></i>
                 <span>New Project</span>
             </a>
-
         </div>
     }
     else
     {
-        <div class="proj-grid">
+        <!-- =====================================================
+             Filter & View Switcher Toolbar
+             ===================================================== -->
+        <div class="card dash-filter-card" style="margin-bottom: 1.5rem;">
+            <div class="dash-filter-row">
+                <div class="dash-search-box">
+                    <i class="bi bi-search" aria-hidden="true"></i>
+                    <input type="text"
+                           id="projects-search-input"
+                           class="field-input"
+                           placeholder="Search by project name, code, client, or road..."
+                           autocomplete="off" />
+                </div>
+
+                <div class="dash-filter-pills" id="projects-status-filters">
+                    <button type="button" class="filter-pill active" data-filter="all">All</button>
+                    <button type="button" class="filter-pill" data-filter="Active">Active</button>
+                    <button type="button" class="filter-pill" data-filter="Completed">Completed</button>
+                    <button type="button" class="filter-pill" data-filter="OnHold">On Hold</button>
+                </div>
+
+                <div class="dash-view-toggle">
+                    <button type="button" class="view-btn active" id="btn-proj-cards" title="Cards View" aria-label="Cards view">
+                        <i class="bi bi-grid-fill" aria-hidden="true"></i>
+                    </button>
+                    <button type="button" class="view-btn" id="btn-proj-list" title="Table List View" aria-label="Table list view">
+                        <i class="bi bi-list-ul" aria-hidden="true"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- =====================================================
+             VIEW A: Cards View (Default — Preserved UI)
+             ===================================================== -->
+        <div id="projects-cards-view" class="proj-grid">
 
             @foreach (var project in Model)
             {
                 <a asp-action="Details"
                    asp-route-id="@project.Id"
-                   class="proj-card">
+                   class="proj-card"
+                   data-name="@project.ProjectName.ToLower()"
+                   data-code="@project.ProjectCode.ToLower()"
+                   data-client="@(project.ClientName?.ToLower() ?? "")"
+                   data-road="@(project.RoadName?.ToLower() ?? "")"
+                   data-status="@project.Status">
 
                     <div class="pc-top">
-
                         <span class="pc-code">
                             @project.ProjectCode
                         </span>
@@ -60,80 +91,187 @@
                         <span class="badge @StatusBadge(project.Status)">
                             @project.Status
                         </span>
-
                     </div>
-
 
                     <h3 class="pc-name">
                         @project.ProjectName
                     </h3>
 
-
                     @if (!string.IsNullOrEmpty(project.ClientName))
                     {
                         <p class="pc-meta">
-                            <i class="bi bi-building"
-                               aria-hidden="true"></i>
+                            <i class="bi bi-building" aria-hidden="true"></i>
                             <span>Client: @project.ClientName</span>
                         </p>
                     }
 
-
                     @if (!string.IsNullOrEmpty(project.RoadName))
                     {
                         <p class="pc-meta">
-                            <i class="bi bi-signpost-2"
-                               aria-hidden="true"></i>
+                            <i class="bi bi-signpost-2" aria-hidden="true"></i>
                             <span>@project.RoadName</span>
                         </p>
                     }
 
-
                     @if (!string.IsNullOrEmpty(project.ChainageFrom))
                     {
                         <p class="pc-meta">
-                            <i class="bi bi-signpost"
-                               aria-hidden="true"></i>
-                            <span>
-                                Ch. @project.ChainageFrom – @project.ChainageTo
-                            </span>
+                            <i class="bi bi-signpost" aria-hidden="true"></i>
+                            <span>Ch. @project.ChainageFrom – @project.ChainageTo</span>
                         </p>
                     }
 
-
                     <div class="pc-footer">
-
                         <span>
-                            <i class="bi bi-geo-alt"
-                               aria-hidden="true"></i>
+                            <i class="bi bi-geo-alt" aria-hidden="true"></i>
                             @(project.HasSurveyData ? "Survey available" : "No survey yet")
                         </span>
 
                         <span>
-                            <i class="bi bi-people"
-                               aria-hidden="true"></i>
+                            <i class="bi bi-people" aria-hidden="true"></i>
                             @project.Members.Count members
                         </span>
 
                         @if (project.HasSurveyData)
                         {
                             <span class="badge badge-blue badge-xs">
-                                <i class="bi bi-check-circle"
-                                   aria-hidden="true"></i>
+                                <i class="bi bi-check-circle" aria-hidden="true"></i>
                                 Survey
                             </span>
                         }
-
                     </div>
 
                 </a>
             }
 
         </div>
+
+        <!-- =====================================================
+             VIEW B: Structured Table View with Headings
+             ===================================================== -->
+        <div id="projects-table-view" class="table-responsive" style="display: none;">
+            <table class="dt">
+                <thead>
+                    <tr>
+                        <th style="width: 140px;">Code</th>
+                        <th>Project Name</th>
+                        <th>Client / Road</th>
+                        <th>Chainage</th>
+                        <th style="width: 110px;">Status</th>
+                        <th style="width: 130px;">Survey</th>
+                        <th style="width: 100px;">Members</th>
+                        <th style="width: 90px; text-align: center;">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var project in Model)
+                    {
+                        <tr class="proj-table-row"
+                            data-name="@project.ProjectName.ToLower()"
+                            data-code="@project.ProjectCode.ToLower()"
+                            data-client="@(project.ClientName?.ToLower() ?? "")"
+                            data-road="@(project.RoadName?.ToLower() ?? "")"
+                            data-status="@project.Status">
+
+                            <td>
+                                <span class="pc-code" style="color: var(--tx); font-weight: 600;">
+                                    @project.ProjectCode
+                                </span>
+                            </td>
+
+                            <td>
+                                <a asp-action="Details"
+                                   asp-route-id="@project.Id"
+                                   style="color: var(--tx); font-weight: 600; text-decoration: none;">
+                                    @project.ProjectName
+                                </a>
+                            </td>
+
+                            <td>
+                                @if (!string.IsNullOrEmpty(project.ClientName))
+                                {
+                                    <div>
+                                        <i class="bi bi-building" style="color: var(--tx-m); margin-right: 4px;"></i>
+                                        @project.ClientName
+                                    </div>
+                                }
+                                @if (!string.IsNullOrEmpty(project.RoadName))
+                                {
+                                    <div style="color: var(--tx-2); font-size: 0.78rem;">
+                                        <i class="bi bi-signpost-2" style="color: var(--tx-m); margin-right: 4px;"></i>
+                                        @project.RoadName
+                                    </div>
+                                }
+                                @if (string.IsNullOrEmpty(project.ClientName) && string.IsNullOrEmpty(project.RoadName))
+                                {
+                                    <span style="color: var(--tx-m);">—</span>
+                                }
+                            </td>
+
+                            <td>
+                                @if (!string.IsNullOrEmpty(project.ChainageFrom))
+                                {
+                                    <span style="font-family: var(--mono); font-size: 0.8rem;">
+                                        Ch. @project.ChainageFrom – @project.ChainageTo
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span style="color: var(--tx-m);">—</span>
+                                }
+                            </td>
+
+                            <td>
+                                <span class="badge @StatusBadge(project.Status)">
+                                    @project.Status
+                                </span>
+                            </td>
+
+                            <td>
+                                @if (project.HasSurveyData)
+                                {
+                                    <span class="badge badge-blue badge-xs" style="display: inline-flex; align-items: center; gap: 4px;">
+                                        <i class="bi bi-check-circle" aria-hidden="true"></i>
+                                        Available
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span style="color: var(--tx-m); font-size: 0.78rem;">No survey</span>
+                                }
+                            </td>
+
+                            <td>
+                                <span style="color: var(--tx-2); font-size: 0.8rem;">
+                                    <i class="bi bi-people" style="margin-right: 4px;"></i>
+                                    @project.Members.Count
+                                </span>
+                            </td>
+
+                            <td style="text-align: center;">
+                                <a asp-action="Details"
+                                   asp-route-id="@project.Id"
+                                   class="btn-ghost"
+                                   style="padding: 0.3rem 0.6rem; font-size: 0.78rem; display: inline-flex; align-items: center; gap: 4px ;color:var(--acc);"
+                                   title="Open Project Details">
+                                    <span>Open</span>
+                                    <i class="bi bi-arrow-up-right" aria-hidden="true"></i>
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <!-- No Filter Results State -->
+        <div id="no-search-results" class="empty-state" style="display: none; margin-top: 1.5rem;">
+            <i class="bi bi-search es-icon" aria-hidden="true"></i>
+            <p>No matching projects found.</p>
+        </div>
     }
 
 </div>
-
 
 @functions
 {
@@ -144,4 +282,96 @@
         "OnHold" => "badge-yellow",
         _ => "badge-gray"
     };
+}
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const searchInput = document.getElementById('projects-search-input');
+            const filterPills = document.querySelectorAll('#projects-status-filters .filter-pill');
+            const btnCards = document.getElementById('btn-proj-cards');
+            const btnList = document.getElementById('btn-proj-list');
+            const cardsView = document.getElementById('projects-cards-view');
+            const tableView = document.getElementById('projects-table-view');
+            const cards = document.querySelectorAll('.proj-card');
+            const tableRows = document.querySelectorAll('.proj-table-row');
+            const noResults = document.getElementById('no-search-results');
+
+            let currentFilter = 'all';
+            let searchQuery = '';
+
+            function updateFilter() {
+                let visibleCount = 0;
+
+                function checkMatch(el) {
+                    const name = el.dataset.name || '';
+                    const code = el.dataset.code || '';
+                    const client = el.dataset.client || '';
+                    const road = el.dataset.road || '';
+                    const status = (el.dataset.status || '').toLowerCase();
+
+                    const matchesSearch = !searchQuery ||
+                        name.includes(searchQuery) ||
+                        code.includes(searchQuery) ||
+                        client.includes(searchQuery) ||
+                        road.includes(searchQuery);
+
+                    const matchesFilter = currentFilter === 'all' || status === currentFilter.toLowerCase();
+                    return matchesSearch && matchesFilter;
+                }
+
+                // Filter cards
+                cards.forEach(card => {
+                    if (checkMatch(card)) {
+                        card.style.display = '';
+                        visibleCount++;
+                    } else {
+                        card.style.display = 'none';
+                    }
+                });
+
+                // Filter table rows
+                tableRows.forEach(row => {
+                    row.style.display = checkMatch(row) ? '' : 'none';
+                });
+
+                if (noResults) {
+                    noResults.style.display = visibleCount === 0 ? 'flex' : 'none';
+                }
+            }
+
+            if (searchInput) {
+                searchInput.addEventListener('input', function (e) {
+                    searchQuery = e.target.value.trim().toLowerCase();
+                    updateFilter();
+                });
+            }
+
+            filterPills.forEach(pill => {
+                pill.addEventListener('click', function () {
+                    filterPills.forEach(p => p.classList.remove('active'));
+                    this.classList.add('active');
+                    currentFilter = this.dataset.filter;
+                    updateFilter();
+                });
+            });
+
+            // View toggle between Card Grid and Table
+            if (btnCards && btnList && cardsView && tableView) {
+                btnCards.addEventListener('click', function () {
+                    btnCards.classList.add('active');
+                    btnList.classList.remove('active');
+                    cardsView.style.display = 'grid';
+                    tableView.style.display = 'none';
+                });
+
+                btnList.addEventListener('click', function () {
+                    btnList.classList.add('active');
+                    btnCards.classList.remove('active');
+                    cardsView.style.display = 'none';
+                    tableView.style.display = 'block';
+                });
+            }
+        });
+    </script>
 }

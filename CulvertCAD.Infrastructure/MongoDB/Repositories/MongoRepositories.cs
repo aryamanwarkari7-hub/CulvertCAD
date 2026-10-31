@@ -2,6 +2,7 @@
 using CulvertCAD.Core.Entities;
 using CulvertCAD.Core.Repositories;
 using MongoDB.Driver;
+using MongoDB.Bson;
 
 namespace CulvertCAD.Infrastructure.MongoDB.Repositories;
 
@@ -12,16 +13,22 @@ public class MongoDbContext
     public MongoDbContext(IMongoClient client, string dbName) => _db = client.GetDatabase(dbName);
 
     public IMongoCollection<SurveyDocument> Surveys => _db.GetCollection<SurveyDocument>("surveys");
+
     public IMongoCollection<CalculationResultDocument> CalcResults =>
         _db.GetCollection<CalculationResultDocument>("calc_results");
+
     public IMongoCollection<RevisionInputDocument> RevisionInputs =>
         _db.GetCollection<RevisionInputDocument>("revision_inputs");
+
     public IMongoCollection<DrawingDocument> Drawings =>
         _db.GetCollection<DrawingDocument>("drawings");
+
     public IMongoCollection<AlignmentDocument> Alignments =>
         _db.GetCollection<AlignmentDocument>("alignments");
+
     public IMongoCollection<BatchDesignRunDocument> BatchRuns =>
         _db.GetCollection<BatchDesignRunDocument>("batch_runs");
+
     public IMongoCollection<CulvertSolidDocument> CulvertSolids =>
         _db.GetCollection<CulvertSolidDocument>("culvert_solids");
 }
@@ -51,6 +58,19 @@ public class SurveyRepository : ISurveyRepository
         await _ctx.Surveys.ReplaceOneAsync(s => s.Id == doc.Id, doc);
 
     public async Task DeleteAsync(string id) => await _ctx.Surveys.DeleteOneAsync(s => s.Id == id);
+
+    public async Task<List<SurveyDocument>> GetSurveysByProjectIdsAsync(IEnumerable<int> projectIds)
+    {
+        var idList = projectIds.ToList();
+        if (!idList.Any()) return new List<SurveyDocument>();
+        // Exclude the heavy Points array so we only fetch metadata & culverts
+        var projection = Builders<SurveyDocument>.Projection.Exclude(s => s.Points);
+        return await _ctx.Surveys
+            .Find(s => idList.Contains(s.ProjectId))
+            .Project<SurveyDocument>(projection)
+            .SortByDescending(s => s.UploadedAt)
+            .ToListAsync();
+    }
 }
 
 public class CalcResultRepository : ICalcResultRepository
@@ -141,6 +161,19 @@ public class AlignmentRepository : IAlignmentRepository
 
     public async Task UpdateAsync(AlignmentDocument doc) =>
         await _ctx.Alignments.ReplaceOneAsync(a => a.Id == doc.Id, doc);
+
+    public async Task<List<AlignmentDocument>> GetAlignmentsByProjectIdsAsync(IEnumerable<int> projectIds)
+    {
+        var idList = projectIds.ToList();
+        if (!idList.Any()) return new List<AlignmentDocument>();
+        var projection = Builders<AlignmentDocument>.Projection
+            .Exclude(a => a.HorizontalPoints)
+            .Exclude(a => a.VerticalPoints);
+        return await _ctx.Alignments
+            .Find(a => idList.Contains(a.ProjectId))
+            .Project<AlignmentDocument>(projection)
+            .ToListAsync();
+    }
 }
 
 public class BatchRunRepository : IBatchRunRepository
@@ -187,8 +220,31 @@ public class CulvertSolidRepository : ICulvertSolidRepository
             Builders<CulvertSolidDocument>.Filter.Eq(s => s.ModelType, doc.ModelType)
         );
 
+        var existing = await _ctx.CulvertSolids.Find(filter).FirstOrDefaultAsync();
+        if (existing != null)
+        {
+            doc.Id = existing.Id;
+        }
+        else if (string.IsNullOrWhiteSpace(doc.Id))
+        {
+            doc.Id = ObjectId.GenerateNewId().ToString();
+        }
+
         var options = new ReplaceOptions { IsUpsert = true };
         await _ctx.CulvertSolids.ReplaceOneAsync(filter, doc, options);
         return doc.Id;
+    }
+
+    public async Task<List<CulvertSolidDocument>> GetRecentSolidsAsync(IEnumerable<int> projectIds, int limit = 20)
+    {
+        var filter = Builders<CulvertSolidDocument>.Filter.In(x => x.ProjectId, projectIds);
+        var projection = Builders<CulvertSolidDocument>.Projection.Exclude(x => x.SolidDataJson);
+
+        return await _ctx.CulvertSolids
+            .Find(filter)
+            .SortByDescending(x => x.UploadedAt)
+            .Project<CulvertSolidDocument>(projection)
+            .Limit(limit)
+            .ToListAsync();
     }
 }

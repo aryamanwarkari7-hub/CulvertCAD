@@ -1,8 +1,10 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using CulvertCAD.Infrastructure.MySQL.Data;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using netDxf;
 using netDxf.Entities;
-
+using System.Security.Claims;
 namespace CulvertCAD.Web.Controllers;
 
 [Authorize]
@@ -10,10 +12,27 @@ public sealed class CadDrawingsController : Controller
 {
     private const long MaxUploadBytes = 50_000_000;
     private const int MaxEntities = 100_000;
-
-    [HttpGet]
-    public IActionResult Index()
+    private readonly AppDbContext _db;
+    public CadDrawingsController(AppDbContext db)
     {
+        _db = db;
+    }
+    private int CurrentUserId => int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+    [HttpGet]
+    public async Task<IActionResult> Index([FromQuery] int? projectId)
+    {
+        bool isAdmin = User.IsInRole("SuperAdmin") || User.IsInRole("Admin");
+        var projectQuery = _db.Projects.AsQueryable();
+        if (!isAdmin)
+        {
+            projectQuery = projectQuery.Where(p => p.CreatedByUserId == CurrentUserId || p.Members.Any(m => m.UserId == CurrentUserId));
+        }
+        var projects = await projectQuery
+            .OrderByDescending(p => p.CreatedAt)
+            .Select(p => new { p.Id, p.ProjectCode, p.ProjectName })
+            .ToListAsync();
+        ViewBag.Projects = projects;
+        ViewBag.SelectedProjectId = projectId ?? projects.FirstOrDefault()?.Id ?? 0;
         return View();
     }
 

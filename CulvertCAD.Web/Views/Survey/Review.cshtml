@@ -415,11 +415,30 @@
                         <td>
                             @if (loc.IsConfirmed)
                             {
-                                <span class="badge badge-blue">Confirmed</span>
+                                <span class="badge badge-green" style="display: inline-flex; align-items: center; gap: 4px;">
+                                    <i class="bi bi-check-circle-fill"></i> Confirmed
+                                </span>
                             }
                             else
                             {
                                 <span class="badge badge-gray">Pending</span>
+                            }
+                        </td>
+                        <td style="text-align: center;">
+                            @if (!loc.IsConfirmed)
+                            {
+                                <form asp-action="ConfirmLocation" method="post" style="display: inline;">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="projectId" value="@Model.ProjectId" />
+                                    <input type="hidden" name="locationIndex" value="@loc.LocationIndex" />
+                                    <button type="submit" class="btn-primary btn-sm" style="padding: 0.28rem 0.75rem; font-size: 0.78rem; display: inline-flex; align-items: center; gap: 4px;">
+                                        <i class="bi bi-check2"></i> Confirm Location
+                                    </button>
+                                </form>
+                            }
+                            else
+                            {
+                                <span style="color: var(--tx-m); font-size: 0.75rem;">Verified</span>
                             }
                         </td>
 
@@ -457,6 +476,10 @@
     </script>
 
     <script src="~/js/cad/culvert-html-reader.js" asp-append-version="true"></script>
+
+    <!-- REMOVE LINE BELOW WHEN TRIAL CULVERT TO BE REMOVED-->
     <script src="~/js/survey/culvert-sample-solid.js" asp-append-version="true"></script>
+
+
     <script src="~/js/survey/survey-map.js" asp-append-version="true"></script>
 }

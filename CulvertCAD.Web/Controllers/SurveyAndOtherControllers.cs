@@ -47,6 +47,73 @@ public class SurveyController : Controller
     private int CurrentUserId => int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
     [HttpGet]
+    public async Task<IActionResult> Index()
+    {
+        bool isAdmin = User.IsInRole("SuperAdmin") || User.IsInRole("Admin");
+
+        var query = _db.Projects
+            .Include(p => p.Members)
+            .AsQueryable();
+
+        if (!isAdmin)
+            query = query.Where(p => p.Members.Any(m => m.UserId == CurrentUserId));
+
+        var projects = await query.OrderByDescending(p => p.CreatedAt).ToListAsync();
+        var projectIds = projects.Select(p => p.Id).ToList();
+
+        var surveys = await _surveyRepo.GetSurveysByProjectIdsAsync(projectIds);
+        var alignments = await _alignmentRepo.GetAlignmentsByProjectIdsAsync(projectIds);
+
+        var surveyMap = surveys
+            .GroupBy(s => s.ProjectId)
+            .ToDictionary(g => g.Key, g => g.First());
+
+        var alignmentMap = alignments
+            .GroupBy(a => a.ProjectId)
+            .ToDictionary(g => g.Key, g => g.First());
+
+        var items = new List<SurveyDirectoryItemDto>();
+        foreach (var proj in projects)
+        {
+            var hasSurvey = surveyMap.TryGetValue(proj.Id, out var s);
+            var hasAlign = alignmentMap.TryGetValue(proj.Id, out var a);
+
+            items.Add(new SurveyDirectoryItemDto
+            {
+                ProjectId = proj.Id,
+                ProjectCode = proj.ProjectCode,
+                ProjectName = proj.ProjectName,
+                ProjectStatus = proj.Status.ToString(),
+                RoadName = proj.RoadName ?? "",
+                Location = proj.Location ?? "",
+                HasSurvey = hasSurvey,
+                SurveyId = s?.Id,
+                FileName = s?.FileName,
+                UploadedAt = s?.UploadedAt,
+                TotalPoints = s?.TotalPoints ?? 0,
+                CoordinateType = s?.InputCoordinateType,
+                UtmZone = s?.UTMZone,
+                DetectedCulvertsCount = s?.DetectedCulverts?.Count ?? 0,
+                ConfirmedCulvertsCount = s?.DetectedCulverts?.Count(c => c.IsConfirmed) ?? 0,
+                HasAlignment = hasAlign,
+                AlignmentLengthM = a?.TotalLengthM ?? 0
+            });
+        }
+
+        var viewModel = new SurveyDirectoryViewModel
+        {
+            TotalProjects = projects.Count,
+            SurveysCount = items.Count(i => i.HasSurvey),
+            TotalPointsAcrossAll = items.Sum(i => i.TotalPoints),
+            TotalDetectedCulverts = items.Sum(i => i.DetectedCulvertsCount),
+            TotalConfirmedCulverts = items.Sum(i => i.ConfirmedCulvertsCount),
+            Items = items
+        };
+
+        return View(viewModel);
+    }
+
+    [HttpGet]
     public async Task<IActionResult> Upload(int projectId)
     {
         var project = await _db.Projects.FindAsync(projectId);
@@ -769,6 +836,17 @@ public class SurveyController : Controller
     [HttpGet]
     public async Task<IActionResult> GetCulvertSolid(int projectId, string modelType = "3D_SOLID")
     {
+        if (projectId <= 0)
+        {
+            return BadRequest(new { success = false, message = "Invalid project ID." });
+        }
+
+        var project = await _db.Projects.FindAsync(projectId);
+        if (project == null)
+        {
+            return NotFound(new { success = false, message = $"Project {projectId} not found." });
+        }
+
         var doc = await _solidRepo.GetByProjectAsync(projectId, modelType);
         if (doc == null || string.IsNullOrWhiteSpace(doc.SolidDataJson))
         {
@@ -776,6 +854,51 @@ public class SurveyController : Controller
         }
 
         return Content(doc.SolidDataJson, "application/json");
+    }
+
+    [HttpGet]
+    [Route("api/cad/recent-models")]
+    public async Task<IActionResult> GetRecentModels([FromQuery] string modelType = "3D_SOLID")
+    {
+        if (User.Identity?.IsAuthenticated != true)
+            return Unauthorized();
+
+        bool isAdmin = User.IsInRole("SuperAdmin") || User.IsInRole("Admin");
+
+        // Fetch accessible projects for the current user
+        var projectQuery = _db.Projects.AsQueryable();
+        if (!isAdmin)
+        {
+            projectQuery = projectQuery.Where(p => p.CreatedByUserId == CurrentUserId || p.Members.Any(m => m.UserId == CurrentUserId));
+        }
+
+        var accessibleProjects = await projectQuery
+            .Select(p => new { p.Id, p.ProjectCode, p.ProjectName })
+            .ToDictionaryAsync(p => p.Id);
+
+        if (!accessibleProjects.Any())
+        {
+            return Json(new { success = true, items = new List<object>() });
+        }
+
+        var solids = await _solidRepo.GetRecentSolidsAsync(accessibleProjects.Keys, limit: 20);
+
+        var items = solids
+    .Where(s => string.IsNullOrEmpty(modelType)
+             || (modelType == "3D" && (s.ModelType == "3D_SOLID" || s.ModelType == "3D_STL"))
+             || string.Equals(s.ModelType, modelType, StringComparison.OrdinalIgnoreCase))
+            .Select(s => new
+            {
+                id = s.Id,
+                projectId = s.ProjectId,
+                projectCode = accessibleProjects.TryGetValue(s.ProjectId, out var p) ? p.ProjectCode : "PROJ",
+                projectName = accessibleProjects.TryGetValue(s.ProjectId, out var proj) ? proj.ProjectName : "Unknown",
+                fileName = s.FileName,
+                modelType = s.ModelType,
+                uploadedAt = s.UploadedAt
+            });
+
+        return Json(new { success = true, items });
     }
 
     public class SaveCulvertSolidRequest
@@ -793,6 +916,18 @@ public class SurveyController : Controller
         if (request == null || request.ProjectId <= 0 || string.IsNullOrWhiteSpace(request.SolidDataJson))
         {
             return BadRequest(new { success = false, message = "Invalid project ID or solid data." });
+        }
+
+        const int MaxSolidJsonBytes = 15 * 1024 * 1024; // 15 MB payload guard
+        if (request.SolidDataJson.Length > MaxSolidJsonBytes)
+        {
+            return BadRequest(new { success = false, message = "Solid geometry payload exceeds the maximum 15 MB limit." });
+        }
+
+        var project = await _db.Projects.FindAsync(request.ProjectId);
+        if (project == null)
+        {
+            return NotFound(new { success = false, message = $"Project with ID {request.ProjectId} does not exist." });
         }
 
         var doc = new CulvertSolidDocument

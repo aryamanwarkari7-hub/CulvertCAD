@@ -4,8 +4,7 @@
 @{
     ViewData["Title"] = "Dashboard";
     ViewData["PageTitle"] = "Dashboard";
-    ViewData["PageSubtitle"] =
-        $"Welcome back, {User.FindFirst("FullName")?.Value ?? "User"}";
+    ViewData["PageSubtitle"] = $"Welcome back, {User.FindFirst("FullName")?.Value ?? "User"}";
 
     ViewData["PageHeaderActions"] = new List<Dictionary<string, string>>
     {
@@ -22,178 +21,184 @@
 <div class="page">
     <partial name="_PageHeader" />
 
-
-    <!-- =====================================================
-         Dashboard Statistics
-         ===================================================== -->
-
+    <!-- Top Statistics -->
     <div class="stat-grid">
-
         <div class="stat-card">
             <div class="stat-icon stat-icon-accent">
                 <i class="bi bi-folder2-open" aria-hidden="true"></i>
             </div>
-
             <div class="stat-body">
                 <div class="stat-val">@Model.TotalProjects</div>
                 <div class="stat-lbl">Total Projects</div>
             </div>
         </div>
 
-
         <div class="stat-card">
             <div class="stat-icon stat-icon-success">
                 <i class="bi bi-check-circle" aria-hidden="true"></i>
             </div>
-
             <div class="stat-body">
                 <div class="stat-val">@Model.ActiveProjects</div>
                 <div class="stat-lbl">Active Projects</div>
             </div>
         </div>
-
-
     </div>
 
-
-
-    <!-- =====================================================
-         Dashboard Columns
-         ===================================================== -->
-
-    <div class="dash-cols dashboard-panels">
-
-
-
-
-        <!-- My Projects and Design Standards -->
-        <section class="card dashboard-panel projects-panel">
-
-            <div class="card-hd dashboard-panel-header">
-                <div class="dashboard-panel-heading">
-                    <div class="dashboard-panel-icon projects-panel-icon">
-                        <i class="bi bi-folder2-open" aria-hidden="true"></i>
-                    </div>
-
-                    <div>
-                        <h3>My Projects</h3>
-                        <p>Your accessible projects</p>
-                    </div>
-                </div>
-
-                <span class="panel-count">
-                    @Model.MyProjects.Count()
-                </span>
+    <!-- Filter & View Switcher Card -->
+    <div class="card dash-filter-card">
+        <div class="dash-filter-row">
+            <div class="dash-search-box">
+                <i class="bi bi-search" aria-hidden="true"></i>
+                <input type="text"
+                       id="project-search-input"
+                       class="field-input"
+                       placeholder="Search projects by name or code..."
+                       autocomplete="off" />
             </div>
 
-            <div class="project-card-list">
-
-                @if (!Model.MyProjects.Any())
-                {
-                    <div class="dashboard-empty">
-                        <i class="bi bi-folder2" aria-hidden="true"></i>
-                        <strong>No projects found</strong>
-                        <span>Create a project to get started.</span>
-                    </div>
-                }
-                else
-                {
-                    @foreach (var project in Model.MyProjects)
-                    {
-                        <a asp-controller="Projects"
-                           asp-action="Details"
-                           asp-route-id="@project.Id"
-                           class="dashboard-project-card">
-
-                            <div class="project-card-icon">
-                                <i class="bi bi-folder2-open" aria-hidden="true"></i>
-                            </div>
-
-                            <div class="project-card-content">
-                                <span class="project-card-code">
-                                    @project.ProjectCode
-                                </span>
-
-                                <strong class="project-card-name">
-                                    @project.ProjectName
-                                </strong>
-
-                                <span class="project-card-meta">
-                                    <i class="bi bi-info-circle" aria-hidden="true"></i>
-                                    @project.Status
-                                </span>
-                            </div>
-
-                            <div class="project-card-arrow">
-                                <i class="bi bi-arrow-up-right" aria-hidden="true"></i>
-                            </div>
-
-                        </a>
-                    }
-                }
-
+            <div class="dash-filter-pills" id="status-filters">
+                <button type="button" class="filter-pill active" data-filter="all">All</button>
+                <button type="button" class="filter-pill" data-filter="Active">Active</button>
+                <button type="button" class="filter-pill" data-filter="Completed">Completed</button>
+                <button type="button" class="filter-pill" data-filter="OnHold">On Hold</button>
             </div>
 
-            <!-- Design Standards -->
-            <div class="standards-section">
-
-                <div class="standards-header">
-                    <div class="standards-heading-icon">
-                        <i class="bi bi-journal-check" aria-hidden="true"></i>
-                    </div>
-
-                    <div>
-                        <h4>Design Standards</h4>
-                        <p>Applicable reference standards</p>
-                    </div>
-                </div>
-
-                <div class="standards-list">
-
-                    <div class="standard-item">
-                        <span class="standard-code">IS</span>
-                        <div class="standard-content">
-                            <strong>IS 783:1985</strong>
-                            <span>Laying of Concrete Pipes</span>
-                        </div>
-                    </div>
-
-                    <div class="standard-item">
-                        <span class="standard-code">IS</span>
-                        <div class="standard-content">
-                            <strong>IS 458:2003</strong>
-                            <span>Precast Concrete Pipes</span>
-                        </div>
-                    </div>
-
-                    <div class="standard-item">
-                        <span class="standard-code standard-code-irc">IRC</span>
-                        <div class="standard-content">
-                            <strong>IRC 89:1997</strong>
-                            <span>Road Culverts</span>
-                        </div>
-                    </div>
-
-                </div>
-
+            <div class="dash-view-toggle">
+                <button type="button" class="view-btn active" id="btn-view-cards" title="Cards View" aria-label="Cards view">
+                    <i class="bi bi-grid-fill" aria-hidden="true"></i>
+                </button>
+                <button type="button" class="view-btn" id="btn-view-list" title="List View" aria-label="List view">
+                    <i class="bi bi-list-ul" aria-hidden="true"></i>
+                </button>
             </div>
-
-        </section>
-
+        </div>
     </div>
 
+    <!-- Projects Section -->
+    <section class="card dash-projects-container">
+        <div class="card-hd dashboard-panel-header">
+            <div class="dashboard-panel-heading">
+                <div class="dashboard-panel-icon projects-panel-icon">
+                    <i class="bi bi-folder2-open" aria-hidden="true"></i>
+                </div>
+                <div>
+                    <h3>My Projects</h3>
+                    <p>Your accessible projects</p>
+                </div>
+            </div>
+            <span class="panel-count" id="visible-projects-count">
+                @Model.MyProjects.Count
+            </span>
+        </div>
 
+        <div id="projects-wrapper" class="projects-display-cards">
+            @if (!Model.MyProjects.Any())
+            {
+                <div class="dashboard-empty">
+                    <i class="bi bi-folder2" aria-hidden="true"></i>
+                    <strong>No projects found</strong>
+                    <span>Create a project to get started.</span>
+                </div>
+            }
+            else
+            {
+                @foreach (var project in Model.MyProjects)
+                {
+                    <div class="project-item-card"
+                         data-name="@project.ProjectName.ToLower()"
+                         data-code="@project.ProjectCode.ToLower()"
+                         data-status="@project.Status">
+
+                        <div class="item-card-top">
+                            <span class="item-card-code">
+                                <i class="bi bi-hash" aria-hidden="true"></i>@project.ProjectCode
+                            </span>
+                            <span class="project-status-pill @(string.Equals(project.Status, "Active", StringComparison.OrdinalIgnoreCase) ? "project-status-active" : "project-status-inactive")">
+                                <span class="project-status-dot"></span>
+                                @project.Status
+                            </span>
+                        </div>
+
+                        <strong class="item-card-title">@project.ProjectName</strong>
+
+                        <div class="item-card-footer">
+                            <a asp-controller="Projects"
+                               asp-action="Details"
+                               asp-route-id="@project.Id"
+                               class="item-card-action btn-ghost btn-primary">
+                                Open Project <i class="bi bi-arrow-up-right" aria-hidden="true"></i>
+                            </a>
+                        </div>
+                    </div>
+                }
+            }
+        </div>
+    </section>
 </div>
 
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const searchInput = document.getElementById('project-search-input');
+            const filterPills = document.querySelectorAll('#status-filters .filter-pill');
+            const viewCardsBtn = document.getElementById('btn-view-cards');
+            const viewListBtn = document.getElementById('btn-view-list');
+            const projectsWrapper = document.getElementById('projects-wrapper');
+            const projectCards = document.querySelectorAll('.project-item-card');
+            const countBadge = document.getElementById('visible-projects-count');
 
-@functions {
+            let currentFilter = 'all';
+            let searchQuery = '';
 
-    string StatusClass(string status) => status switch
-    {
-        "Approved" => "act-dot-approved",
-        "Submitted" => "act-dot-submitted",
-        "UnderReview" => "act-dot-review",
-        "RevisionRequired" => "act-dot-revision",
-        _ => "act-dot-default"
-    };
+            function updateFilter() {
+                let visibleCount = 0;
+                projectCards.forEach(card => {
+                    const name = card.dataset.name || '';
+                    const code = card.dataset.code || '';
+                    const status = (card.dataset.status || '').toLowerCase();
+                    const matchesSearch = !searchQuery || name.includes(searchQuery) || code.includes(searchQuery);
+                    const matchesFilter = currentFilter === 'all' || status === currentFilter.toLowerCase();
+
+                    if (matchesSearch && matchesFilter) {
+                        card.style.display = '';
+                        visibleCount++;
+                    } else {
+                        card.style.display = 'none';
+                    }
+                });
+                if (countBadge) countBadge.textContent = visibleCount;
+            }
+
+            if (searchInput) {
+                searchInput.addEventListener('input', function (e) {
+                    searchQuery = e.target.value.trim().toLowerCase();
+                    updateFilter();
+                });
+            }
+
+            filterPills.forEach(pill => {
+                pill.addEventListener('click', function () {
+                    filterPills.forEach(p => p.classList.remove('active'));
+                    this.classList.add('active');
+                    currentFilter = this.dataset.filter;
+                    updateFilter();
+                });
+            });
+
+            // View toggle: Cards vs List
+            if (viewCardsBtn && viewListBtn && projectsWrapper) {
+                viewCardsBtn.addEventListener('click', function () {
+                    viewCardsBtn.classList.add('active');
+                    viewListBtn.classList.remove('active');
+                    projectsWrapper.className = 'projects-display-cards';
+                });
+
+                viewListBtn.addEventListener('click', function () {
+                    viewListBtn.classList.add('active');
+                    viewCardsBtn.classList.remove('active');
+                    projectsWrapper.className = 'projects-display-list';
+                });
+            }
+        });
+    </script>
 }

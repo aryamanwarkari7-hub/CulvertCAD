@@ -1,5 +1,4 @@
 ﻿
-
 @{
     ViewData["Title"] = "CAD Drawing Viewer";
     ViewData["PageTitle"] = "CAD Drawing Viewer";
@@ -15,24 +14,55 @@
             }
         };
     ViewData["PageHeaderActions"] =
-        new List<Dictionary<string, string>>();
-
+        new List<Dictionary<string, string>>
+        {
+            new()
+            {
+                ["Text"] = "Recent Drawings",
+                ["Url"] = "javascript:void(0)",
+                ["Id"] = "btnOpenHistory",
+                ["CssClass"] = "btn-primary",
+                ["Icon"] = "bi bi-clock-history"
+            }
+        };
 }
 
+<!-- Include History Drawer Styles -->
+<link rel="stylesheet" href="~/css/pages/cad-solid-viewer.css" asp-append-version="true" />
 
 <div class="page cad-drawing-page">
     <partial name="_PageHeader" />
 
    
-<div class="cad-import-controls">
-    <input id="cadFile"
-           type="file"
-           accept=".dxf"
-           aria-label="Select DXF file" />
+<div class="cad-import-controls" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 12px;">
+    <div style="display: flex; align-items: center; gap: 10px;">
+        <input id="cadFile"
+               type="file"
+               accept=".dxf"
+               aria-label="Select DXF file" />
 
-    <button id="loadCad" type="button">
-        Import DXF
-    </button>
+        <button id="loadCad" type="button" class="btn btn-primary">
+            <i class="bi bi-file-earmark-arrow-up"></i> Import DXF
+        </button>
+    </div>
+
+    <!-- TARGET PROJECT SELECTOR -->
+    <div class="cad-project-selector" style="display: flex; align-items: center; gap: 8px;">
+        <label for="cadActiveProjectId" style="color: #8b949e; font-size: 13px; margin: 0; display: flex; align-items: center; gap: 5px;">
+            <i class="bi bi-folder2-open" style="color: #f0883e;"></i> Target Project:
+        </label>
+        <select id="cadActiveProjectId" style="background: #161b22; color: #e6edf3; border: 1px solid #30363d; border-radius: 6px; padding: 6px 12px; font-size: 13px; max-width: 300px;">
+            @if (ViewBag.Projects != null)
+            {
+                foreach (var p in ViewBag.Projects)
+                {
+                    <option value="@p.Id" selected="@(p.Id == ViewBag.SelectedProjectId)">
+                        @p.ProjectCode — @p.ProjectName
+                    </option>
+                }
+            }
+        </select>
+    </div>
 </div>
 
 <div id="cadStatus" class="alert alert-secondary" role="status">
@@ -169,6 +199,36 @@
 
 </div>
 
+
+    <!-- RECENT DRAWINGS SLIDE-OUT DRAWER -->
+    <div id="cadHistoryDrawer" class="cad-history-drawer-overlay" hidden>
+        <div class="cad-history-drawer">
+            <div class="cad-history-header">
+                <div>
+                    <h3><i class="bi bi-clock-history"></i> Recent 2D CAD Drawings</h3>
+                    <p>Saved drawings from your accessible projects</p>
+                </div>
+                <button type="button" id="btnCloseHistory" class="cad-history-close-btn" aria-label="Close history">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+
+            <div class="cad-history-search">
+                <i class="bi bi-search"></i>
+                <input type="text"
+                       id="cadHistorySearch"
+                       placeholder="Filter by project code, name, or filename..."
+                       autocomplete="off" />
+            </div>
+
+            <div id="cadHistoryList" class="cad-history-list">
+                <div class="cad-history-loading">
+                    <i class="bi bi-arrow-repeat spin"></i>
+                    <span>Loading saved drawings...</span>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <form id="cadAntiforgeryForm" class="d-none">

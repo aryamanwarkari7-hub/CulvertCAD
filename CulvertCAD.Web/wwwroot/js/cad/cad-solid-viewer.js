@@ -490,6 +490,19 @@ fileInput.addEventListener("change", async () => {
             warning
         );
 
+        // AUTO-SAVE STL FILE DIRECTLY TO MONGODB (Base64)
+        if (window.saveSolidModelToMongo) {
+            try {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    window.saveSolidModelToMongo(file, reader.result, "3D_STL");
+                };
+                reader.readAsDataURL(file);
+            } catch (saveErr) {
+                console.warn("[CulvertCAD] Could not read STL for MongoDB save:", saveErr);
+            }
+        }
+
     } catch (error) {
         if (newModel && newModel !== model) {
             disposeModel(newModel);
@@ -571,3 +584,171 @@ if (stlDropZone) {
         }
     });
 }
+
+/* =========================================================
+   15. Load STL Model from Database String
+   ========================================================= */
+/* =========================================================
+   Shared STL Engineering Status Panel
+   ========================================================= */
+function renderStlEngineeringStatus(geometry, fileName, isFromDatabase = false) {
+    status.classList.add("is-model-loaded");
+
+    const statusHeader = document.createElement("div");
+    statusHeader.className = "cad-status-header";
+
+    const loadedLabel = document.createElement("span");
+    loadedLabel.className = "cad-status-loaded";
+
+    const loadedIcon = document.createElement("i");
+    loadedIcon.className = isFromDatabase ? "bi bi-cloud-check-fill" : "bi bi-check-circle-fill";
+    loadedIcon.setAttribute("aria-hidden", "true");
+
+    loadedLabel.append(loadedIcon, isFromDatabase ? " Loaded from Database" : " Model loaded");
+
+    const filePill = document.createElement("span");
+    filePill.className = "cad-status-pill cad-status-file";
+    filePill.title = fileName;
+
+    const fileIcon = document.createElement("i");
+    fileIcon.className = "bi bi-file-earmark";
+    fileIcon.setAttribute("aria-hidden", "true");
+
+    const fileNameEl = document.createElement("span");
+    fileNameEl.textContent = fileName;
+
+    filePill.append(fileIcon, fileNameEl);
+    statusHeader.append(loadedLabel, filePill);
+
+    const metrics = document.createElement("div");
+    metrics.className = "cad-status-metrics";
+
+    const rawBounds = geometry.boundingBox || new THREE.Box3().setFromObject(model);
+    const rawSize = rawBounds.getSize(new THREE.Vector3());
+    const triangleCount = geometry.index
+        ? geometry.index.count / 3
+        : geometry.attributes.position.count / 3;
+
+    // Mesh complexity card
+    const complexityCard = document.createElement("div");
+    complexityCard.className = "cad-status-card cad-status-complexity";
+    const complexityLabel = document.createElement("span");
+    complexityLabel.className = "cad-status-card-label";
+    complexityLabel.textContent = "Mesh complexity";
+    const complexityValue = document.createElement("strong");
+    complexityValue.className = "cad-status-card-value";
+    complexityValue.textContent = `${Math.round(triangleCount).toLocaleString()} triangles`;
+    complexityCard.append(complexityLabel, complexityValue);
+
+    // Bounding dimensions card
+    const dimensionsCard = document.createElement("div");
+    dimensionsCard.className = "cad-status-card cad-status-dimensions";
+    const dimensionsLabel = document.createElement("span");
+    dimensionsLabel.className = "cad-status-card-label";
+    dimensionsLabel.textContent = "Bounding dimensions";
+    const dimensionsValues = document.createElement("div");
+    dimensionsValues.className = "cad-status-dimension-values";
+
+    const createDimension = (axis, value) => {
+        const item = document.createElement("div");
+        item.className = "cad-status-dimension";
+        const axisLabel = document.createElement("span");
+        axisLabel.className = "cad-status-axis";
+        axisLabel.textContent = axis;
+        const dimensionValue = document.createElement("strong");
+        dimensionValue.className = "cad-status-card-value";
+        dimensionValue.textContent = value.toFixed(3);
+        item.append(axisLabel, dimensionValue);
+        return item;
+    };
+
+    dimensionsValues.append(
+        createDimension("X", rawSize.x),
+        createDimension("Y", rawSize.y),
+        createDimension("Z", rawSize.z)
+    );
+
+    const dimensionsNote = document.createElement("span");
+    dimensionsNote.className = "cad-status-dimensions-note";
+    dimensionsNote.textContent = "Drawing units — not yet verified";
+
+    dimensionsCard.append(dimensionsLabel, dimensionsValues, dimensionsNote);
+    metrics.append(complexityCard, dimensionsCard);
+
+    const warning = document.createElement("div");
+    warning.className = "cad-status-warning";
+    const warningIcon = document.createElement("i");
+    warningIcon.className = "bi bi-exclamation-triangle";
+    warningIcon.setAttribute("aria-hidden", "true");
+    const warningText = document.createElement("span");
+    warningText.textContent = "Drawing units and geographic position are not yet verified.";
+    warning.append(warningIcon, warningText);
+
+    status.replaceChildren(statusHeader, metrics, warning);
+}
+
+/* =========================================================
+   15. Load STL Model from Database Content (Base64 or ASCII)
+   ========================================================= */
+window.loadStlFromDatabaseContent = function (contentString, fileName) {
+    try {
+        let buffer;
+        if (contentString.startsWith("data:") || !contentString.trim().startsWith("solid")) {
+            // Decode Base64 Binary STL
+            const base64 = contentString.includes(",") ? contentString.split(",")[1] : contentString;
+            const binaryString = atob(base64);
+            const len = binaryString.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+            buffer = bytes.buffer;
+        } else {
+            buffer = new TextEncoder().encode(contentString).buffer;
+        }
+
+        const geom = loader.parse(buffer);
+
+        if (!geom.attributes.position || geom.attributes.position.count === 0) {
+            throw new Error("No triangle geometry found in STL.");
+        }
+
+        geom.computeVertexNormals();
+        geom.computeBoundingBox();
+        geom.computeBoundingSphere();
+
+        const material = new THREE.MeshStandardMaterial({
+            color: 0xb8c4d2,
+            metalness: 0.15,
+            roughness: 0.65,
+            side: THREE.DoubleSide
+        });
+
+        const newModel = new THREE.Mesh(geom, material);
+        newModel.rotation.x = -Math.PI / 2;
+        newModel.updateMatrixWorld(true);
+
+        const edgesGeom = new THREE.EdgesGeometry(geom, 25);
+        const edgesMat = new THREE.LineBasicMaterial({
+            color: 0x202630,
+            transparent: true,
+            opacity: 0.85
+        });
+        newModel.add(new THREE.LineSegments(edgesGeom, edgesMat));
+
+        disposeModel(model);
+        model = newModel;
+        scene.add(model);
+        fitModel();
+
+        document.getElementById("stlEmptyState")?.classList.add("is-hidden");
+
+        // Renders the full engineering cards (complexity, dimensions, units note)
+        renderStlEngineeringStatus(geom, fileName, true);
+
+    } catch (err) {
+        console.error("Failed to render STL from database:", err);
+        const stlStatus = document.getElementById("stlStatus");
+        if (stlStatus) stlStatus.textContent = `Could not render STL: ${err.message}`;
+    }
+};

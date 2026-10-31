@@ -13,5 +13,6 @@
   <ItemGroup>
     <ProjectReference Include="..\CulvertCAD.Application\CulvertCAD.Application.csproj" />
     <ProjectReference Include="..\CulvertCAD.Infrastructure\CulvertCAD.Infrastructure.csproj" />
+    <ProjectReference Include="..\CulvertCAD.Web\CulvertCAD.Web.csproj" />
   </ItemGroup>
 </Project>

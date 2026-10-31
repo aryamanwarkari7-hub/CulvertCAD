@@ -1,0 +1,530 @@
+﻿@* Views/Survey/Index.cshtml *@
+@model CulvertCAD.Core.DTOs.SurveyDirectoryViewModel
+
+@{
+    ViewData["Title"] = "Surveys";
+    ViewData["PageTitle"] = "Surveys Directory";
+    ViewData["PageSubtitle"] = $"{Model.SurveysCount} survey{(Model.SurveysCount != 1 ? "s" : "")} loaded across {Model.TotalProjects} project{(Model.TotalProjects != 1 ? "s" : "")}";
+}
+
+<div class="page">
+
+    <partial name="_PageHeader" />
+
+    <!-- =====================================================
+         1. Top Statistics Grid
+         ===================================================== -->
+    <!-- Top Statistics Grid -->
+    <div class="stat-grid survey-stat-grid">
+        <div class="stat-card">
+            <div class="stat-icon stat-icon-accent">
+                <i class="bi bi-geo-alt-fill" aria-hidden="true"></i>
+            </div>
+            <div class="stat-body">
+                <span class="stat-val" id="stat-surveys-val">@Model.SurveysCount / @Model.TotalProjects</span>
+                <span class="stat-lbl">Surveys Loaded</span>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon stat-icon-success">
+                <i class="bi bi-pin-map-fill" aria-hidden="true"></i>
+            </div>
+            <div class="stat-body">
+                <span class="stat-val" id="stat-points-val">@Model.TotalPointsAcrossAll.ToString("N0")</span>
+                <span class="stat-lbl">Total Survey Points</span>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon stat-icon-accent">
+                <i class="bi bi-box-seam-fill" aria-hidden="true"></i>
+            </div>
+            <div class="stat-body">
+                <span class="stat-val" id="stat-culverts-val">@Model.TotalDetectedCulverts</span>
+                <span class="stat-lbl">Culverts Detected</span>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon stat-icon-success">
+                <i class="bi bi-check-circle-fill" aria-hidden="true"></i>
+            </div>
+            <div class="stat-body">
+                <span class="stat-val" id="stat-confirmed-val">@Model.TotalConfirmedCulverts</span>
+                <span class="stat-lbl">Confirmed Locations</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- =====================================================
+         2. Filter & View Switcher Toolbar
+         ===================================================== -->
+    <div class="card dash-filter-card survey-filter-card">
+        <div class="dash-filter-row">
+            <div class="dash-search-box">
+                <i class="bi bi-search" aria-hidden="true"></i>
+                <input type="text"
+                       id="surveys-search-input"
+                       class="field-input"
+                       placeholder="Search by project name, code, CSV file name, or road..."
+                       autocomplete="off" />
+            </div>
+
+            <div class="dash-project-select-box">
+                <select id="surveys-project-select" class="field-input">
+                    <option value="all">All Projects</option>
+                    @foreach (var item in Model.Items)
+                    {
+                        <option value="@item.ProjectId">@item.ProjectCode — @item.ProjectName</option>
+                    }
+                </select>
+            </div>
+
+            <div class="dash-filter-pills" id="surveys-status-filters">
+                <button type="button" class="filter-pill active" data-filter="all">All</button>
+                <button type="button" class="filter-pill" data-filter="loaded">Survey Loaded</button>
+                <button type="button" class="filter-pill" data-filter="nosurvey">No Survey</button>
+                <button type="button" class="filter-pill" data-filter="hasculverts">With Culverts</button>
+            </div>
+
+            <div class="dash-view-toggle">
+                <button type="button" class="view-btn active" id="btn-survey-cards" title="Cards View" aria-label="Cards view">
+                    <i class="bi bi-grid-fill" aria-hidden="true"></i>
+                </button>
+                <button type="button" class="view-btn" id="btn-survey-list" title="Table List View" aria-label="Table list view">
+                    <i class="bi bi-list-ul" aria-hidden="true"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    @if (!Model.Items.Any())
+    {
+        <div class="empty-state">
+            <i class="bi bi-geo-alt es-icon" aria-hidden="true"></i>
+            <p>No projects available to survey. Create your first project to get started.</p>
+            <a asp-controller="Projects" asp-action="Create" class="btn-primary">
+                <i class="bi bi-plus-lg" aria-hidden="true"></i>
+                <span>New Project</span>
+            </a>
+        </div>
+    }
+    else
+    {
+        <!-- =====================================================
+             3. VIEW A: CARDS VIEW (Default)
+             ===================================================== -->
+        <div id="surveys-cards-view" class="proj-grid">
+            @foreach (var item in Model.Items)
+            {
+                var filterClass = item.HasSurvey ? "loaded" : "nosurvey";
+                if (item.DetectedCulvertsCount > 0) { filterClass += " hasculverts"; }
+
+                <div class="proj-card survey-card-item"
+                     data-project-id="@item.ProjectId"
+                     data-name="@item.ProjectName.ToLower()"
+                     data-code="@item.ProjectCode.ToLower()"
+                     data-file="@(item.FileName?.ToLower() ?? "")"
+                     data-road="@(item.RoadName.ToLower())"
+                     data-filter="@filterClass"
+                     data-has-survey="@(item.HasSurvey ? "1" : "0")"
+                     data-points="@item.TotalPoints"
+                     data-culverts="@item.DetectedCulvertsCount"
+                     data-confirmed="@item.ConfirmedCulvertsCount">
+
+                    <div>
+                        <!-- Card Top Bar -->
+                        <div class="pc-top survey-card-top">
+                            <span class="pc-code">
+                                <i class="bi bi-hash" aria-hidden="true"></i>@item.ProjectCode
+                            </span>
+                            @if (item.HasSurvey)
+                            {
+                                <span class="badge badge-green">
+                                    <i class="bi bi-check2-circle" aria-hidden="true"></i>
+                                    Survey Loaded
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="badge badge-gray">
+                                    <i class="bi bi-dash-circle" aria-hidden="true"></i>
+                                    No Survey
+                                </span>
+                            }
+                        </div>
+
+                        <!-- Project Title & Road -->
+                        <h3 class="pc-name survey-card-name">
+                            <a asp-controller="Projects" asp-action="Details" asp-route-id="@item.ProjectId">
+                                @item.ProjectName
+                            </a>
+                        </h3>
+
+                        @if (!string.IsNullOrEmpty(item.RoadName))
+                        {
+                            <div class="survey-card-road">
+                                <i class="bi bi-signpost-2" aria-hidden="true"></i>
+                                <span>@item.RoadName</span>
+                            </div>
+                        }
+
+                        @if (item.HasSurvey)
+                        {
+                            <!-- Survey File Badge -->
+                            <!-- Survey File Badge -->
+                            <div class="survey-file-badge">
+                                <i class="bi bi-file-earmark-spreadsheet survey-file-icon" aria-hidden="true"></i>
+                                <div class="survey-file-content">
+                                    <div class="survey-file-name" title="@item.FileName">
+                                        @item.FileName
+                                    </div>
+                                    @if (item.UploadedAt.HasValue)
+                                    {
+                                        <small class="survey-file-date">
+                                            <i class="bi bi-clock-history"></i> @item.UploadedAt.Value.ToString("MMM dd, yyyy")
+                                        </small>
+                                    }
+                                </div>
+                            </div>
+
+                            <!-- Survey Metrics Row -->
+                            <div class="survey-metrics-grid">
+                                <div class="survey-metric-box">
+                                    <div class="survey-metric-val">
+                                        @item.TotalPoints.ToString("N0")
+                                    </div>
+                                    <div class="survey-metric-lbl">Points</div>
+                                </div>
+
+                                <div class="survey-metric-box">
+                                    <div class="survey-metric-val val-acc">
+                                        @item.DetectedCulvertsCount
+                                    </div>
+                                    <div class="survey-metric-lbl">Culverts</div>
+                                </div>
+
+                                <div class="survey-metric-box">
+                                    <div class="survey-metric-val">
+                                        @((item.AlignmentLengthM / 1000).ToString("0.00"))
+                                    </div>
+                                    <div class="survey-metric-lbl">km Align</div>
+                                </div>
+                            </div>
+                        }
+                        else
+                        {
+                            <!-- Empty Survey State Placeholder -->
+                            <div class="survey-card-empty">
+                                <i class="bi bi-cloud-arrow-up survey-card-empty-icon" aria-hidden="true"></i>
+                                <span class="survey-card-empty-text">No survey data imported yet</span>
+                            </div>
+                        }
+                    </div>
+
+                    <!-- Card Action Footer -->
+                    <div class="survey-card-footer">
+                        @if (item.HasSurvey)
+                        {
+                            <a asp-action="Review"
+                               asp-route-projectId="@item.ProjectId"
+                               class="item-card-action btn-ghost btn-primary"
+                               title="Review survey points and culvert locations">
+                                <span>Review & Analyze</span>
+                                <i class="bi bi-arrow-up-right" aria-hidden="true"></i>
+                            </a>
+
+                            <div class="survey-card-actions-group">
+                                <a asp-action="Upload"
+                                   asp-route-projectId="@item.ProjectId"
+                                   class="btn-primary btn-ghost survey-btn-icon"
+                                   title="Re-upload or replace survey CSV">
+                                    <i class="bi bi-arrow-repeat" aria-hidden="true"></i>
+                                </a>
+                                <a asp-controller="CadDrawings"
+                                   asp-action="Index"
+                                   class="btn-primary btn-ghost survey-btn-icon"
+                                   title="View in 2D Drawing Canvas">
+                                    <i class="bi bi-pencil" aria-hidden="true"></i>
+                                </a>
+                            </div>
+                        }
+                        else
+                        {
+                            <a asp-action="Upload"
+                               asp-route-projectId="@item.ProjectId"
+                               class="btn-primary survey-btn-upload-full">
+                                <i class="bi bi-upload" aria-hidden="true"></i>
+                                <span>Upload Survey Data</span>
+                            </a>
+                        }
+                    </div>
+
+                </div>
+            }
+        </div>
+
+        <!-- =====================================================
+             4. VIEW B: TABLE LIST VIEW
+             ===================================================== -->
+        <div id="surveys-table-view" class="card survey-table-wrapper">
+            <table class="table survey-table">
+                <thead>
+                    <tr class="survey-table-head">
+                        <th class="survey-th">Code</th>
+                        <th class="survey-th">Project & Road</th>
+                        <th class="survey-th">Survey File</th>
+                        <th class="survey-th-right">Points</th>
+                        <th class="survey-th-center">Culvert Locations</th>
+                        <th class="survey-th-right">Alignment</th>
+                        <th class="survey-th-center">Status</th>
+                        <th class="survey-th-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model.Items)
+                    {
+                        var filterClass = item.HasSurvey ? "loaded" : "nosurvey";
+                        if (item.DetectedCulvertsCount > 0) { filterClass += " hasculverts"; }
+
+                        <tr class="survey-table-row"
+                            data-name="@item.ProjectName.ToLower()"
+                            data-code="@item.ProjectCode.ToLower()"
+                            data-file="@(item.FileName?.ToLower() ?? "")"
+                            data-road="@(item.RoadName.ToLower())"
+                            data-filter="@filterClass">
+
+                            <td class="survey-td">
+                                <span class="pc-code" style="color: var(--tx); font-weight: 600;">
+                                    @item.ProjectCode
+                                </span>
+                            </td>
+
+                            <td class="survey-td">
+                                <div class="survey-table-title">
+                                    <a asp-controller="Projects" asp-action="Details" asp-route-id="@item.ProjectId">
+                                        @item.ProjectName
+                                    </a>
+                                </div>
+                                @if (!string.IsNullOrEmpty(item.RoadName))
+                                {
+                                    <div class="survey-table-road">
+                                        <i class="bi bi-signpost-2" aria-hidden="true"></i> @item.RoadName
+                                    </div>
+                                }
+                            </td>
+
+                            <td class="survey-td">
+                                @if (item.HasSurvey)
+                                {
+                                    <span class="survey-table-file">
+                                        <i class="bi bi-file-earmark-spreadsheet" aria-hidden="true"></i>
+                                        @item.FileName
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span style="color: var(--tx-m); font-size: 0.78rem;">—</span>
+                                }
+                            </td>
+
+                            <td class="survey-td-num">
+                                @(item.HasSurvey ? item.TotalPoints.ToString("N0") : "—")
+                            </td>
+
+                            <td class="survey-td-center">
+                                @if (item.HasSurvey)
+                                {
+                                    <span class="badge @(item.DetectedCulvertsCount > 0 ? "badge-blue" : "badge-gray")">
+                                        @item.DetectedCulvertsCount detected (@item.ConfirmedCulvertsCount conf)
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span style="color: var(--tx-m); font-size: 0.78rem;">—</span>
+                                }
+                            </td>
+
+                            <td class="survey-td-num">
+                                @(item.HasAlignment ? (item.AlignmentLengthM / 1000).ToString("0.00") + " km" : "—")
+                            </td>
+
+                            <td class="survey-td-center">
+                                @if (item.HasSurvey)
+                                {
+                                    <span class="badge badge-green">Survey Loaded</span>
+                                }
+                                else
+                                {
+                                    <span class="badge badge-gray">No Survey</span>
+                                }
+                            </td>
+
+                            <td class="survey-td-actions">
+                                <div style="display: inline-flex; gap: 6px;">
+                                    @if (item.HasSurvey)
+                                    {
+                                        <a asp-action="Review"
+                                           asp-route-projectId="@item.ProjectId"
+                                           class="btn-primary btn-ghost "
+                                           style="padding: 0.3rem 0.6rem; font-size: 0.78rem; color: var(--acc);"
+                                           title="Review & Analyze">
+                                            <span>Review</span>
+                                            <i class="bi bi-arrow-up-right" aria-hidden="true"></i>
+                                        </a>
+                                    }
+                                    <a asp-action="Upload"
+                                       asp-route-projectId="@item.ProjectId"
+                                       class="btn-primary btn-ghost"
+                                       style="padding: 0.3rem 0.6rem; font-size: 0.78rem; color: var(--acc)"
+                                       title="@(item.HasSurvey ? "Replace Survey CSV" : "Upload Survey CSV")">
+                                        <i class="bi bi-upload" aria-hidden="true"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <!-- No Filter Results State -->
+        <div id="no-surveys-results" class="empty-state survey-no-results">
+            <i class="bi bi-search es-icon" aria-hidden="true"></i>
+            <p>No matching surveys found.</p>
+        </div>
+    }
+
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const searchInput = document.getElementById('surveys-search-input');
+            const projectSelect = document.getElementById('surveys-project-select');
+            const filterPills = document.querySelectorAll('#surveys-status-filters .filter-pill');
+            const btnCards = document.getElementById('btn-survey-cards');
+            const btnList = document.getElementById('btn-survey-list');
+            const cardsView = document.getElementById('surveys-cards-view');
+            const tableView = document.getElementById('surveys-table-view');
+            const cards = document.querySelectorAll('.survey-card-item');
+            const tableRows = document.querySelectorAll('.survey-table-row');
+            const noResults = document.getElementById('no-surveys-results');
+
+            // Top Stat Elements
+            const statSurveys = document.getElementById('stat-surveys-val');
+            const statPoints = document.getElementById('stat-points-val');
+            const statCulverts = document.getElementById('stat-culverts-val');
+            const statConfirmed = document.getElementById('stat-confirmed-val');
+
+            let currentFilter = 'all';
+            let selectedProjectId = 'all';
+            let searchQuery = '';
+
+            function updateFilter() {
+                let visibleCount = 0;
+                let visibleSurveys = 0;
+                let sumPoints = 0;
+                let sumCulverts = 0;
+                let sumConfirmed = 0;
+
+                function checkMatch(el) {
+                    const projectId = el.dataset.projectId || '';
+                    const name = el.dataset.name || '';
+                    const code = el.dataset.code || '';
+                    const file = el.dataset.file || '';
+                    const road = el.dataset.road || '';
+                    const filterTag = el.dataset.filter || '';
+
+                    const matchesProject = (selectedProjectId === 'all' || projectId === selectedProjectId);
+
+                    const matchesSearch = !searchQuery ||
+                        name.includes(searchQuery) ||
+                        code.includes(searchQuery) ||
+                        file.includes(searchQuery) ||
+                        road.includes(searchQuery);
+
+                    const matchesFilter = currentFilter === 'all' || filterTag.includes(currentFilter);
+                    return matchesProject && matchesSearch && matchesFilter;
+                }
+
+                // 1. Filter Cards & Accumulate Real-time Stats
+                cards.forEach(card => {
+                    if (checkMatch(card)) {
+                        card.style.display = '';
+                        visibleCount++;
+
+                        if (card.dataset.hasSurvey === '1') {
+                            visibleSurveys++;
+                        }
+                        sumPoints += parseInt(card.dataset.points || '0', 10);
+                        sumCulverts += parseInt(card.dataset.culverts || '0', 10);
+                        sumConfirmed += parseInt(card.dataset.confirmed || '0', 10);
+                    } else {
+                        card.style.display = 'none';
+                    }
+                });
+
+                // 2. Filter Table Rows
+                tableRows.forEach(row => {
+                    row.style.display = checkMatch(row) ? '' : 'none';
+                });
+
+                // 3. Dynamically Update Top Stat Cards
+                if (statSurveys) statSurveys.textContent = `${visibleSurveys} / ${visibleCount}`;
+                if (statPoints) statPoints.textContent = sumPoints.toLocaleString();
+                if (statCulverts) statCulverts.textContent = sumCulverts;
+                if (statConfirmed) statConfirmed.textContent = sumConfirmed;
+
+                // 4. Toggle Empty Search State
+                if (noResults) {
+                    noResults.style.display = visibleCount === 0 ? 'flex' : 'none';
+                }
+            }
+
+            // Project Dropdown Listener
+            if (projectSelect) {
+                projectSelect.addEventListener('change', function (e) {
+                    selectedProjectId = e.target.value;
+                    updateFilter();
+                });
+            }
+
+            // Search Input Listener
+            if (searchInput) {
+                searchInput.addEventListener('input', function (e) {
+                    searchQuery = e.target.value.trim().toLowerCase();
+                    updateFilter();
+                });
+            }
+
+            // Filter Pills Listener
+            filterPills.forEach(pill => {
+                pill.addEventListener('click', function () {
+                    filterPills.forEach(p => p.classList.remove('active'));
+                    this.classList.add('active');
+                    currentFilter = this.dataset.filter;
+                    updateFilter();
+                });
+            });
+
+            // View Switcher (Cards vs Table)
+            if (btnCards && btnList && cardsView && tableView) {
+                btnCards.addEventListener('click', function () {
+                    btnCards.classList.add('active');
+                    btnList.classList.remove('active');
+                    cardsView.style.display = 'grid';
+                    tableView.style.display = 'none';
+                });
+
+                btnList.addEventListener('click', function () {
+                    btnList.classList.add('active');
+                    btnCards.classList.remove('active');
+                    cardsView.style.display = 'none';
+                    tableView.style.display = 'block';
+                });
+            }
+        });
+    </script>
+}

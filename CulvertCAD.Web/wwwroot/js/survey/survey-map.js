@@ -2876,6 +2876,9 @@
             } catch (e) {
                 console.warn("[CulvertCAD] Failed to read cached culvert solid from sessionStorage:", e);
             }
+
+
+            //  * REMOVE WHEN TRIAL CULVERT TO BE REMOVED *  //
             if (!currentSolidData && window.CULVERT_TEST_SOLID_DATA) {
                 currentSolidData = window.CULVERT_TEST_SOLID_DATA;
             }
@@ -3023,19 +3026,24 @@
 
                 if (!solidData || !solidData.solids || !culvertMarkerData.length) return;
 
+                // Calculate dynamic top vertical offset from the culvert solid's bounding box
+                const topOffset = (solidData && solidData.bounds && solidData.bounds.max && typeof solidData.bounds.max[1] === 'number')
+                    ? solidData.bounds.max[1]
+                    : 1.34;
+
                 culvertMarkerData.forEach(marker => {
                     const culvertModel = buildCulvertSolidMeshGroup(solidData);
                     culvertModel.scale.set(1, 1, 1);
 
                     const roadRL = (marker.data && marker.data.RoadRL)
                         ? Number(marker.data.RoadRL)
-                        : (Number(marker.rl) + 1.34);
+                        : (Number(marker.rl) + topOffset);
 
                     const roadWorldPos = toWorld(marker.easting, marker.northing, roadRL);
 
                     culvertModel.position.set(
                         roadWorldPos.x,
-                        roadWorldPos.y - 1.34,
+                        roadWorldPos.y - topOffset,
                         roadWorldPos.z
                     );
 

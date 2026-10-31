@@ -375,6 +375,14 @@
 
             status.textContent = `Loading & verifying 3D CAD geometry from ${file.name}...`;
 
+            // AUTO-SAVE HTML FILE DIRECTLY TO MONGODB
+            try {
+                const fileText = await file.text();
+                window.saveSolidModelToMongo(file, fileText, "3D_SOLID");
+            } catch (saveErr) {
+                console.warn("[CulvertCAD] Could not read text for MongoDB save:", saveErr);
+            }
+
             // Parse solid geometry with CulvertHtmlReader
             if (window.CulvertHtmlReader) {
                 try {
@@ -469,3 +477,305 @@
     }
 
 })();
+
+/* =========================================================
+14. Recent CAD Models & History Integration
+========================================================= */
+
+const btnOpenHistory = document.getElementById("btnOpenHistory");
+const btnCloseHistory = document.getElementById("btnCloseHistory");
+const historyDrawer = document.getElementById("cadHistoryDrawer");
+const historyList = document.getElementById("cadHistoryList");
+const historySearch = document.getElementById("cadHistorySearch");
+
+let loadedHistoryItems = [];
+
+/* =========================================================
+   Auto-Save Imported Solid Model to MongoDB
+   ========================================================= */
+window.saveSolidModelToMongo = async function (file, content, modelType = "3D_SOLID") {
+    const projSelect = document.getElementById("cadActiveProjectId");
+    const projId = projSelect ? parseInt(projSelect.value, 10) : 0;
+    if (!projId || projId <= 0) {
+        console.warn("[CulvertCAD] No active project selected, skipping Mongo auto-save.");
+        return;
+    }
+
+    try {
+        const payload = {
+            projectId: projId,
+            fileName: file.name || (modelType === "3D_SOLID" ? "culvert_model.html" : "culvert_model.stl"),
+            modelType: modelType,
+            solidDataJson: content
+        };
+
+        const resp = await fetch("/Survey/SaveCulvertSolid", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+
+        if (resp.ok) {
+            console.info(`[CulvertCAD] Model saved to MongoDB for Project #${projId}`);
+            const statusEl = document.getElementById(modelType === "3D_SOLID" ? "htmlViewerStatus" : "stlStatus");
+            if (statusEl) {
+                const saveBadge = document.createElement("span");
+                saveBadge.style.color = "#3fb950";
+                saveBadge.style.marginLeft = "10px";
+                saveBadge.innerHTML = `<i class="bi bi-cloud-check"></i> Saved to Database`;
+                statusEl.appendChild(saveBadge);
+            }
+        } else {
+            console.warn("[CulvertCAD] Auto-save response not OK:", resp.status);
+        }
+    } catch (e) {
+        console.warn("[CulvertCAD] Auto-save network error:", e);
+    }
+};
+
+async function fetchRecentModels() {
+    if (!historyList) return;
+    historyList.innerHTML = `
+            <div class="cad-history-loading">
+                <i class="bi bi-arrow-repeat spin"></i>
+                <span>Loading saved models from database...</span>
+            </div>
+        `;
+
+    try {
+        // Change from 3D_SOLID to 3D:
+        const resp = await fetch("/api/cad/recent-models?modelType=3D");
+        if (!resp.ok) throw new Error("Failed to query recent models");
+        const data = await resp.json();
+
+        loadedHistoryItems = data.items || [];
+        renderHistoryItems(loadedHistoryItems);
+    } catch (err) {
+        console.error("Error loading recent models:", err);
+        historyList.innerHTML = `
+                <div class="cad-history-empty">
+                    <i class="bi bi-exclamation-triangle" style="font-size:24px;color:#f85149;"></i>
+                    <span>Could not load saved models: ${err.message}</span>
+                </div>
+            `;
+    }
+}
+
+function renderHistoryItems(items) {
+    if (!historyList) return;
+    if (!items || items.length === 0) {
+        historyList.innerHTML = `
+                <div class="cad-history-empty">
+                    <i class="bi bi-box" style="font-size:24px;"></i>
+                    <span>No saved 3D solid models found yet.</span>
+                </div>
+            `;
+        return;
+    }
+
+    historyList.innerHTML = items.map(item => `
+            <div class="cad-history-item" data-code="${(item.projectCode || '').toLowerCase()}" data-name="${(item.projectName || '').toLowerCase()}" data-file="${(item.fileName || '').toLowerCase()}">
+                <div class="cad-item-top">
+                    <span class="cad-item-badge">${escapeHtml(item.projectCode)}</span>
+                    <span class="cad-item-date">${new Date(item.uploadedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                </div>
+                <h4 class="cad-item-name">${escapeHtml(item.projectName)}</h4>
+                <p class="cad-item-sub"><i class="bi bi-file-earmark-code"></i> ${escapeHtml(item.fileName || 'Culvert Solid Mesh')}</p>
+                <div class="cad-item-footer">
+                    <button type="button" class="cad-btn-load" data-project-id="${item.projectId}" data-model-type="${item.modelType || '3D_SOLID'}">
+                        <i class="bi bi-box-arrow-in-down-right"></i> Load in Viewer
+                    </button>
+                </div>
+            </div>
+        `).join("");
+
+    // Attach Load buttons
+    historyList.querySelectorAll(".cad-btn-load").forEach(btn => {
+        btn.addEventListener("click", () => {
+            const projId = btn.dataset.projectId;
+            const modelType = btn.dataset.modelType || "3D_SOLID";
+            loadSolidFromDatabase(projId, modelType);
+        });
+    });
+}
+
+async function loadSolidFromDatabase(projectId, modelType = "3D_SOLID") {
+    if (historyDrawer) {
+        historyDrawer.setAttribute("hidden", "");
+        historyDrawer.style.display = "none";
+    }
+    const htmlStatus = document.getElementById("htmlViewerStatus");
+    const stlStatus = document.getElementById("stlStatus");
+
+    if (modelType === "3D_STL") {
+        if (stlStatus) {
+            stlStatus.innerHTML = `<span style="color:#f0883e;"><i class="bi bi-arrow-repeat spin"></i> Loading STL mesh from Project #${projectId}...</span>`;
+        }
+    } else {
+        if (htmlStatus) {
+            htmlStatus.innerHTML = `<span style="color:#f0883e;"><i class="bi bi-arrow-repeat spin"></i> Loading solid model from Project #${projectId}...</span>`;
+        }
+    }
+
+    try {
+        const resp = await fetch(`/Survey/GetCulvertSolid?projectId=${encodeURIComponent(projectId)}&modelType=${encodeURIComponent(modelType)}`);
+        if (!resp.ok) throw new Error("Could not fetch solid geometry");
+
+        const rawContent = await resp.text();
+        if (!rawContent || rawContent.trim().length === 0) {
+            throw new Error("Empty model content received from server");
+        }
+
+        // Handle 3D STL Model
+        if (modelType === "3D_STL") {
+            document.getElementById("stlTab")?.click();
+            if (window.loadStlFromDatabaseContent) {
+                window.loadStlFromDatabaseContent(rawContent, `Project #${projectId} Mesh`);
+            }
+            return;
+        }
+
+        // Handle HTML 3D Solid Model
+        document.getElementById("htmlTab")?.click();
+
+        let solidModel = null;
+
+        if (rawContent.trim().startsWith("<")) {
+            const frame = document.getElementById("htmlViewerFrame");
+            const emptyState = document.getElementById("htmlViewerEmptyState");
+            const frameContainer = document.getElementById("htmlViewerFrameContainer");
+            const clearBtn = document.getElementById("clearHtmlViewer");
+            const fsBtn = document.getElementById("fullscreenHtmlViewer");
+
+            const blob = new Blob([rawContent], { type: "text/html" });
+            const blobUrl = URL.createObjectURL(blob);
+            if (frame) frame.src = blobUrl;
+
+            if (emptyState) {
+                emptyState.hidden = true;
+                emptyState.style.display = "none";
+            }
+            if (frameContainer) {
+                frameContainer.hidden = false;
+                frameContainer.removeAttribute("hidden");
+                frameContainer.style.display = "block";
+            }
+            clearBtn?.removeAttribute("disabled");
+            fsBtn?.removeAttribute("disabled");
+
+            if (window.CulvertHtmlReader) {
+                try {
+                    solidModel = await window.CulvertHtmlReader.parse(rawContent);
+                    window.ACTIVE_CULVERT_SOLID_MODEL = solidModel;
+                    sessionStorage.setItem("culvert_cad_active_solid", JSON.stringify(solidModel));
+                } catch (pe) {
+                    console.warn("Could not extract geometry array:", pe);
+                }
+            }
+        } else {
+            solidModel = JSON.parse(rawContent);
+            window.ACTIVE_CULVERT_SOLID_MODEL = solidModel;
+            sessionStorage.setItem("culvert_cad_active_solid", JSON.stringify(solidModel));
+        }
+
+        if (htmlStatus) {
+            const solidCount = solidModel?.solidCount || solidModel?.solids?.length || "3D";
+            htmlStatus.innerHTML = `
+                <strong style="color:#3fb950;">✓ Loaded from Database:</strong> 
+                ${solidCount} Solids · Project #${projectId}
+                <span style="color:#8b949e;margin-left:8px;">(${solidModel?.name || 'Culvert Model'})</span>
+            `;
+        }
+    } catch (err) {
+        console.error("Load failed:", err);
+        if (modelType === "3D_STL") {
+            if (stlStatus) stlStatus.innerHTML = `<span style="color:#f85149;">✕ Load failed: ${err.message}</span>`;
+        } else {
+            if (htmlStatus) htmlStatus.innerHTML = `<span style="color:#f85149;">✕ Load failed: ${err.message}</span>`;
+        }
+    }
+}
+
+function escapeHtml(str) {
+    if (!str) return "";
+    return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+if (btnOpenHistory && historyDrawer) {
+    btnOpenHistory.addEventListener("click", (e) => {
+        e.preventDefault();
+        console.log("Opening history drawer...");
+        historyDrawer.removeAttribute("hidden");
+        historyDrawer.style.display = "flex";
+        fetchRecentModels();
+    });
+}
+
+if (btnCloseHistory && historyDrawer) {
+    btnCloseHistory.addEventListener("click", (e) => {
+        e.preventDefault();
+        historyDrawer.setAttribute("hidden", "");
+        historyDrawer.style.display = "none";
+    });
+}
+
+if (historyDrawer) {
+    historyDrawer.addEventListener("click", (e) => {
+        if (e.target === historyDrawer) {
+            historyDrawer.setAttribute("hidden", "");
+            historyDrawer.style.display = "none";
+        }
+    });
+}
+
+if (historySearch) {
+    historySearch.addEventListener("input", (e) => {
+        const q = e.target.value.trim().toLowerCase();
+        const items = historyList.querySelectorAll(".cad-history-item");
+        items.forEach(el => {
+            const code = el.dataset.code || "";
+            const name = el.dataset.name || "";
+            const file = el.dataset.file || "";
+            el.style.display = (!q || code.includes(q) || name.includes(q) || file.includes(q)) ? "" : "none";
+        });
+    });
+}
+
+// Auto-load if ?projectId= is in URL query
+const urlParams = new URLSearchParams(window.location.search);
+const autoProjId = urlParams.get("projectId");
+if (autoProjId) {
+    loadSolidFromDatabase(autoProjId);
+}
+
+/* =========================================================
+15. STL Viewport Full Screen Toggle
+========================================================= */
+const fullscreenStlBtn = document.getElementById("fullscreenStlViewer");
+const stlViewport = document.getElementById("stlViewport");
+
+if (fullscreenStlBtn && stlViewport) {
+    fullscreenStlBtn.addEventListener("click", async () => {
+        try {
+            if (document.fullscreenElement === stlViewport) {
+                await document.exitFullscreen();
+            } else {
+                await stlViewport.requestFullscreen();
+            }
+        } catch (err) {
+            console.warn("Fullscreen request failed:", err);
+        }
+    });
+
+    document.addEventListener("fullscreenchange", () => {
+        const isFs = document.fullscreenElement === stlViewport;
+        fullscreenStlBtn.innerHTML = isFs
+            ? '<i class="bi bi-fullscreen-exit" aria-hidden="true"></i> Exit Full Screen'
+            : '<i class="bi bi-arrows-fullscreen" aria-hidden="true"></i> Full Screen';
+
+        // Trigger window resize so Three.js camera aspect ratio updates immediately
+        setTimeout(() => {
+            window.dispatchEvent(new Event("resize"));
+        }, 60);
+    });
+}

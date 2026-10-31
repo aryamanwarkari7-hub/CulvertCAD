@@ -290,6 +290,39 @@ public class SurveySummaryDto
     public int DetectedCulverts { get; set; }
 }
 
+public class SurveyDirectoryItemDto
+{
+    public int ProjectId { get; set; }
+    public string ProjectCode { get; set; } = string.Empty;
+    public string ProjectName { get; set; } = string.Empty;
+    public string ProjectStatus { get; set; } = string.Empty;
+    public string RoadName { get; set; } = string.Empty;
+    public string Location { get; set; } = string.Empty;
+    public bool HasSurvey { get; set; }
+
+    // Survey document metadata (if imported)
+    public string? SurveyId { get; set; }
+    public string? FileName { get; set; }
+    public DateTime? UploadedAt { get; set; }
+    public int TotalPoints { get; set; }
+    public string? CoordinateType { get; set; }
+    public int? UtmZone { get; set; }
+    public int DetectedCulvertsCount { get; set; }
+    public int ConfirmedCulvertsCount { get; set; }
+    public double AlignmentLengthM { get; set; }
+    public bool HasAlignment { get; set; }
+}
+
+public class SurveyDirectoryViewModel
+{
+    public int TotalProjects { get; set; }
+    public int SurveysCount { get; set; }
+    public int TotalPointsAcrossAll { get; set; }
+    public int TotalDetectedCulverts { get; set; }
+    public int TotalConfirmedCulverts { get; set; }
+    public List<SurveyDirectoryItemDto> Items { get; set; } = new();
+}
+
 public class DashboardDto
 {
     public int TotalProjects { get; set; }

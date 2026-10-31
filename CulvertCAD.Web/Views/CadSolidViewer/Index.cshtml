@@ -1,5 +1,18 @@
 ﻿@{
     ViewData["Title"] = "3D CAD Model Viewer";
+    ViewData["PageTitle"] = "3D CAD Model Viewer";
+    ViewData["PageSubtitle"] = "Interactive 3D culvert solids and mesh inspection";
+    ViewData["PageHeaderActions"] = new List<Dictionary<string, string>>
+    {
+        new()
+        {
+            ["Text"] = "Recent Models",
+            ["Url"] = "javascript:void(0)",
+            ["Id"] = "btnOpenHistory",
+            ["CssClass"] = "btn-primary",
+            ["Icon"] = "bi bi-clock-history"
+        }
+    };
 }
 
 <link rel="stylesheet"
@@ -41,10 +54,8 @@
                     aria-controls="stlPanel"
                     data-viewer-tab="stlPanel"
                     tabindex="0">
-
                 <i class="bi bi-box" aria-hidden="true"></i>
                 STL Model Viewer
-
             </button>
 
             <button id="htmlTab"
@@ -55,14 +66,29 @@
                     aria-controls="htmlPanel"
                     data-viewer-tab="htmlPanel"
                     tabindex="-1">
-
                 <i class="bi bi-filetype-html" aria-hidden="true"></i>
                 HTML Viewer Preview
-
             </button>
 
-        </div>
+            <!-- ACTIVE PROJECT SELECTOR FOR MONGO PERSISTENCE -->
+            <div class="cad-tab-project-selector" style="margin-left: auto; display: flex; align-items: center; gap: 8px; padding-bottom: 6px;">
+                <label for="cadActiveProjectId" style="color: #8b949e; font-size: 12px; margin: 0; display: flex; align-items: center; gap: 5px;">
+                    <i class="bi bi-folder2-open" style="color: #f0883e;"></i> Target Project:
+                </label>
+                <select id="cadActiveProjectId" style="background: #161b22; color: #e6edf3; border: 1px solid #30363d; border-radius: 6px; padding: 4px 8px; font-size: 12px; max-width: 280px;">
+                    @if (ViewBag.Projects != null)
+                    {
+                        foreach (var p in ViewBag.Projects)
+                        {
+                            <option value="@p.Id" selected="@(p.Id == ViewBag.SelectedProjectId)">
+                                @p.ProjectCode — @p.ProjectName
+                            </option>
+                        }
+                    }
+                </select>
+            </div>
 
+        </div>
 
         <!-- =================================================
              STL MODEL VIEWER PANEL
@@ -212,38 +238,38 @@
 
 
             <!-- STL TOOLBAR -->
-            <div class="cad-solid-toolbar">
+                <!-- STL TOOLBAR -->
+                <div class="cad-solid-toolbar">
 
-                <input id="stlFile"
-                       type="file"
-                       accept=".stl,model/stl"
-                       aria-label="Select STL model file" />
+                    <input id="stlFile"
+                           type="file"
+                           accept=".stl,model/stl"
+                           aria-label="Select STL model file" />
 
+                    <button id="fitModel"
+                            type="button"
+                            title="Fit model to viewport">
+                        <i class="bi bi-aspect-ratio" aria-hidden="true"></i>
+                        Fit Model
+                    </button>
 
-                <button id="fitModel"
-                        type="button"
-                        title="Fit model to viewport">
+                    <button id="resetModel"
+                            type="button"
+                            title="Reset camera view">
+                        <i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i>
+                        Reset View
+                    </button>
 
-                    <i class="bi bi-arrows-fullscreen"
-                       aria-hidden="true"></i>
+                    <!-- NEW: REAL FULL SCREEN BUTTON FOR STL -->
+                    <button id="fullscreenStlViewer"
+                            type="button"
+                            title="View 3D model in full screen"
+                            aria-label="Toggle full screen">
+                        <i class="bi bi-arrows-fullscreen" aria-hidden="true"></i>
+                        Full Screen
+                    </button>
 
-                    Fit Model
-
-                </button>
-
-
-                <button id="resetModel"
-                        type="button"
-                        title="Reset camera view">
-
-                    <i class="bi bi-arrow-counterclockwise"
-                       aria-hidden="true"></i>
-
-                    Reset View
-
-                </button>
-
-            </div>
+                </div>
 
 
             <!-- STL STATUS -->
@@ -531,6 +557,39 @@
         </section>
 
     </div>
+
+    <!-- RECENT MODELS SLIDE-OUT DRAWER / MODAL -->
+    <!-- =====================================================
+             RECENT MODELS SLIDE-OUT DRAWER / MODAL
+             ===================================================== -->
+        <div id="cadHistoryDrawer" class="cad-history-drawer-overlay" hidden>
+            <div class="cad-history-drawer">
+                <div class="cad-history-header">
+                    <div>
+                        <h3><i class="bi bi-clock-history"></i> Recent 3D Culvert Models</h3>
+                        <p>Saved solids from your accessible projects</p>
+                    </div>
+                    <button type="button" id="btnCloseHistory" class="cad-history-close-btn" aria-label="Close history">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </div>
+
+                <div class="cad-history-search">
+                    <i class="bi bi-search"></i>
+                    <input type="text"
+                           id="cadHistorySearch"
+                           placeholder="Filter by project code, name, or filename..."
+                           autocomplete="off" />
+                </div>
+
+                <div id="cadHistoryList" class="cad-history-list">
+                    <div class="cad-history-loading">
+                        <i class="bi bi-arrow-repeat spin"></i>
+                        <span>Loading saved models from database...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
 
 </div>
 

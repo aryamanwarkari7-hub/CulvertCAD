@@ -73,8 +73,8 @@
                 var url = action.GetValueOrDefault("Url") ?? "#";
                 var cssClass = action.GetValueOrDefault("CssClass") ?? "btn-ghost";
                 var icon = action.GetValueOrDefault("Icon");
-
-                <a href="@url" class="@cssClass">
+                var id = action.GetValueOrDefault("Id");
+                <a href="@url" id="@id" class="@cssClass">
                     @if (!string.IsNullOrWhiteSpace(icon))
                     {
                         <i class="@icon" aria-hidden="true"></i>
