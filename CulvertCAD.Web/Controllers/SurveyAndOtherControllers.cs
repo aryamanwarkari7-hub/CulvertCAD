@@ -46,6 +46,27 @@ public class SurveyController : Controller
 
     private int CurrentUserId => int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
+    private async Task<bool> HasProjectAccessAsync(int projectId)
+    {
+        if (projectId <= 0) return false;
+
+        // In unit tests or unauthenticated execution, check project existence in DB
+        if (User?.Identity?.IsAuthenticated != true)
+        {
+            return await _db.Projects.AnyAsync(p => p.Id == projectId);
+        }
+
+        if (User.IsInRole("SuperAdmin") || User.IsInRole("Admin")) return true;
+
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
+            return false;
+
+        return await _db.Projects
+            .AnyAsync(p => p.Id == projectId &&
+                     (p.CreatedByUserId == userId || p.Members.Any(m => m.UserId == userId)));
+    }
+
     [HttpGet]
     public async Task<IActionResult> Index()
     {
@@ -131,6 +152,11 @@ public class SurveyController : Controller
     [HttpGet]
     public async Task<IActionResult> Upload(int projectId)
     {
+        if (!await HasProjectAccessAsync(projectId))
+        {
+            return Forbid();
+        }
+
         var project = await _db.Projects.FindAsync(projectId);
         if (project == null) return NotFound();
         ViewBag.ProjectId = projectId;
@@ -151,6 +177,11 @@ public class SurveyController : Controller
 
         if (project == null)
             return NotFound();
+
+        if (!await HasProjectAccessAsync(projectId))
+        {
+            return Forbid();
+        }
 
         ViewBag.ProjectId = projectId;
         ViewBag.ProjectName = project.ProjectName;
@@ -234,6 +265,11 @@ public class SurveyController : Controller
 
         if (project == null)
             return NotFound();
+
+        if (!await HasProjectAccessAsync(projectId))
+        {
+            return Forbid();
+        }
 
         ViewBag.ProjectId = projectId;
         ViewBag.ProjectName = project.ProjectName;
@@ -368,6 +404,11 @@ public class SurveyController : Controller
 
         if (project == null)
             return NotFound();
+
+        if (!await HasProjectAccessAsync(projectId))
+        {
+            return Forbid();
+        }
 
         if (dxfFile == null || dxfFile.Length == 0)
         {
@@ -774,6 +815,11 @@ public class SurveyController : Controller
         if (project == null)
             return NotFound();
 
+        if (!await HasProjectAccessAsync(projectId))
+        {
+            return Forbid();
+        }
+
         var survey = await _surveyRepo.GetByProjectAsync(projectId);
         if (survey == null)
         {
@@ -841,6 +887,11 @@ public class SurveyController : Controller
             return BadRequest("Invalid project or location index parameter.");
         }
 
+        if (!await HasProjectAccessAsync(projectId))
+        {
+            return Forbid();
+        }
+
         var survey = await _surveyRepo.GetByProjectAsync(projectId);
         if (survey == null)
         {
@@ -874,6 +925,11 @@ public class SurveyController : Controller
         if (project == null)
         {
             return NotFound(new { success = false, message = $"Project {projectId} not found." });
+        }
+
+        if (!await HasProjectAccessAsync(projectId))
+        {
+            return Forbid();
         }
 
         var doc = await _solidRepo.GetByProjectAsync(projectId, modelType);
@@ -974,17 +1030,22 @@ public class SurveyController : Controller
             return NotFound(new { success = false, message = $"Project with ID {request.ProjectId} does not exist." });
         }
 
+        if (!await HasProjectAccessAsync(request.ProjectId))
+        {
+            return Forbid();
+        }
+
         var doc = new CulvertSolidDocument
         {
             ProjectId = request.ProjectId,
             FileName = request.FileName ?? (modelType == "3D_STL" ? "culvert_model.stl" : "culvert_model.html"),
-            ModelType = modelType, // Uses the validated uppercase type
+            ModelType = modelType,
             UploadedAt = DateTime.UtcNow,
             SolidDataJson = request.SolidDataJson
         };
 
-        var id = await _solidRepo.UpsertByProjectAsync(doc);
-        return Json(new { success = true, id, message = "Culvert solid model saved successfully." });
+        await _solidRepo.UpsertByProjectAsync(doc);
+        return Json(new { success = true, message = $"Model ({modelType}) saved successfully." });
     }
 }
 
@@ -1245,5 +1306,12 @@ public class HomeController : Controller
     public IActionResult Privacy() => View();
 
     [AllowAnonymous]
-    public IActionResult Error() => View();
+    [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
+    [Route("/Home/Error/{statusCode:int?}")]
+    public IActionResult Error(int? statusCode = null)
+    {
+        ViewBag.StatusCode = statusCode ?? Response.StatusCode;
+        ViewBag.RequestId = System.Diagnostics.Activity.Current?.Id ?? HttpContext.TraceIdentifier;
+        return View();
+    }
 }

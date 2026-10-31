@@ -1,0 +1,88 @@
+@{
+    ViewData["Title"] = "Error";
+    var statusCode = ViewBag.StatusCode as int? ?? 500;
+    var requestId = ViewBag.RequestId as string;
+
+    string title;
+    string subtitle;
+    string iconClass;
+    string iconColor;
+
+    switch (statusCode)
+    {
+        case 404:
+            title = "Page or Resource Not Found";
+            subtitle = "The requested page, project, or survey file could not be located.";
+            iconClass = "bi-geo-alt-fill";
+            iconColor = "var(--acc, #f0883e)";
+            break;
+        case 403:
+            title = "Access Forbidden";
+            subtitle = "You do not have the required permissions to access or edit this project resource.";
+            iconClass = "bi-shield-lock-fill";
+            iconColor = "#f85149";
+            break;
+        case 401:
+            title = "Authentication Required";
+            subtitle = "Your session has expired or you need to log in to access this workspace.";
+            iconClass = "bi-person-lock";
+            iconColor = "var(--acc, #f0883e)";
+            break;
+        default:
+            title = "Internal Server Error";
+            subtitle = "An unexpected error occurred during database or CAD processing. Please try again.";
+            iconClass = "bi-exclamation-triangle-fill";
+            iconColor = "#f85149";
+            break;
+    }
+}
+
+<div class="page" style="display: flex; align-items: center; justify-content: center; min-height: 70vh; padding: 2rem 1rem;">
+    <div class="card" style="max-width: 580px; width: 100%; text-align: center; padding: 3rem 2rem; background: var(--bg-card, #161b22); border: 1px solid var(--bdr, #30363d); border-radius: 12px; box-shadow: 0 12px 36px rgba(0,0,0,0.4);">
+        
+        <!-- Error Status Icon -->
+        <div style="width: 72px; height: 72px; border-radius: 50%; background: rgba(255, 255, 255, 0.04); border: 1px solid var(--bdr, #30363d); display: inline-flex; align-items: center; justify-content: center; margin-bottom: 1.5rem;">
+            <i class="bi @iconClass" style="font-size: 2.2rem; color: @iconColor;" aria-hidden="true"></i>
+        </div>
+
+        <!-- Status Code Badge -->
+        <div style="margin-bottom: 0.75rem;">
+            <span class="badge" style="font-family: var(--mono, monospace); font-size: 0.85rem; padding: 0.35rem 0.85rem; background: rgba(255, 255, 255, 0.05); color: var(--tx-2, #8b949e); border: 1px solid var(--bdr, #30363d);">
+                Error Code: @statusCode
+            </span>
+        </div>
+
+        <!-- Error Heading & Description -->
+        <h1 style="color: var(--tx, #f0f6fc); font-size: 1.5rem; font-weight: 700; margin: 0 0 0.75rem 0;">
+            @title
+        </h1>
+
+        <p style="color: var(--tx-2, #8b949e); font-size: 0.95rem; line-height: 1.6; margin: 0 0 2rem 0;">
+            @subtitle
+        </p>
+
+        <!-- Action Buttons -->
+        <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-bottom: 2rem;">
+            <a asp-controller="Home" asp-action="Index" class="btn-primary" style="display: inline-flex; align-items: center; gap: 8px; padding: 0.55rem 1.25rem;">
+                <i class="bi bi-grid-1x2-fill" aria-hidden="true"></i>
+                <span>Return to Dashboard</span>
+            </a>
+
+            <a asp-controller="Projects" asp-action="Index" class="btn-secondary" style="display: inline-flex; align-items: center; gap: 8px; padding: 0.55rem 1.25rem;">
+                <i class="bi bi-folder2-open" aria-hidden="true"></i>
+                <span>View Projects</span>
+            </a>
+        </div>
+
+        <!-- Incident Tracking ID -->
+        @if (!string.IsNullOrEmpty(requestId))
+        {
+            <div style="padding-top: 1.5rem; border-top: 1px solid var(--bdr, #30363d); font-size: 0.75rem; color: var(--tx-m, #6e7681);">
+                <span>Trace Identifier: </span>
+                <code style="font-family: var(--mono, monospace); color: var(--tx-2, #8b949e); background: rgba(0,0,0,0.25); padding: 2px 6px; border-radius: 4px;">@requestId</code>
+            </div>
+        }
+
+    </div>
+</div>
+

@@ -60,6 +60,9 @@ builder.Services.ConfigureApplicationCookie(opt =>
     opt.AccessDeniedPath = "/Account/AccessDenied";
     opt.ExpireTimeSpan = TimeSpan.FromHours(8);
     opt.SlidingExpiration = true;
+    opt.Cookie.HttpOnly = true;
+    opt.Cookie.SameSite = SameSiteMode.Lax;
+    opt.Cookie.SecurePolicy = CookieSecurePolicy.Always;
 });
 
 // ── Repositories ──────────────────────────────────────────────────────────────
@@ -131,6 +134,17 @@ if (!app.Environment.IsDevelopment())
     app.UseExceptionHandler("/Home/Error");
     app.UseHsts();
 }
+// 1. Re-execute 404, 403, 500 errors through the branded Error page
+app.UseStatusCodePagesWithReExecute("/Home/Error/{0}");
+// 2. Global OWASP Security Headers Middleware
+app.Use(async (context, next) =>
+{
+    context.Response.Headers.Append("X-Frame-Options", "SAMEORIGIN");                    // Blocks clickjacking in iframes
+    context.Response.Headers.Append("X-Content-Type-Options", "nosniff");                // Blocks MIME-sniffing exploits
+    context.Response.Headers.Append("Referrer-Policy", "strict-origin-when-cross-origin");// Blocks leaking sensitive URLs
+    context.Response.Headers.Append("X-XSS-Protection", "1; mode=block");                // Activates browser XSS filters
+    await next();
+});
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
