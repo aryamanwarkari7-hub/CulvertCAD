@@ -23,18 +23,23 @@
         };
 
     ViewData["PageHeaderActions"] =
-    new List<Dictionary<string, string>>
-    {
+new List<Dictionary<string, string>>
+{
+        new()
+        {
+            ["Text"] = "Edit Project",
+            ["Url"] = Url.Action("Edit", "Projects", new { id = Model.Id })!,
+            ["Icon"] = "bi bi-pencil-fill",
+            ["CssClass"] = "btn-ghost"
+        },
         new()
         {
             ["Text"] = "Survey Data",
-            ["Url"] = Url.Action(
-                "Upload", "Survey",
-                new { projectId = Model.Id })!,
+            ["Url"] = Url.Action("Upload", "Survey", new { projectId = Model.Id })!,
             ["Icon"] = "bi bi-bar-chart-line",
-            ["CssClass"] = "btn-ghost"
+            ["CssClass"] = "btn-primary"
         }
-    };
+};
 
 
 

@@ -19,7 +19,7 @@ public class CadSolidViewerController : Controller
     private int CurrentUserId => int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
     [HttpGet]
-    public async Task<IActionResult> Index([FromQuery] int? projectId)
+    public async Task<IActionResult> Index([FromQuery] int? projectId, [FromQuery] string? modelType)
     {
         bool isAdmin = User.IsInRole("SuperAdmin") || User.IsInRole("Admin");
 

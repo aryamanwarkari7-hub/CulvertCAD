@@ -44,161 +44,253 @@
         </div>
     </div>
 
-    <!-- Filter & View Switcher Card -->
+    <!-- Unified Filter Bar (Projects & Drawings) -->
     <div class="card dash-filter-card">
         <div class="dash-filter-row">
             <div class="dash-search-box">
                 <i class="bi bi-search" aria-hidden="true"></i>
                 <input type="text"
-                       id="project-search-input"
+                       id="dash-search-input"
                        class="field-input"
-                       placeholder="Search projects by name or code..."
+                       placeholder="Search projects or drawings by name or code..."
                        autocomplete="off" />
             </div>
-
-            <div class="dash-filter-pills" id="status-filters">
-                <button type="button" class="filter-pill active" data-filter="all">All</button>
-                <button type="button" class="filter-pill" data-filter="Active">Active</button>
-                <button type="button" class="filter-pill" data-filter="Completed">Completed</button>
-                <button type="button" class="filter-pill" data-filter="OnHold">On Hold</button>
+            <!-- Project Status Filter Group -->
+            <div class="dash-filter-group">
+                <span class="dash-filter-label"><i class="bi bi-folder2"></i> Projects:</span>
+                <div class="dash-filter-pills" id="project-status-filters">
+                    <button type="button" class="filter-pill active" data-filter="all">All</button>
+                    <button type="button" class="filter-pill" data-filter="Active">Active</button>
+                    <button type="button" class="filter-pill" data-filter="Completed">Completed</button>
+                </div>
             </div>
-
-            <div class="dash-view-toggle">
-                <button type="button" class="view-btn active" id="btn-view-cards" title="Cards View" aria-label="Cards view">
-                    <i class="bi bi-grid-fill" aria-hidden="true"></i>
-                </button>
-                <button type="button" class="view-btn" id="btn-view-list" title="List View" aria-label="List view">
-                    <i class="bi bi-list-ul" aria-hidden="true"></i>
-                </button>
+            <!-- Drawings Format Filter Group -->
+            <div class="dash-filter-group">
+                <span class="dash-filter-label"><i class="bi bi-file-earmark-ruled"></i> Drawings:</span>
+                <div class="dash-filter-pills" id="drawing-type-filters">
+                    <button type="button" class="filter-pill active" data-filter="all">All</button>
+                    <button type="button" class="filter-pill" data-filter="2D_DXF">2D DXF</button>
+                    <button type="button" class="filter-pill" data-filter="3D_SOLID">3D Solid</button>
+                    <button type="button" class="filter-pill" data-filter="3D_STL">3D STL</button>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- Projects Section -->
-    <section class="card dash-projects-container">
-        <div class="card-hd dashboard-panel-header">
-            <div class="dashboard-panel-heading">
-                <div class="dashboard-panel-icon projects-panel-icon">
-                    <i class="bi bi-folder2-open" aria-hidden="true"></i>
+    <!-- Side-by-Side: Left = My Projects (2 cards/row) | Right = My Drawings (2 cards/row) -->
+    <div class="dash-split-container">
+
+        <!-- LEFT: My Projects -->
+        <section class="card dash-panel-column">
+            <div class="card-hd dashboard-panel-header">
+                <div class="dashboard-panel-heading">
+                    <div class="dashboard-panel-icon projects-panel-icon">
+                        <i class="bi bi-folder2-open" aria-hidden="true"></i>
+                    </div>
+                    <div>
+                        <h3>My Projects</h3>
+                        <p>Accessible project workspaces</p>
+                    </div>
                 </div>
-                <div>
-                    <h3>My Projects</h3>
-                    <p>Your accessible projects</p>
-                </div>
+                <span class="panel-count" id="visible-projects-count">
+                    @Model.MyProjects.Count
+                </span>
             </div>
-            <span class="panel-count" id="visible-projects-count">
-                @Model.MyProjects.Count
-            </span>
-        </div>
-
-        <div id="projects-wrapper" class="projects-display-cards">
-            @if (!Model.MyProjects.Any())
-            {
-                <div class="dashboard-empty">
-                    <i class="bi bi-folder2" aria-hidden="true"></i>
-                    <strong>No projects found</strong>
-                    <span>Create a project to get started.</span>
-                </div>
-            }
-            else
-            {
-                @foreach (var project in Model.MyProjects)
+            <div id="projects-wrapper" class="projects-display-cards">
+                @if (!Model.MyProjects.Any())
                 {
-                    <div class="project-item-card"
-                         data-name="@project.ProjectName.ToLower()"
-                         data-code="@project.ProjectCode.ToLower()"
-                         data-status="@project.Status">
-
-                        <div class="item-card-top">
-                            <span class="item-card-code">
-                                <i class="bi bi-hash" aria-hidden="true"></i>@project.ProjectCode
-                            </span>
-                            <span class="project-status-pill @(string.Equals(project.Status, "Active", StringComparison.OrdinalIgnoreCase) ? "project-status-active" : "project-status-inactive")">
-                                <span class="project-status-dot"></span>
-                                @project.Status
-                            </span>
-                        </div>
-
-                        <strong class="item-card-title">@project.ProjectName</strong>
-
-                        <div class="item-card-footer">
-                            <a asp-controller="Projects"
-                               asp-action="Details"
-                               asp-route-id="@project.Id"
-                               class="item-card-action btn-ghost btn-primary">
-                                Open Project <i class="bi bi-arrow-up-right" aria-hidden="true"></i>
-                            </a>
-                        </div>
+                    <div class="dashboard-empty" style="grid-column: 1 / -1;">
+                        <i class="bi bi-folder2" aria-hidden="true"></i>
+                        <strong>No projects found</strong>
+                        <span>Create a project to get started.</span>
                     </div>
                 }
-            }
-        </div>
-    </section>
+                else
+                {
+                    @foreach (var project in Model.MyProjects)
+                    {
+                        <div class="project-item-card"
+                             data-name="@project.ProjectName.ToLower()"
+                             data-code="@project.ProjectCode.ToLower()"
+                             data-status="@project.Status">
+                            <div class="item-card-top">
+                                <span class="item-card-code">
+                                    <i class="bi bi-hash" aria-hidden="true"></i>@project.ProjectCode
+                                </span>
+                                <span class="project-status-pill @(string.Equals(project.Status, "Active", StringComparison.OrdinalIgnoreCase) ? "project-status-active" : "project-status-inactive")">
+                                    <span class="project-status-dot"></span>
+                                    @project.Status
+                                </span>
+                            </div>
+                            <strong class="item-card-title">@project.ProjectName</strong>
+                            <div class="item-card-footer">
+                                <a asp-controller="Projects"
+                                   asp-action="Details"
+                                   asp-route-id="@project.Id"
+                                   class="item-card-action btn-ghost btn-primary">
+                                    Open Project <i class="bi bi-arrow-up-right" aria-hidden="true"></i>
+                                </a>
+                            </div>
+                        </div>
+                    }
+                }
+            </div>
+        </section>
+        <!-- RIGHT: My Drawings -->
+        <section class="card dash-panel-column">
+            <div class="card-hd dashboard-panel-header">
+                <div class="dashboard-panel-heading">
+                    <div class="dashboard-panel-icon drawings-panel-icon">
+                        <i class="bi bi-file-earmark-ruled" aria-hidden="true"></i>
+                    </div>
+                    <div>
+                        <h3>My Drawings</h3>
+                        <p>Recent 2D DXF & 3D Solids</p>
+                    </div>
+                </div>
+                <span class="panel-count" id="visible-drawings-count">
+                    @Model.MyDrawings.Count
+                </span>
+            </div>
+            <div id="drawings-wrapper" class="drawings-display-cards">
+                @if (!Model.MyDrawings.Any())
+                {
+                    <div class="dashboard-empty" style="grid-column: 1 / -1;">
+                        <i class="bi bi-file-earmark-x" aria-hidden="true"></i>
+                        <strong>No drawings found</strong>
+                        <span>Open 2D CAD or 3D Viewer to import drawings.</span>
+                    </div>
+                }
+                else
+                {
+                    @foreach (var drawing in Model.MyDrawings)
+                    {
+                        <div class="drawing-item-card"
+                             data-name="@drawing.FileName.ToLower()"
+                             data-code="@drawing.ProjectCode.ToLower()"
+                             data-type="@drawing.ModelType">
+                            <div class="item-card-top">
+                                <span class="item-card-code">
+                                    <i class="bi bi-hash" aria-hidden="true"></i>@drawing.ProjectCode
+                                </span>
+                                @if (drawing.ModelType == "2D_DXF")
+                                {
+                                    <span class="model-badge model-badge-2d">2D DXF</span>
+                                }
+                                else if (drawing.ModelType == "3D_STL")
+                                {
+                                    <span class="model-badge model-badge-stl">3D STL</span>
+                                }
+                                else
+                                {
+                                    <span class="model-badge model-badge-3d">3D SOLID</span>
+                                }
+                            </div>
+                            <strong class="item-card-title" title="@drawing.FileName" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                @drawing.FileName
+                            </strong>
+                            <div class="drawing-card-sub">
+                                <span><i class="bi bi-folder2" aria-hidden="true"></i> @drawing.ProjectName</span>
+                                <span><i class="bi bi-clock" aria-hidden="true"></i> @drawing.UploadedAt.ToString("dd MMM yyyy")</span>
+                            </div>
+                            <div class="item-card-footer">
+                                @if (drawing.ModelType == "2D_DXF")
+                                {
+                                    <a asp-controller="CadDrawings"
+                                       asp-action="Index"
+                                       asp-route-projectId="@drawing.ProjectId"
+                                       class="item-card-action btn-ghost btn-primary">
+                                        Open 2D CAD <i class="bi bi-arrow-up-right" aria-hidden="true"></i>
+                                    </a>
+                                }
+                                else
+                                {
+                                    <a asp-controller="CadSolidViewer"
+                                       asp-action="Index"
+                                       asp-route-projectId="@drawing.ProjectId"
+                                       asp-route-modelType="@drawing.ModelType"
+                                       class="item-card-action btn-ghost btn-primary">
+                                        @(drawing.ModelType == "3D_STL" ? "Open STL Viewer" : "Open 3D Viewer") <i class="bi bi-arrow-up-right" aria-hidden="true"></i>
+                                    </a>
+                                }
+                            </div>
+                        </div>
+                    }
+                }
+            </div>
+        </section>
+    </div>
 </div>
 
 @section Scripts {
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            const searchInput = document.getElementById('project-search-input');
-            const filterPills = document.querySelectorAll('#status-filters .filter-pill');
-            const viewCardsBtn = document.getElementById('btn-view-cards');
-            const viewListBtn = document.getElementById('btn-view-list');
-            const projectsWrapper = document.getElementById('projects-wrapper');
+            const searchInput = document.getElementById('dash-search-input');
+            const projectFilterPills = document.querySelectorAll('#project-status-filters .filter-pill');
+            const drawingFilterPills = document.querySelectorAll('#drawing-type-filters .filter-pill');
             const projectCards = document.querySelectorAll('.project-item-card');
-            const countBadge = document.getElementById('visible-projects-count');
-
-            let currentFilter = 'all';
+            const drawingCards = document.querySelectorAll('.drawing-item-card');
+            const projectCountBadge = document.getElementById('visible-projects-count');
+            const drawingCountBadge = document.getElementById('visible-drawings-count');
+            let currentProjectFilter = 'all';
+            let currentDrawingFilter = 'all';
             let searchQuery = '';
-
-            function updateFilter() {
-                let visibleCount = 0;
+            function updateFilters() {
+                // Filter Projects
+                let visibleProjects = 0;
                 projectCards.forEach(card => {
                     const name = card.dataset.name || '';
                     const code = card.dataset.code || '';
                     const status = (card.dataset.status || '').toLowerCase();
                     const matchesSearch = !searchQuery || name.includes(searchQuery) || code.includes(searchQuery);
-                    const matchesFilter = currentFilter === 'all' || status === currentFilter.toLowerCase();
-
+                    const matchesFilter = currentProjectFilter === 'all' || status === currentProjectFilter.toLowerCase();
                     if (matchesSearch && matchesFilter) {
                         card.style.display = '';
-                        visibleCount++;
+                        visibleProjects++;
                     } else {
                         card.style.display = 'none';
                     }
                 });
-                if (countBadge) countBadge.textContent = visibleCount;
+                if (projectCountBadge) projectCountBadge.textContent = visibleProjects;
+                // Filter Drawings
+                let visibleDrawings = 0;
+                drawingCards.forEach(card => {
+                    const name = card.dataset.name || '';
+                    const code = card.dataset.code || '';
+                    const type = (card.dataset.type || '').toLowerCase();
+                    const matchesSearch = !searchQuery || name.includes(searchQuery) || code.includes(searchQuery);
+                    const matchesFilter = currentDrawingFilter === 'all' || type === currentDrawingFilter.toLowerCase();
+                    if (matchesSearch && matchesFilter) {
+                        card.style.display = '';
+                        visibleDrawings++;
+                    } else {
+                        card.style.display = 'none';
+                    }
+                });
+                if (drawingCountBadge) drawingCountBadge.textContent = visibleDrawings;
             }
-
             if (searchInput) {
                 searchInput.addEventListener('input', function (e) {
                     searchQuery = e.target.value.trim().toLowerCase();
-                    updateFilter();
+                    updateFilters();
                 });
             }
-
-            filterPills.forEach(pill => {
+            projectFilterPills.forEach(pill => {
                 pill.addEventListener('click', function () {
-                    filterPills.forEach(p => p.classList.remove('active'));
+                    projectFilterPills.forEach(p => p.classList.remove('active'));
                     this.classList.add('active');
-                    currentFilter = this.dataset.filter;
-                    updateFilter();
+                    currentProjectFilter = this.dataset.filter;
+                    updateFilters();
                 });
             });
-
-            // View toggle: Cards vs List
-            if (viewCardsBtn && viewListBtn && projectsWrapper) {
-                viewCardsBtn.addEventListener('click', function () {
-                    viewCardsBtn.classList.add('active');
-                    viewListBtn.classList.remove('active');
-                    projectsWrapper.className = 'projects-display-cards';
+            drawingFilterPills.forEach(pill => {
+                pill.addEventListener('click', function () {
+                    drawingFilterPills.forEach(p => p.classList.remove('active'));
+                    this.classList.add('active');
+                    currentDrawingFilter = this.dataset.filter;
+                    updateFilters();
                 });
-
-                viewListBtn.addEventListener('click', function () {
-                    viewListBtn.classList.add('active');
-                    viewCardsBtn.classList.remove('active');
-                    projectsWrapper.className = 'projects-display-list';
-                });
-            }
+            });
         });
     </script>
 }

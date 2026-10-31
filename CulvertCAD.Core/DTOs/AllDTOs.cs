@@ -1,4 +1,6 @@
 // CulvertCAD.Core/DTOs/AllDTOs.cs
+using CulvertCAD.Core.Enums;
+
 namespace CulvertCAD.Core.DTOs;
 
 public class LoginDto
@@ -66,6 +68,12 @@ public class CreateProjectDto
     public string? RoadName { get; set; }
     public string? ChainageFrom { get; set; }
     public string? ChainageTo { get; set; }
+}
+
+public class EditProjectDto : CreateProjectDto
+{
+    public int Id { get; set; }
+    public ProjectStatus Status { get; set; } = ProjectStatus.Active;
 }
 
 public class ProjectMemberDto
@@ -302,6 +310,7 @@ public class SurveyDirectoryItemDto
 
     // Survey document metadata (if imported)
     public string? SurveyId { get; set; }
+
     public string? FileName { get; set; }
     public DateTime? UploadedAt { get; set; }
     public int TotalPoints { get; set; }
@@ -328,6 +337,18 @@ public class DashboardDto
     public int TotalProjects { get; set; }
     public int ActiveProjects { get; set; }
     public List<ProjectSummaryDto> MyProjects { get; set; } = new();
+    public List<DrawingSummaryDto> MyDrawings { get; set; } = new(); // <-- ADD
+}
+
+public class DrawingSummaryDto
+{
+    public string Id { get; set; } = "";
+    public int ProjectId { get; set; }
+    public string ProjectCode { get; set; } = "";
+    public string ProjectName { get; set; } = "";
+    public string FileName { get; set; } = "";
+    public string ModelType { get; set; } = ""; // "2D_DXF", "3D_SOLID", "3D_STL"
+    public DateTime UploadedAt { get; set; }
 }
 
 public class ProjectSummaryDto

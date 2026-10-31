@@ -120,6 +120,26 @@
         color: var(--tx-m);
     }
 
+select.fi {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-color: var(--bg-in, #0d1117);
+    color: var(--tx, #e6edf3);
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%238b949e' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 1rem center;
+    background-size: 14px 10px;
+    padding-right: 2.5rem;
+    cursor: pointer;
+}
+
+select.fi option {
+    background-color: #161b22;
+    color: #e6edf3;
+    padding: 8px 12px;
+}
+
 
 /* =========================================================
    TEXTAREA
@@ -239,7 +259,8 @@
     justify-content: flex-end;
     align-items: center;
     gap: .6rem;
-    padding-top: 1.5rem;
+    padding: 1.5rem;
+
 }
 
 

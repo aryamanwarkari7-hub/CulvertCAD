@@ -738,10 +738,10 @@ if (historySearch) {
 // Auto-load if ?projectId= is in URL query
 const urlParams = new URLSearchParams(window.location.search);
 const autoProjId = urlParams.get("projectId");
+const autoModelType = urlParams.get("modelType") || "3D_SOLID";
 if (autoProjId) {
-    loadSolidFromDatabase(autoProjId);
+    loadSolidFromDatabase(autoProjId, autoModelType);
 }
-
 /* =========================================================
 15. STL Viewport Full Screen Toggle
 ========================================================= */

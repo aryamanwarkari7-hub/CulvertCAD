@@ -1,0 +1,189 @@
+@* Views/Projects/Edit.cshtml *@
+@model CulvertCAD.Core.DTOs.EditProjectDto
+
+@{
+    ViewData["Title"] = $"Edit — {Model.ProjectName}";
+    ViewData["PageTitle"] = "Edit Project";
+    ViewData["PageSubtitle"] = $"Update details for {Model.ProjectCode}";
+
+    ViewData["PageHeaderBreadcrumbs"] = new List<Dictionary<string, string>>
+    {
+        new() { ["Text"] = "Projects", ["Url"] = Url.Action("Index") ?? "#" },
+        new() { ["Text"] = Model.ProjectCode, ["Url"] = Url.Action("Details", new { id = Model.Id }) ?? "#" },
+        new() { ["Text"] = "Edit", ["Url"] = "" }
+    };
+}
+
+<div class="page">
+    <partial name="_PageHeader" />
+
+    <form asp-action="Edit" asp-route-id="@Model.Id" method="post" class="card project-form">
+        @Html.AntiForgeryToken()
+        <input type="hidden" asp-for="Id" />
+
+        <partial name="_ValidationSummary" />
+
+        <!-- =================================================
+             Project Identification & Status
+             ================================================= -->
+        <div class="form-section">
+            <div class="form-section-header">
+                <i class="bi bi-folder-check" aria-hidden="true"></i>
+                <div>
+                    <h3>Project Identification & Status</h3>
+                    <p>Basic project information and current operational lifecycle.</p>
+                </div>
+            </div>
+
+            <div class="form-row-2">
+                <div class="fg">
+                    <label asp-for="ProjectName">
+                        Project Name
+                        <span class="required-mark">*</span>
+                    </label>
+                    <input asp-for="ProjectName"
+                           class="fi"
+                           placeholder="NH-48 Widening Phase II"
+                           required />
+                    <span asp-validation-for="ProjectName" class="field-validation"></span>
+                </div>
+
+                <div class="fg">
+                    <label asp-for="ProjectCode">
+                        Project Code
+                        <span class="required-mark">*</span>
+                    </label>
+                    <input asp-for="ProjectCode"
+                           class="fi"
+                           placeholder="NH48-PH2-2024"
+                           required />
+                    <span asp-validation-for="ProjectCode" class="field-validation"></span>
+                </div>
+            </div>
+
+            <div class="form-row-2">
+                <div class="fg">
+                    <label asp-for="Status">Project Status</label>
+                    <select asp-for="Status" class="fi">
+                        <option value="Active">Active</option>
+                        <option value="Completed">Completed</option>
+                        <option value="OnHold">On Hold</option>
+                        <option value="Archived">Archived</option>
+                    </select>
+                    <span asp-validation-for="Status" class="field-validation"></span>
+                </div>
+
+                <div class="fg">
+                    <label asp-for="Location">Location</label>
+                    <input asp-for="Location"
+                           class="fi"
+                           placeholder="e.g. Pune - Satara Section" />
+                    <span asp-validation-for="Location" class="field-validation"></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- =================================================
+             Client & Consultant Information
+             ================================================= -->
+        <div class="form-section">
+            <div class="form-section-header">
+                <i class="bi bi-building" aria-hidden="true"></i>
+                <div>
+                    <h3>Client & Consultant</h3>
+                    <p>Organizations associated with this road infrastructure project.</p>
+                </div>
+            </div>
+
+            <div class="form-row-2">
+                <div class="fg">
+                    <label asp-for="ClientName">Client / Employer</label>
+                    <input asp-for="ClientName"
+                           class="fi"
+                           placeholder="e.g. National Highways Authority (NHAI)" />
+                    <span asp-validation-for="ClientName" class="field-validation"></span>
+                </div>
+
+                <div class="fg">
+                    <label asp-for="ConsultantName">Consultant</label>
+                    <input asp-for="ConsultantName"
+                           class="fi"
+                           placeholder="e.g. Infrastructure Design Consultants Ltd" />
+                    <span asp-validation-for="ConsultantName" class="field-validation"></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- =================================================
+             Geography & Alignment
+             ================================================= -->
+        <div class="form-section">
+            <div class="form-section-header">
+                <i class="bi bi-geo-alt" aria-hidden="true"></i>
+                <div>
+                    <h3>Geographic Location & Alignment</h3>
+                    <p>Road details and chainage boundaries.</p>
+                </div>
+            </div>
+
+            <div class="form-row-2">
+                <div class="fg">
+                    <label asp-for="State">State</label>
+                    <input asp-for="State"
+                           class="fi"
+                           placeholder="Maharashtra" />
+                    <span asp-validation-for="State" class="field-validation"></span>
+                </div>
+
+                <div class="fg">
+                    <label asp-for="District">District</label>
+                    <input asp-for="District"
+                           class="fi"
+                           placeholder="Pune" />
+                    <span asp-validation-for="District" class="field-validation"></span>
+                </div>
+            </div>
+
+            <div class="fg">
+                <label asp-for="RoadName">Road Name</label>
+                <input asp-for="RoadName"
+                       class="fi"
+                       placeholder="NH-48 Pune–Bangalore" />
+                <span asp-validation-for="RoadName" class="field-validation"></span>
+            </div>
+
+            <div class="form-row-2">
+                <div class="fg">
+                    <label asp-for="ChainageFrom">Chainage From</label>
+                    <input asp-for="ChainageFrom"
+                           class="fi"
+                           placeholder="0+000" />
+                    <span asp-validation-for="ChainageFrom" class="field-validation"></span>
+                </div>
+
+                <div class="fg">
+                    <label asp-for="ChainageTo">Chainage To</label>
+                    <input asp-for="ChainageTo"
+                           class="fi"
+                           placeholder="25+500" />
+                    <span asp-validation-for="ChainageTo" class="field-validation"></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- =================================================
+             Form Actions
+             ================================================= -->
+        <div class="form-actions">
+            <a asp-action="Details" asp-route-id="@Model.Id" class="btn-ghost">
+                <i class="bi bi-x-lg" aria-hidden="true"></i>
+                <span>Cancel</span>
+            </a>
+
+            <button type="submit" class="btn-primary">
+                <i class="bi bi-check-lg" aria-hidden="true"></i>
+                <span>Save Changes</span>
+            </button>
+        </div>
+    </form>
+</div>

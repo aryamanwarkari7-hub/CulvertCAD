@@ -1262,9 +1262,17 @@ public class HomeController : Controller
 {
     private readonly AppDbContext _db;
     private readonly Microsoft.AspNetCore.Identity.UserManager<ApplicationUser> _um;
+    private readonly ICulvertSolidRepository _solidRepo;
 
-    public HomeController(AppDbContext db, Microsoft.AspNetCore.Identity.UserManager<ApplicationUser> um)
-    { _db = db; _um = um; }
+    public HomeController(
+        AppDbContext db,
+        Microsoft.AspNetCore.Identity.UserManager<ApplicationUser> um,
+        ICulvertSolidRepository solidRepo)
+    {
+        _db = db;
+        _um = um;
+        _solidRepo = solidRepo;
+    }
 
     private int CurrentUserId => int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
@@ -1283,13 +1291,15 @@ public class HomeController : Controller
         }
 
         int totalProjects = await projectQuery.CountAsync();
+        int activeProjects = await projectQuery.CountAsync(p => p.Status == ProjectStatus.Active);
 
-        int activeProjects = await projectQuery.CountAsync(
-            p => p.Status == ProjectStatus.Active);
+        var accessibleProjects = await projectQuery
+            .Select(p => new { p.Id, p.ProjectCode, p.ProjectName })
+            .ToDictionaryAsync(p => p.Id);
 
         var myProjects = await projectQuery
             .OrderByDescending(p => p.CreatedAt)
-            .Take(6)
+            .Take(8)
             .Select(p => new ProjectSummaryDto
             {
                 Id = p.Id,
@@ -1299,23 +1309,35 @@ public class HomeController : Controller
             })
             .ToListAsync();
 
+        var myDrawings = new List<DrawingSummaryDto>();
+        try
+        {
+            if (accessibleProjects.Any())
+            {
+                var solids = await _solidRepo.GetRecentSolidsAsync(accessibleProjects.Keys, limit: 8);
+                myDrawings = solids.Select(s => new DrawingSummaryDto
+                {
+                    Id = s.Id,
+                    ProjectId = s.ProjectId,
+                    ProjectCode = accessibleProjects.TryGetValue(s.ProjectId, out var p) ? p.ProjectCode : "PROJ",
+                    ProjectName = accessibleProjects.TryGetValue(s.ProjectId, out var proj) ? proj.ProjectName : $"Project #{s.ProjectId}",
+                    FileName = s.FileName,
+                    ModelType = s.ModelType,
+                    UploadedAt = s.UploadedAt
+                }).ToList();
+            }
+        }
+        catch
+        {
+            // Fail-safe if MongoDB is temporarily unreachable
+        }
+
         return View(new DashboardDto
         {
             TotalProjects = totalProjects,
             ActiveProjects = activeProjects,
-            MyProjects = myProjects
+            MyProjects = myProjects,
+            MyDrawings = myDrawings
         });
-    }
-
-    public IActionResult Privacy() => View();
-
-    [AllowAnonymous]
-    [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
-    [Route("/Home/Error/{statusCode:int?}")]
-    public IActionResult Error(int? statusCode = null)
-    {
-        ViewBag.StatusCode = statusCode ?? Response.StatusCode;
-        ViewBag.RequestId = System.Diagnostics.Activity.Current?.Id ?? HttpContext.TraceIdentifier;
-        return View();
     }
 }

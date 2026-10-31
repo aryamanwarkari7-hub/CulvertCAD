@@ -27,3 +27,7 @@ culvert-ui-search.txt
 
 ## Node (if any front-end tooling added later)
 node_modules/
+
+## Database Backups
+database/backups/
+*.gz

@@ -156,6 +156,71 @@ public class ProjectsController : Controller
         return RedirectToAction("Details", new { id = project.Id });
     }
 
+    [HttpGet]
+    public async Task<IActionResult> Edit(int id)
+    {
+        var p = await _db.Projects.FindAsync(id);
+        if (p == null) return NotFound();
+
+        bool isAdmin = User.IsInRole("SuperAdmin") || User.IsInRole("Admin");
+        if (!isAdmin && p.CreatedByUserId != CurrentUserId && !await _db.ProjectMembers.AnyAsync(m => m.ProjectId == id && m.UserId == CurrentUserId))
+        {
+            return Forbid();
+        }
+
+        var dto = new EditProjectDto
+        {
+            Id = p.Id,
+            ProjectName = p.ProjectName,
+            ProjectCode = p.ProjectCode,
+            ClientName = p.ClientName,
+            ConsultantName = p.ConsultantName,
+            Location = p.Location,
+            State = p.State,
+            District = p.District,
+            RoadName = p.RoadName,
+            ChainageFrom = p.ChainageFrom,
+            ChainageTo = p.ChainageTo,
+            Status = p.Status
+        };
+
+        return View(dto);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Edit(int id, EditProjectDto model)
+    {
+        if (id != model.Id) return BadRequest("Project ID mismatch.");
+        if (!ModelState.IsValid) return View(model);
+
+        var p = await _db.Projects.FindAsync(id);
+        if (p == null) return NotFound();
+
+        bool isAdmin = User.IsInRole("SuperAdmin") || User.IsInRole("Admin");
+        if (!isAdmin && p.CreatedByUserId != CurrentUserId && !await _db.ProjectMembers.AnyAsync(m => m.ProjectId == id && m.UserId == CurrentUserId))
+        {
+            return Forbid();
+        }
+
+        p.ProjectName = model.ProjectName;
+        p.ProjectCode = model.ProjectCode;
+        p.ClientName = model.ClientName;
+        p.ConsultantName = model.ConsultantName;
+        p.Location = model.Location;
+        p.State = model.State;
+        p.District = model.District;
+        p.RoadName = model.RoadName;
+        p.ChainageFrom = model.ChainageFrom;
+        p.ChainageTo = model.ChainageTo;
+        p.Status = model.Status;
+        p.UpdatedAt = DateTime.UtcNow;
+
+        await _db.SaveChangesAsync();
+        TempData["Success"] = $"Project '{p.ProjectName}' updated successfully.";
+        return RedirectToAction("Details", new { id = p.Id });
+    }
+
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> AddMember(int projectId, int userId, string role)
