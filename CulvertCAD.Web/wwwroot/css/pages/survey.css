@@ -191,20 +191,38 @@
         font-size: 0.9rem;
     }
 
+    /* Strip buttons: transparent white on hover */
     .cad-nav-btn:hover {
-        background: rgba(255, 255, 255, 0.12);
-        color: #ffffff;
+        background: rgba(255, 255, 255, 0.15) !important;
+        color: #ffffff !important;
+        border: 1px solid rgba(255, 255, 255, 0.25) !important;
     }
 
-    .cad-nav-btn.primary {
-        background: var(--acc, #f0883e);
-        color: #ffffff;
-        border-color: var(--acc, #f0883e);
+    /* Active / Selected / Pressed state for buttons in the Floating CAD Navigation Strip: var(--acc) */
+    .survey-cad-nav-strip .cad-nav-btn.active,
+    .survey-cad-nav-strip .cad-nav-btn[aria-pressed="true"],
+    .survey-cad-nav-strip .cad-nav-btn:active {
+        background: var(--acc, #f0883e) !important;
+        color: #ffffff !important;
+        border: 1px solid var(--acc, #f0883e) !important;
+        box-shadow: 0 0 10px rgba(240, 136, 62, 0.35);
     }
 
-        .cad-nav-btn.primary:hover {
-            filter: brightness(1.1);
-        }
+    .survey-cad-nav-strip .cad-nav-btn.active:hover,
+    .survey-cad-nav-strip .cad-nav-btn[aria-pressed="true"]:hover {
+        background: var(--acc, #f0883e) !important;
+        filter: brightness(1.08);
+        color: #ffffff !important;
+        border: 1px solid var(--acc, #f0883e) !important;
+    }
+
+    /* In normal state, ensure no button has forced background */
+    .survey-cad-nav-strip .cad-nav-btn.primary,
+    .survey-cad-nav-strip .cad-nav-btn.recenter-btn {
+        background: transparent !important;
+        color: #e6edf3 !important;
+        border-color: transparent !important;
+    }
 
 .cad-nav-divider {
     width: 1px;
@@ -526,15 +544,20 @@
         color: var(--acc, #58a6ff);
     }
 
-/* Road Elevation vs Datum — Outer Card */
+/* =========================================================
+   Road Elevation vs Datum — Summary Card
+   ========================================================= */
 .survey-datum-summary {
     box-sizing: border-box;
     width: 100%;
-    margin: 0 0 16px;
-    padding: 20px;
+    margin: 12px 0 16px;
+    padding: 14px 18px;
     background: var(--bg-card);
     border: 1px solid var(--bdr);
-    border-radius: 12px;
+    border-radius: var(--r-lg);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
 }
 
 .survey-datum-header {
@@ -542,99 +565,156 @@
     align-items: center;
     justify-content: space-between;
     flex-wrap: wrap;
-    gap: 10px 16px;
-    margin-bottom: 16px;
+    gap: 8px 16px;
+}
+
+.survey-datum-header > strong {
+    font-size: var(--fs-base);
+    font-weight: var(--fw-semibold);
     color: var(--tx);
 }
 
-    .survey-datum-header > strong {
-        font-size: 1.05rem;
-        font-weight: var(--fw-semibold);
-    }
-
-    .survey-datum-header > span {
+    .survey-datum-header .survey-datum-badge {
         display: inline-flex;
         align-items: center;
-        gap: 5px;
-        padding: 8px 12px;
+        gap: 6px;
+        padding: 5px 12px;
         background: var(--bg-in);
         border: 1px solid var(--bdr);
         border-radius: 999px;
         color: var(--tx-2);
-        font-size: 0.85rem;
+        font-size: 0.75rem;
+        
         line-height: 1.4;
     }
 
-        .survey-datum-header > span strong {
-            color: var(--tx);
-            font-size: inherit;
-            font-weight: var(--fw-semibold);
-            font-variant-numeric: tabular-nums;
-        }
+.survey-datum-header .survey-datum-badge strong {
+    color: var(--acc);
+    font-family: var(--mono);
+    font-weight: var(--fw-semibold);
+    font-variant-numeric: tabular-nums;
+}
 
 .survey-datum-stats-row {
-    display: grid;
-    grid-template-columns: max-content minmax(0, 1fr) max-content;
+    display: flex;
     align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
     gap: 10px;
     width: 100%;
 }
 
-.survey-datum-summary .survey-datum-legend {
+.survey-datum-legend {
     display: flex;
     align-items: center;
     justify-content: center;
     flex-wrap: wrap;
     gap: 8px;
-    min-width: 0;
-    margin: 0;
 }
 
-.survey-datum-item {
+/* Stat Pills with UI Color Codes */
+.survey-datum-pill {
     display: inline-flex;
     align-items: center;
-    justify-content: flex-start;
     gap: 7px;
-    padding: 9px 13px;
+    padding: 6px 14px;
     background: var(--bg-in);
     border: 1px solid var(--bdr);
     border-radius: 999px;
-    font-size: 0.85rem;
-    line-height: 1.4;
+    font-size: 0.75rem;
+    
+    color: var(--tx-2);
     white-space: nowrap;
+    transition: border-color 0.15s ease, background-color 0.15s ease;
 }
 
-    .survey-datum-item strong {
-        color: var(--tx);
-        font-size: inherit;
-        font-weight: var(--fw-semibold);
-        font-variant-numeric: tabular-nums;
-    }
+.survey-datum-pill strong {
+    color: var(--tx);
+    font-weight: var(--fw-semibold);
+    font-family: var(--mono);
+    font-variant-numeric: tabular-nums;
+}
 
-.survey-datum-summary .survey-datum-extremes {
-    display: flex;
-    align-items: center;
-    justify-content: center;
+.survey-datum-pill .unit {
+    color: var(--tx-m);
+    font-size: var(--fs-xs);
+}
+
+/* Swatches */
+.survey-datum-swatch {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    flex: 0 0 8px;
+    border-radius: 50%;
+}
+
+.survey-datum-swatch.above {
+    background: var(--blue);
+    box-shadow: 0 0 6px rgba(88, 166, 255, 0.45);
+}
+
+.survey-datum-swatch.near {
+    background: var(--green);
+    box-shadow: 0 0 6px rgba(63, 185, 80, 0.45);
+}
+
+.survey-datum-swatch.below {
+    background: var(--red);
+    box-shadow: 0 0 6px rgba(248, 81, 73, 0.45);
+}
+
+/* Semantic UI Color coding on pills */
+.survey-datum-pill.max {
+    border-color: rgba(88, 166, 255, 0.28);
+    background: var(--blue-bg);
+}
+.survey-datum-pill.max i,
+.survey-datum-pill.max strong {
+    color: var(--blue);
+}
+
+.survey-datum-pill.above {
+    border-color: rgba(88, 166, 255, 0.22);
+    background: var(--blue-bg);
+}
+
+.survey-datum-pill.near {
+    border-color: rgba(63, 185, 80, 0.22);
+    background: var(--green-bg);
+}
+
+.survey-datum-pill.below {
+    border-color: rgba(248, 81, 73, 0.22);
+    background: var(--red-bg);
+}
+
+.survey-datum-pill.min {
+    border-color: rgba(248, 81, 73, 0.28);
+    background: var(--red-bg);
+}
+.survey-datum-pill.min i,
+.survey-datum-pill.min strong {
+    color: var(--red);
+    
+}
+
+/* Note */
+.survey-datum-note {
     margin: 0;
-    padding: 0;
-    border: 0;
+    padding-top: 10px;
+    border-top: 1px solid var(--bdr);
+    font-size: var(--fs-xs);
+    color: var(--tx-2);
+    line-height: 1.45;
 }
 
-.survey-datum-extremes > span {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    padding: 9px 13px;
-    background: var(--bg-in);
-    border: 1px;
-}
+/* UPLOAD PAGE */
 
-    /* UPLOAD PAGE */
-
-    /* =========================================================
+/* =========================================================
    Survey Upload — Section Headers
    ========================================================= */
-    .survey-upload-section-header {
+.survey-upload-section-header {
     display: flex;
     align-items: center;
     gap: 14px;
@@ -684,7 +764,6 @@
         height: 36px;
     }
 }
-
 
 /* =========================================================
    Survey Upload — File Inputs
@@ -750,7 +829,6 @@
         }
 }
 
-
 /* =========================================================
    Survey Upload — Coordinate Settings
    ========================================================= */
@@ -801,8 +879,6 @@
         outline: 2px solid var(--acc);
         outline-offset: 2px;
     }
-
-
 
 /* =========================================================
    Survey Upload — Coordinate Type Options
@@ -875,8 +951,6 @@
     }
 }
 
-
-
 /* =========================================================
    Survey Upload — Form Actions
    ========================================================= */
@@ -914,7 +988,6 @@
             width: 100%;
         }
 }
-
 
 /* =========================================================
    Survey Upload — Overall Form Layout
@@ -960,8 +1033,6 @@
             margin: 22px 0;
         }
 }
-
-
 
 /* Survey Upload — Validation Summary */
 .survey-upload-card .survey-validation-summary.validation-summary-valid {
@@ -1103,7 +1174,6 @@
         color: var(--acc);
     }
 
-
 /* Selected upload files in project sidebar */
 
 .survey-file-status {
@@ -1112,7 +1182,6 @@
 
 .survey-file-info {
     display: flex;
-    
     flex-direction: row;
     gap: 4px;
     min-width: 0;
@@ -1127,8 +1196,7 @@
     .survey-file-info span {
         color: var(--tx-2);
         font-size: var(--fs-sm);
-        flex-wrap:wrap;
-
+        flex-wrap: wrap;
     }
 
     .survey-file-info small {
@@ -1139,7 +1207,6 @@
 .survey-file-status.has-file > i {
     color: var(--green);
 }
-
 
 @media (max-width: 1000px) {
     .survey-upload-layout {
@@ -1161,7 +1228,6 @@
         padding: 16px;
     }
 }
-
 
 /* =========================================================
    Survey Upload — Sidebar File Cards
@@ -1224,13 +1290,9 @@
         font-size: 1.05rem;
     }
 
-
-
-
 /* -------------------------------------------
     SURVEY INDEX PAGE
 -------------------------------------------- */
-
 
 /* =========================================================
    Surveys Directory Page (/Survey/Index)
@@ -1293,6 +1355,7 @@
     gap: 0.65rem;
     min-width: 0;
 }
+
 .survey-file-icon {
     color: var(--acc, #f0883e);
     font-size: 1.15rem;
@@ -1410,7 +1473,7 @@
 }
 
 .survey-btn-icon {
-/*    padding: 0.6rem 0.6rem;*/
+    /*    padding: 0.6rem 0.6rem;*/
     font-size: 1rem;
     display: inline-flex;
     align-items: center;
@@ -1508,4 +1571,77 @@
 .survey-no-results {
     display: none;
     margin-top: 1.5rem;
+}
+
+/* =========================================================
+   CAD Culvert Inspection Stepper
+   ========================================================= */
+.cad-culvert-stepper {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(13, 17, 23, 0.7);
+    border: 1px solid rgba(88, 166, 255, 0.3);
+    border-radius: 8px;
+    padding: 2px 4px;
+}
+
+.cad-stepper-btn {
+    background: transparent;
+    border: none;
+    color: #8b949e;
+    cursor: pointer;
+    border-radius: 4px;
+    width: 24px;
+    height: 24px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    transition: all 0.15s ease;
+}
+
+    .cad-stepper-btn:hover {
+        background: rgba(255, 255, 255, 0.15);
+        color: #ffffff;
+    }
+
+    .cad-stepper-btn:active {
+        background: var(--acc, #f0883e);
+        color: #ffffff;
+    }
+
+.cad-stepper-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    font-weight: 600;
+    color: #f0883e;
+    padding: 0 6px;
+    min-width: 130px;
+    text-align: center;
+    user-select: none;
+}
+.cad-stepper-select {
+    background: rgba(22, 27, 34, 0.85);
+    border: 1px solid rgba(88, 166, 255, 0.3);
+    color: #f0883e;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 3px 8px;
+    cursor: pointer;
+    outline: none;
+    border-radius: 6px;
+    max-width: 220px;
+}
+
+.cad-stepper-select:focus {
+    border-color: #58a6ff;
+    box-shadow: 0 0 0 2px rgba(88, 166, 255, 0.25);
+}
+
+.cad-stepper-select option {
+    background: #161b22;
+    color: #e6edf3;
+    padding: 4px;
 }

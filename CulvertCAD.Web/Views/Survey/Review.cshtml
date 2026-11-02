@@ -149,20 +149,32 @@
 
                 <!-- Floating CAD Navigation Pill Bar (Top-Left) -->
                 <div class="survey-cad-nav-strip">
-                    <button type="button" id="survey-map-recenter" class="cad-nav-btn primary" title="Recenter View">
+                    <button type="button" id="survey-map-recenter" class="cad-nav-btn" title="Recenter View">
                         <i class="bi bi-arrows-fullscreen"></i> <span>Recenter</span>
                     </button>
                     <div class="cad-nav-divider"></div>
                     <button type="button" id="survey-map-top-view" class="cad-nav-btn" title="Top View (2D Plan)">
                         <i class="bi bi-map"></i> <span>Top</span>
                     </button>
-                    <button type="button" id="survey-map-3d-view" class="cad-nav-btn" title="Isometric 3D View">
+                    <button type="button" id="survey-map-3d-view" class="cad-nav-btn active" aria-pressed="true" title="Isometric 3D View">
                         <i class="bi bi-box"></i> <span>3D</span>
                     </button>
                     <button type="button" id="survey-map-north-up" class="cad-nav-btn" title="Orient North Up">
                         <i class="bi bi-compass"></i> <span>North</span>
                     </button>
                     <div class="cad-nav-divider"></div>
+                    <!-- Culvert Inspection Stepper & Quick Jump Dropdown -->
+                    <div id="survey-culvert-stepper" class="cad-culvert-stepper" style="display:none;">
+                        <button type="button" id="btn-prev-culvert" class="cad-stepper-btn" title="Previous Culvert">
+                            <i class="bi bi-chevron-left"></i>
+                        </button>
+                        <select id="stepper-culvert-select" class="cad-stepper-select" title="Jump to Culvert">
+                            <option value="">Culverts...</option>
+                        </select>
+                        <button type="button" id="btn-next-culvert" class="cad-stepper-btn" title="Next Culvert">
+                            <i class="bi bi-chevron-right"></i>
+                        </button>
+                    </div>
                     <button type="button" id="survey-map-fullscreen" class="cad-nav-btn" title="Expand / Maximize Map">
                         <i class="bi bi-arrows-angle-expand"></i>
                     </button>
@@ -171,7 +183,7 @@
                         <i class="bi bi-box-arrow-in-down"></i> <span>Import Culvert</span>
                     </button>
                     <input type="file" id="survey-culvert-html-file" accept=".html,.htm" style="display:none;" />
-                    <button type="button" id="survey-cad-layers-toggle" class="cad-nav-btn" title="Toggle Layers Panel">
+                    <button type="button" id="survey-cad-layers-toggle" class="cad-nav-btn active" aria-pressed="true" title="Toggle Layers Panel">
                         <i class="bi bi-layers-half"></i> <span>Layers</span>
                     </button>
                 </div>
@@ -217,8 +229,8 @@
                             <button type="button" id="survey-map-toggle-ground-sheet" class="cad-layer-row" aria-pressed="true">
                                 <i class="bi bi-square"></i> Ground Sheet: On
                             </button>
-                            <button type="button" id="survey-map-toggle-datum" class="cad-layer-row" aria-pressed="true">
-                                <i class="bi bi-layers"></i> Datum Sheet: On
+                            <button type="button" id="survey-map-toggle-datum" class="cad-layer-row" aria-pressed="false">
+                                <i class="bi bi-layers"></i> Datum Sheet: Off
                             </button>
                             <button type="button" id="survey-map-toggle-cyan-terrain" class="cad-layer-row" aria-pressed="false">
                                 <i class="bi bi-layers"></i> Cyan Terrain: On
@@ -294,45 +306,45 @@
             <div class="survey-datum-summary">
                 <div class="survey-datum-header">
                     <strong>Road Elevation vs Datum</strong>
-                    <span>Datum RL: <strong id="survey-datum-rl">â€”</strong> m</span>
+                    <span class="survey-datum-badge">
+                        Datum RL: <strong id="survey-datum-rl">—</strong> m
+                    </span>
                 </div>
 
                 <div class="survey-datum-stats-row">
-
-                    <div class="survey-datum-extremes">
-                        <span>
-                            Maximum difference:
-                            <strong id="survey-datum-max-difference">â€”</strong> m
-                        </span>
+                    <div class="survey-datum-pill max">
+                        <i class="bi bi-arrow-up-short"></i>
+                        <span>Maximum difference:</span>
+                        <strong id="survey-datum-max-difference">—</strong>
+                        <span class="unit">m</span>
                     </div>
 
                     <div class="survey-datum-legend">
-                        <div class="survey-datum-item">
+                        <div class="survey-datum-pill above">
                             <span class="survey-datum-swatch above"></span>
                             <span>Above datum</span>
-                            <strong id="survey-datum-above-count">â€”</strong>
+                            <strong id="survey-datum-above-count">—</strong>
                         </div>
 
-                        <div class="survey-datum-item">
+                        <div class="survey-datum-pill near">
+                            <span class="survey-datum-swatch near"></span>
+                            <span>Near datum (±0.10 m)</span>
+                            <strong id="survey-datum-near-count">—</strong>
+                        </div>
+
+                        <div class="survey-datum-pill below">
                             <span class="survey-datum-swatch below"></span>
                             <span>Below datum</span>
-                            <strong id="survey-datum-below-count">â€”</strong>
-                        </div>
-
-                        <div class="survey-datum-item">
-                            <span class="survey-datum-swatch near"></span>
-                            <span>Near datum (Â±0.10 m)</span>
-                            <strong id="survey-datum-near-count">â€”</strong>
+                            <strong id="survey-datum-below-count">—</strong>
                         </div>
                     </div>
 
-                    <div class="survey-datum-extremes">
-                        <span>
-                            Minimum difference:
-                            <strong id="survey-datum-min-difference">â€”</strong> m
-                        </span>
+                    <div class="survey-datum-pill min">
+                        <i class="bi bi-arrow-down-short"></i>
+                        <span>Minimum difference:</span>
+                        <strong id="survey-datum-min-difference">—</strong>
+                        <span class="unit">m</span>
                     </div>
-
                 </div>
 
                 <p class="survey-datum-note">
@@ -340,7 +352,6 @@
                     from nearby survey points. These estimates are not surveyed road levels.
                 </p>
             </div>
-
 
             <div id="survey-map-status" role="status" aria-live="polite">
                 Preparing survey map...

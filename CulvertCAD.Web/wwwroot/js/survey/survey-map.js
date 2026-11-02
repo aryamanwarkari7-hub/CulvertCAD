@@ -1,4 +1,4 @@
-﻿(() => {
+(() => {
     "use strict";
 
     /* Step 1 : Read survey point data prepared by the app
@@ -93,25 +93,31 @@
         const camera = new THREE.PerspectiveCamera(
             50,
             1,
-            0.1,
-            1000000
+            0.5,
+            50000
         );
 
         const renderer = new THREE.WebGLRenderer({
             canvas,
             antialias: true,
-            alpha: true
+            alpha: true,
+            logarithmicDepthBuffer: true // Guarantees razor-sharp depth at macro & micro scales
         });
 
         renderer.setClearColor(0x000000, 0);
 
         renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
 
-        scene.add(new THREE.AmbientLight(0xffffff, 1.4));
+        // Dynamic CAD Sun & Sky Lighting for real 3D depth and topographical relief
+        scene.add(new THREE.AmbientLight(0xffffff, 0.65));
 
-        const light = new THREE.DirectionalLight(0xffffff, 1.2);
-        light.position.set(100, 200, 150);
-        scene.add(light);
+        const sunLight = new THREE.DirectionalLight(0xfff8ee, 1.35);
+        sunLight.position.set(250, 600, 350);
+        scene.add(sunLight);
+
+        const skyFillLight = new THREE.DirectionalLight(0x7da4d4, 0.45);
+        skyFillLight.position.set(-250, 400, -350);
+        scene.add(skyFillLight);
 
         /*  Step 2 : Checks whether the coordinates are usable : Numeric validity
 
@@ -153,7 +159,11 @@
         const validAlignment = alignmentPoints.filter(p =>
             Number.isFinite(Number(p.Easting)) &&
             Number.isFinite(Number(p.Northing))
-        );
+        ).sort((a, b) => {
+            const ca = Number(a.Chainage ?? 0);
+            const cb = Number(b.Chainage ?? 0);
+            return ca - cb;
+        });
 
         /* Step 3: Calculate viewers horizontal bound  = survey horizontal + alignment horiontal
 
@@ -229,7 +239,7 @@
         const gridWidth = Math.max(maxE - minE, 10);
         const gridLength = Math.max(maxN - minN, 10);
         const gridSpacing = 50;
-        const gridY = -20;
+        const gridY = -120;
 
         const gridVertices = [];
 
@@ -257,7 +267,7 @@
             gridGeometry,
             new THREE.LineBasicMaterial({
                 color: 0x939e88,
-                transparent: true,
+                transparent: false,
                 opacity: 0.65
             })
         );
@@ -305,9 +315,10 @@
         const datumMaterial = new THREE.MeshBasicMaterial({
             color: 0xA98262,
             transparent: true,
-            opacity: 0.22,
+            opacity: 0.52,
             side: THREE.DoubleSide,
-            depthWrite: false
+            depthWrite: false,
+            depthTest: true
         });
 
         const datumSheet = new THREE.Mesh(
@@ -317,12 +328,19 @@
 
         datumSheet.position.set(0, datumY, 0);
         datumSheet.renderOrder = 0;
+        datumSheet.visible = true; // Disabled by default so it does not wash out the 3D road and terrain
         scene.add(datumSheet);
 
         // Independent datum visibility control.
         const datumToggle = document.getElementById(
             "survey-map-toggle-datum"
         );
+
+        // Set default UI state to active
+        if (datumToggle) {
+            datumToggle.setAttribute("aria-pressed", "true");
+            datumToggle.innerHTML = '<i class="bi bi-layers"></i> Datum Sheet: On';
+        }
 
         datumToggle?.addEventListener("click", () => {
             datumSheet.visible = !datumSheet.visible;
@@ -442,8 +460,8 @@
             const terrainPositions = [];
             const terrainColors = [];
 
-            const naturalColor = new THREE.Color(0x90EE90); // Light green terrain
-            const fallColor = new THREE.Color(0xA98262);    // Light earthy brown slopes
+            const naturalColor = new THREE.Color(0x5c7f5a); // Natural sage green terrain
+            const fallColor = new THREE.Color(0x8a7055);    // Earthy slope / drainage embankment
 
             // Classify triangles by slope, but only render triangles
             // whose horizontal circumradius is within the supported scale.
@@ -1447,8 +1465,11 @@
 
             terrainGeometry.computeVertexNormals();
 
-            const terrainMaterial = new THREE.MeshBasicMaterial({
+            const terrainMaterial = new THREE.MeshStandardMaterial({
                 vertexColors: true,
+                roughness: 0.85,
+                metalness: 0.05,
+                flatShading: true,
                 side: THREE.DoubleSide,
                 wireframe: false
             });
@@ -2054,7 +2075,7 @@
 
             const primaryPerimeterGuide = makeBoundaryLine(
                 primaryPerimeterPositions,
-                0xff0000, // Red outer boundary; alignment centreline remains orange.
+                0xff3333, // Red outer boundary; alignment centreline remains orange.
                 1.0,
                 "Primary terrain coverage perimeter (visual estimate)",
                 11
@@ -2197,8 +2218,8 @@
                 fillGeometry.rotateX(Math.PI / 2);
                 const fillMaterial = new THREE.MeshBasicMaterial({
                     color: 0xff35b8,
-                    transparent: true,
-                    opacity: 0.38,
+                    transparent: false,
+                    opacity: 0.88,
                     side: THREE.DoubleSide,
                     depthTest: false,
                     depthWrite: false
@@ -2338,7 +2359,7 @@
                     color: 0x00ffff,
                     transparent: false,
                     opacity: 1.0,
-                    depthTest: false,
+                    depthTest: true,
                     depthWrite: false
                 });
 
@@ -2455,6 +2476,141 @@
                 ? '<i class="bi bi-geo"></i> Survey Data: On'
                 : '<i class="bi bi-geo"></i> Survey Data: Off';
         });
+
+        // =========================================================
+        // Ultra-HD Milestone Plate Generator (Near-View Sharpness)
+        // =========================================================
+        function createChainageSprite(chKm, chM) {
+            const canvas = document.createElement("canvas");
+            // 2048 x 1024 ultra-HD internal canvas to eliminate pixel blur
+            canvas.width = 2048;
+            canvas.height = 1024;
+            const ctx = canvas.getContext("2d");
+
+            const w = canvas.width;
+            const h = canvas.height;
+            const r = 96; // Scaled corner radius
+
+            // Outer Plate Background
+            ctx.fillStyle = "#090d13";
+            ctx.beginPath();
+            ctx.roundRect(64, 64, w - 128, h - 128, r);
+            ctx.fill();
+
+            // Outer Plate Neon Border
+            ctx.strokeStyle = "#388bfd";
+            ctx.lineWidth = 24;
+            ctx.stroke();
+
+            // Top Header Pill: "CHAINAGE"
+            ctx.fillStyle = "#1f6feb";
+            ctx.beginPath();
+            ctx.roundRect(64, 64, w - 128, 256, [r, r, 0, 0]);
+            ctx.fill();
+
+            // Top Header Text
+            ctx.fillStyle = "#ffffff";
+            ctx.font = "900 110px 'Segoe UI', -apple-system, sans-serif";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText("CHAINAGE", w / 2, 192);
+
+            // Main Value: Crisp Big Numbers (e.g., "4 + 434")
+            ctx.fillStyle = "#58a6ff";
+            ctx.font = "bold 260px 'Consolas', 'Courier New', monospace";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(`${chKm} + ${chM}`, w / 2, 570);
+
+            // Bottom Subtitle (Thick and fully legible from distance)
+            ctx.fillStyle = "#8b949e";
+            ctx.font = "bold 90px 'Segoe UI', sans-serif";
+            ctx.fillText("KM  +  METERS", w / 2, 830);
+
+            const texture = new THREE.CanvasTexture(canvas);
+
+            // Enable high-definition Mipmaps & Anisotropic Filtering
+            texture.generateMipmaps = true;
+            texture.minFilter = THREE.LinearMipmapLinearFilter;
+            texture.magFilter = THREE.LinearFilter;
+
+            // Maximizes crispness at oblique camera angles
+            if (renderer && renderer.capabilities) {
+                texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+            }
+
+            const spriteMat = new THREE.SpriteMaterial({
+                map: texture,
+                transparent: true,
+                alphaTest: 0.05,       // Discards fully transparent canvas pixels immediately
+                depthTest: true,
+                depthWrite: true       // Plate writes depth so it stays crisp in front of the post/sky
+            });
+
+            const sprite = new THREE.Sprite(spriteMat);
+            // 8m wide x 4m tall world scale (compact, balanced proportions)
+            sprite.scale.set(8.0, 4.0, 1.0);
+            sprite.renderOrder = 1000;
+            return sprite;
+        }
+
+        let cleanRoadCenterPoints = null;
+
+        // Helper to project any (Easting, Northing) point onto the road centerline
+        function getRoadCenterlineProjection(easting, northing) {
+            const alignList = (cleanRoadCenterPoints && cleanRoadCenterPoints.length > 1)
+                ? cleanRoadCenterPoints
+                : (validAlignment && validAlignment.length > 1)
+                    ? validAlignment.map(p => ({ e: Number(p.Easting), n: Number(p.Northing), rl: Number(p.RL ?? p.ExistingRL ?? baseRL) }))
+                    : null;
+
+            if (!alignList || alignList.length < 2) {
+                return {
+                    e: Number(easting),
+                    n: Number(northing),
+                    rl: baseRL,
+                    heading: 0
+                };
+            }
+
+            let bestDistSq = Infinity;
+            let bestE = Number(easting);
+            let bestN = Number(northing);
+            let bestRL = baseRL;
+            let bestHeading = 0;
+
+            for (let i = 0; i < alignList.length - 1; i++) {
+                const p1 = alignList[i];
+                const p2 = alignList[i + 1];
+
+                const dx = p2.e - p1.e;
+                const dz = p2.n - p1.n;
+                const lenSq = dx * dx + dz * dz;
+
+                if (lenSq < 1e-8) continue;
+
+                const t = Math.max(0, Math.min(1, ((easting - p1.e) * dx + (northing - p1.n) * dz) / lenSq));
+
+                const projE = p1.e + t * dx;
+                const projN = p1.n + t * dz;
+                const distSq = (easting - projE) * (easting - projE) + (northing - projN) * (northing - projN);
+
+                if (distSq < bestDistSq) {
+                    bestDistSq = distSq;
+                    bestE = projE;
+                    bestN = projN;
+                    bestRL = p1.rl + t * (p2.rl - p1.rl);
+                    bestHeading = Math.atan2(dx, dz);
+                }
+            }
+
+            return {
+                e: bestE,
+                n: bestN,
+                rl: bestRL,
+                heading: bestHeading
+            };
+        }
 
         /// Imported road alignment: continuous 7 m visual road surface.
         // Display geometry only; does not change engineering data.
@@ -2588,6 +2744,7 @@
                 const previous = arr[i - 1];
                 return Math.hypot(p.e - previous.e, p.n - previous.n) > 0.001;
             });
+            cleanRoadCenterPoints = cleanCenters;
 
             cleanCenters.forEach((p, i) => {
                 const previous = cleanCenters[Math.max(0, i - 1)];
@@ -2676,11 +2833,11 @@
                 let color;
 
                 if (rlDifference > DATUM_ELEVATION_TOLERANCE_M) {
-                    color = new THREE.Color(0x2196F3); // Above datum
+                    color = new THREE.Color(0x1976D2); // Solid deep cobalt road surface
                 } else if (rlDifference < -DATUM_ELEVATION_TOLERANCE_M) {
-                    color = new THREE.Color(0xE57373); // Below datum
+                    color = new THREE.Color(0xD32F2F); // Solid deep crimson road surface
                 } else {
-                    color = new THREE.Color(0xB0BEC5); // Near datum
+                    color = new THREE.Color(0x2d3440); // Solid dark asphalt pavement
                 }
 
                 // Two road-edge vertices for each centreline point.
@@ -2700,18 +2857,74 @@
 
             const roadMaterial = new THREE.MeshStandardMaterial({
                 vertexColors: true,
-                roughness: 0.95,
-                metalness: 0,
+                roughness: 1.0,
+                metalness: 0.12,
                 side: THREE.DoubleSide,
-                polygonOffset: true,
-                polygonOffsetFactor: -1,
-                polygonOffsetUnits: -1
+                transparent: false,
+                depthWrite: true,
+                depthTest: true
             });
 
             const roadSurface = new THREE.Mesh(roadGeometry, roadMaterial);
             roadSurface.renderOrder = 1;
+
+            // 3D Physical Road Embankment / Side Skirts (Gives the road solid thickness)
+            const skirtPositions = [];
+            const skirtIndices = [];
+            let skirtVertCount = 0;
+            const skirtDropM = 0.45; // Physical vertical thickness of the pavement prism
+
+            for (let i = 0; i < cleanCenters.length - 1; i++) {
+                const a = i * 2;
+                const b = a + 1;
+                const c = (i + 1) * 2;
+                const d = c + 1;
+
+                // Left Edge Skirt Face
+                const l1_top = [roadPositions[a * 3], roadPositions[a * 3 + 1], roadPositions[a * 3 + 2]];
+                const l2_top = [roadPositions[c * 3], roadPositions[c * 3 + 1], roadPositions[c * 3 + 2]];
+                const l1_bot = [l1_top[0], l1_top[1] - skirtDropM, l1_top[2]];
+                const l2_bot = [l2_top[0], l2_top[1] - skirtDropM, l2_top[2]];
+
+                const idx = skirtVertCount;
+                skirtPositions.push(...l1_top, ...l2_top, ...l1_bot, ...l2_bot);
+                skirtIndices.push(idx, idx + 1, idx + 2, idx + 1, idx + 3, idx + 2);
+                skirtVertCount += 4;
+
+                // Right Edge Skirt Face
+                const r1_top = [roadPositions[b * 3], roadPositions[b * 3 + 1], roadPositions[b * 3 + 2]];
+                const r2_top = [roadPositions[d * 3], roadPositions[d * 3 + 1], roadPositions[d * 3 + 2]];
+                const r1_bot = [r1_top[0], r1_top[1] - skirtDropM, r1_top[2]];
+                const r2_bot = [r2_top[0], r2_top[1] - skirtDropM, r2_top[2]];
+
+                const rIdx = skirtVertCount;
+                skirtPositions.push(...r1_top, ...r2_top, ...r1_bot, ...r2_bot);
+                skirtIndices.push(rIdx, rIdx + 2, rIdx + 1, rIdx + 1, rIdx + 2, rIdx + 3);
+                skirtVertCount += 4;
+            }
+
+            const skirtGeo = new THREE.BufferGeometry();
+            skirtGeo.setAttribute("position", new THREE.Float32BufferAttribute(skirtPositions, 3));
+            skirtGeo.setIndex(skirtIndices);
+            skirtGeo.computeVertexNormals();
+
+            // Road Skirt / Side Embankment Material
+            const skirtMat = new THREE.MeshStandardMaterial({
+                color: 0x242a33,
+                roughness: 0.85,
+                metalness: 0.1,
+                side: THREE.DoubleSide,
+                transparent: false,
+                depthWrite: true,
+                depthTest: true
+            });
+
+            const roadSkirtMesh = new THREE.Mesh(skirtGeo, skirtMat);
+            roadSkirtMesh.renderOrder = 1;
+
             const alignmentLayer = new THREE.Group();
             alignmentLayer.add(roadSurface);
+            alignmentLayer.add(roadSkirtMesh);
             scene.add(alignmentLayer);
 
             // Orange imported alignment: separate line above the road surface.
@@ -2770,6 +2983,46 @@
             rightRoadBoundary.name = "Right road outer boundary (red)";
             rightRoadBoundary.renderOrder = 20;
             alignmentLayer.add(rightRoadBoundary);
+
+            // =========================================================
+            // Place 3D Milestones Every 500m along the Alignment
+            // =========================================================
+            const chainageGroup = new THREE.Group();
+            chainageGroup.name = "Alignment Chainage Milestones";
+
+            let lastMilestoneCh = -Infinity;
+            const milestoneIntervalM = 500; // Place every 500m
+
+            orderedAlignment.forEach(p => {
+                const ch = Number(p.Chainage);
+                if (!Number.isFinite(ch)) return;
+
+                if (ch - lastMilestoneCh >= milestoneIntervalM || lastMilestoneCh === -Infinity) {
+                    lastMilestoneCh = ch;
+
+                    const pos = toWorld(p.Easting, p.Northing, getAlignmentRL(p));
+                    const chKm = Math.floor(ch / 1000);
+                    const chM = Math.floor(ch % 1000).toString().padStart(3, '0');
+
+                    // Milestone Post: wider foundation post
+                    const postGeo = new THREE.CylinderGeometry(0.25, 0.35, 4.0, 12);
+                    const postMat = new THREE.MeshStandardMaterial({
+                        color: 0x30363d,
+                        roughness: 0.6,
+                        metalness: 0.2
+                    });
+                    const postMesh = new THREE.Mesh(postGeo, postMat);
+                    postMesh.position.set(pos.x, pos.y + 2.0, pos.z);
+                    chainageGroup.add(postMesh);
+
+                    // Large 3D Signboard Plate mounted at eye level above the post
+                    const sprite = createChainageSprite(chKm, chM);
+                    sprite.position.set(pos.x, pos.y + 6.2, pos.z);
+                    chainageGroup.add(sprite);
+                }
+            });
+
+            alignmentLayer.add(chainageGroup);
 
             // Road alignment layer on/off control.
             const alignmentToggle = document.getElementById(
@@ -2856,6 +3109,49 @@
 
             scene.add(markers);
 
+            // =========================================================
+            // 3D Glowing Culvert Beacons & Location Badges
+            // =========================================================
+            const culvertPinGroup = new THREE.Group();
+            culvertPinGroup.name = "Culvert 3D Pins";
+            const roadSurfaceLift = (typeof visualLift !== "undefined") ? visualLift : 0.15;
+
+            culvertMarkerData.forEach((marker, idx) => {
+                // Project surveyed point onto road centerline to align with road center
+                const roadProj = getRoadCenterlineProjection(marker.easting, marker.northing);
+                const roadWorldPos = toWorld(roadProj.e, roadProj.n, roadProj.rl);
+                const isConfirmed = marker.data && marker.data.IsConfirmed;
+                const pinColor = isConfirmed ? 0x3fb950 : 0xf0883e; // Green if Confirmed, Orange if Pending
+
+                // Vertical pole (4m tall) placed directly on the road centerline above the culvert deck
+                const poleGeo = new THREE.CylinderGeometry(0.12, 0.12, 4.0, 8);
+                const poleMat = new THREE.MeshBasicMaterial({ color: 0x238636, transparent: false, opacity: 0.85 });
+                const pole = new THREE.Mesh(poleGeo, poleMat);
+                pole.position.set(roadWorldPos.x, roadWorldPos.y + roadSurfaceLift + 2.0, roadWorldPos.z);
+                pole.userData = { culvertIndex: idx };
+                culvertPinGroup.add(pole);
+
+                // Diamond beacon on top
+                const diamondGeo = new THREE.OctahedronGeometry(0.9, 0);
+                const diamondMat = new THREE.MeshStandardMaterial({
+                    color: 0x0f5132,
+                    emissive: 0x0a3622,
+                    emissiveIntensity: 0.4,
+                    roughness: 0.25,
+                    metalness: 0.2
+                });
+                const diamond = new THREE.Mesh(diamondGeo, diamondMat);
+                diamond.position.set(roadWorldPos.x, roadWorldPos.y + roadSurfaceLift + 4.5, roadWorldPos.z);
+                diamond.userData = { culvertIndex: idx };
+                culvertPinGroup.add(diamond);
+
+                // Safely extract Chainage
+                const ch = Number(marker.data && marker.data.Chainage ? marker.data.Chainage : 0);
+                const chText = `CULV #${marker.data?.LocationIndex ?? idx + 1} • Ch. ${(ch / 1000).toFixed(3)}`;
+            });
+
+            scene.add(culvertPinGroup);
+
             // ─────────────────────────────────────────────────────────────────
             // 3D Culvert Solid Model Placement (Test Implementation)
             // ─────────────────────────────────────────────────────────────────
@@ -2876,7 +3172,6 @@
             } catch (e) {
                 console.warn("[CulvertCAD] Failed to read cached culvert solid from sessionStorage:", e);
             }
-
 
             //  * REMOVE WHEN TRIAL CULVERT TO BE REMOVED *  //
             if (!currentSolidData && window.CULVERT_TEST_SOLID_DATA) {
@@ -2914,13 +3209,66 @@
                 group.name = "Culvert_3D_Solid_Assembly";
                 if (!data || !data.solids) return group;
 
+                // Center the culvert assembly so that local (0, 0, 0) corresponds exactly to:
+                // X = 0: Centerline of the road carriageway
+                // Y = 0: Top surface of the road deck
+                // Z = 0: Center of the culvert barrel along the road
+                let roadCenterX = 0;
+                let roadCenterZ = 0;
+                let roadTopY = 0;
+
+                const bcSolid = data.solids.find(s => s.layer === 'BC' || s.layer === 'DBM');
+                if (bcSolid && bcSolid.parts && bcSolid.parts.length > 0) {
+                    let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity, maxY = -Infinity;
+                    bcSolid.parts.forEach(p => {
+                        (p.vertices || []).forEach(v => {
+                            if (v[0] < minX) minX = v[0];
+                            if (v[0] > maxX) maxX = v[0];
+                            if (v[1] > maxY) maxY = v[1];
+                            if (v[2] < minZ) minZ = v[2];
+                            if (v[2] > maxZ) maxZ = v[2];
+                        });
+                    });
+                    if (isFinite(minX) && isFinite(maxX)) roadCenterX = (minX + maxX) / 2;
+                    if (isFinite(minZ) && isFinite(maxZ)) roadCenterZ = (minZ + maxZ) / 2;
+                    if (isFinite(maxY)) roadTopY = maxY;
+                } else {
+                    const leftWall = data.solids.find(s => s.layer === 'LeftWall');
+                    const rightWall = data.solids.find(s => s.layer === 'RightWall');
+                    if (leftWall && rightWall && leftWall.parts && rightWall.parts) {
+                        let leftMaxX = -Infinity, rightMinX = Infinity, maxY = -Infinity, minZ = Infinity, maxZ = -Infinity;
+                        leftWall.parts.forEach(p => (p.vertices || []).forEach(v => {
+                            if (v[0] > leftMaxX) leftMaxX = v[0];
+                            if (v[1] > maxY) maxY = v[1];
+                            if (v[2] < minZ) minZ = v[2];
+                            if (v[2] > maxZ) maxZ = v[2];
+                        }));
+                        rightWall.parts.forEach(p => (p.vertices || []).forEach(v => {
+                            if (v[0] < rightMinX) rightMinX = v[0];
+                            if (v[1] > maxY) maxY = v[1];
+                            if (v[2] < minZ) minZ = v[2];
+                            if (v[2] > maxZ) maxZ = v[2];
+                        }));
+                        if (isFinite(leftMaxX) && isFinite(rightMinX)) roadCenterX = (leftMaxX + rightMinX) / 2;
+                        if (isFinite(minZ) && isFinite(maxZ)) roadCenterZ = (minZ + maxZ) / 2;
+                        if (isFinite(maxY)) roadTopY = maxY;
+                    } else if (data.bounds && data.bounds.min && data.bounds.max) {
+                        roadCenterX = (data.bounds.min[0] + data.bounds.max[0]) / 2;
+                        roadCenterZ = (data.bounds.min[2] + data.bounds.max[2]) / 2;
+                        roadTopY = data.bounds.max[1];
+                    }
+                }
+
                 function buildPartMesh(part, color, layer) {
                     const geom = new THREE.BufferGeometry();
                     const positions = [];
 
                     for (const f of part.faces) {
                         if (layer === 'PipeBaseArea' && f.length > 3) {
-                            const pts = f.map(ix => part.vertices[ix]);
+                            const pts = f.map(ix => {
+                                const raw = part.vertices[ix];
+                                return [raw[0] - roadCenterX, raw[1] - roadTopY, raw[2] - roadCenterZ];
+                            });
                             let nx = 0, ny = 0, nz = 0;
                             for (let i = 0; i < pts.length; i++) {
                                 const a = pts[i], b = pts[(i + 1) % pts.length];
@@ -2940,12 +3288,15 @@
                                 for (const tri of tris) for (const j of tri) positions.push(...pts[j]);
                             } else {
                                 for (let i = 1; i < f.length - 1; i++) {
-                                    for (const ix of [f[0], f[i], f[i + 1]]) positions.push(...part.vertices[ix]);
+                                    for (const ix of [0, i, i + 1]) positions.push(...pts[ix]);
                                 }
                             }
                         } else {
                             for (let i = 1; i < f.length - 1; i++) {
-                                for (const ix of [f[0], f[i], f[i + 1]]) positions.push(...part.vertices[ix]);
+                                for (const ix of [f[0], f[i], f[i + 1]]) {
+                                    const raw = part.vertices[ix];
+                                    positions.push(raw[0] - roadCenterX, raw[1] - roadTopY, raw[2] - roadCenterZ);
+                                }
                             }
                         }
                     }
@@ -3026,29 +3377,29 @@
 
                 if (!solidData || !solidData.solids || !culvertMarkerData.length) return;
 
-                // Calculate dynamic top vertical offset from the culvert solid's bounding box
-                const topOffset = (solidData && solidData.bounds && solidData.bounds.max && typeof solidData.bounds.max[1] === 'number')
-                    ? solidData.bounds.max[1]
-                    : 1.34;
+                const roadSurfaceLift = (typeof visualLift !== 'undefined') ? visualLift : 0.15;
 
                 culvertMarkerData.forEach(marker => {
                     const culvertModel = buildCulvertSolidMeshGroup(solidData);
+
+                    // 1. Maintain 1:1 true physical engineering geometry
                     culvertModel.scale.set(1, 1, 1);
 
-                    const roadRL = (marker.data && marker.data.RoadRL)
-                        ? Number(marker.data.RoadRL)
-                        : (Number(marker.rl) + topOffset);
+                    // 2. Project surveyed culvert point onto road centerline to align with road curve & center
+                    const roadProj = getRoadCenterlineProjection(marker.easting, marker.northing);
+                    const roadWorldPos = toWorld(roadProj.e, roadProj.n, roadProj.rl);
 
-                    const roadWorldPos = toWorld(marker.easting, marker.northing, roadRL);
-
+                    // 3. Align culvert deck flush with the road pavement surface (local Y=0 is road deck)
                     culvertModel.position.set(
                         roadWorldPos.x,
-                        roadWorldPos.y - topOffset,
+                        roadWorldPos.y + roadSurfaceLift,
                         roadWorldPos.z
                     );
 
-                    const roadHeading = getAlignmentDirectionAtChainage(marker.data.Chainage || 0);
-                    culvertModel.rotation.y = roadHeading;
+                    // 4. Orient along the exact road curve tangent at this projection point
+                    culvertModel.rotation.y = roadProj.heading;
+
+                    culvertModel.renderOrder = 25;
 
                     culvertSolidsGroup.add(culvertModel);
                 });
@@ -3167,7 +3518,7 @@
                             currentSolidData = dbSolid;
                             try {
                                 sessionStorage.setItem("culvert_cad_active_solid", JSON.stringify(dbSolid));
-                            } catch (e) {}
+                            } catch (e) { }
                             renderCulvertSolids(dbSolid);
                             console.info(`[CulvertCAD] Rendered 3D culvert solid model loaded from MongoDB for project ${currentProjectId}.`);
                         }
@@ -3181,9 +3532,15 @@
             const toggleSolidsBtn = document.getElementById("survey-map-toggle-culvert-solids");
             if (toggleSolidsBtn) {
                 toggleSolidsBtn.addEventListener("click", () => {
-                    culvertSolidsGroup.visible = !culvertSolidsGroup.visible;
-                    toggleSolidsBtn.setAttribute("aria-pressed", String(culvertSolidsGroup.visible));
-                    toggleSolidsBtn.innerHTML = culvertSolidsGroup.visible
+                    const isVisible = !culvertSolidsGroup.visible;
+                    culvertSolidsGroup.visible = isVisible;
+                    if (typeof culvertPinGroup !== "undefined") culvertPinGroup.visible = isVisible;
+                    if (typeof markers !== "undefined") markers.visible = isVisible;
+                    if (!isVisible && typeof infoBox !== "undefined") {
+                        infoBox.style.display = "none";
+                    }
+                    toggleSolidsBtn.setAttribute("aria-pressed", String(isVisible));
+                    toggleSolidsBtn.innerHTML = isVisible
                         ? '<i class="bi bi-box"></i> 3D Culvert: On'
                         : '<i class="bi bi-box"></i> 3D Culvert: Off';
                 });
@@ -3200,7 +3557,7 @@
                     currentSolidData = solidModel;
                     try {
                         sessionStorage.setItem("culvert_cad_active_solid", JSON.stringify(solidModel));
-                    } catch (e) {}
+                    } catch (e) { }
                     renderCulvertSolids(solidModel);
                     console.info(`[CulvertCAD] Successfully loaded culvert model '${file.name}' with ${solidModel.solids.length} solids.`);
 
@@ -3216,13 +3573,13 @@
                                 solidDataJson: JSON.stringify(solidModel)
                             })
                         })
-                        .then(res => res.json())
-                        .then(data => {
-                            if (data.success) {
-                                console.info(`[CulvertCAD] 3D culvert model saved to MongoDB for project ${currentProjectId}:`, data);
-                            }
-                        })
-                        .catch(err => console.warn("[CulvertCAD] Failed to persist solid model to DB:", err));
+                            .then(res => res.json())
+                            .then(data => {
+                                if (data.success) {
+                                    console.info(`[CulvertCAD] 3D culvert model saved to MongoDB for project ${currentProjectId}:`, data);
+                                }
+                            })
+                            .catch(err => console.warn("[CulvertCAD] Failed to persist solid model to DB:", err));
                     }
                 } catch (err) {
                     console.error("[CulvertCAD] Failed to parse culvert HTML:", err);
@@ -3301,21 +3658,22 @@
                 position: absolute;
                 display: none;
                 z-index: 1000;
-                width: 300px;
-                max-width: calc(100% - 16px);
-                max-height: 70%;
+                width: 320px;
+                max-width: calc(100% - 24px);
+                max-height: 80%;
                 overflow-y: auto;
                 box-sizing: border-box;
-                padding: 18px;
-                background: #f8f9fa;
-                color: #212529;
-                border: 1px solid #ced4da;
-                border-radius: 10px;
-                box-shadow: 0 4px 14px rgba(33, 37, 41, 0.12);
+                padding: 16px 18px;
+                background: rgba(22, 27, 34, 0.95);
+                color: #e6edf3;
+                border: 1px solid #30363d;
+                border-radius: 12px;
+                box-shadow: 0 16px 36px rgba(0, 0, 0, 0.65);
                 font-family: inherit;
                 font-size: 13px;
                 line-height: 1.6;
                 pointer-events: auto;
+                backdrop-filter: blur(8px);
             `;
 
             const mapWorkspace = document.getElementById("survey-map-container");
@@ -3323,7 +3681,7 @@
             mapWorkspace.appendChild(infoBox);
 
             const culvertRaycaster = new THREE.Raycaster();
-            culvertRaycaster.params.Points.threshold = 12;
+            culvertRaycaster.params.Points.threshold = 3;
 
             let selectedCulvertIndex = -1;
 
@@ -3369,19 +3727,35 @@
 
                 infoBox.replaceChildren();
 
-                // Card heading
+                // 1. Header with Close Button
                 const header = document.createElement("div");
-                header.textContent = "Culvert Specifications";
                 header.style.cssText = `
-                    font-size: 15px;
-                    font-weight: 600;
-                    color: #212529;
-                    padding-bottom: 12px;
-                    margin-bottom: 10px;
-                    border-bottom: 1px solid #dee2e6;
-                    `;
-
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding-bottom: 10px;
+        margin-bottom: 10px;
+        border-bottom: 1px solid #30363d;
+    `;
+                header.innerHTML = `
+        <span style="font-weight: 600; color: #f0883e; font-size: 14px;">
+            Culvert Location #${data.LocationIndex} (Ch. ${(Number(data.Chainage) / 1000).toFixed(3)})
+        </span>
+        <button type="button" id="btnCloseCulvertInfo" style="
+            background: transparent;
+            border: none;
+            color: #8b949e;
+            font-size: 18px;
+            cursor: pointer;
+            padding: 2px 6px;
+            line-height: 1;
+        ">&times;</button>
+    `;
                 infoBox.appendChild(header);
+                // Wire up close button
+                header.querySelector("#btnCloseCulvertInfo").addEventListener("click", () => {
+                    infoBox.style.display = "none";
+                });
 
                 // Specification rows
 
@@ -3393,7 +3767,7 @@
                         section.style.cssText = `
                             font-size: 13px;
                             font-weight: 600;
-                            color: #212529;
+                            color: #f0883e;
                             padding-top: 12px;
                             padding-bottom: 5px;
                             border-bottom: 1px solid #dee2e6;
@@ -3412,13 +3786,13 @@
                         align-items: flex-start;
                         gap: 12px;
                         padding: 7px 0;
-                        border-bottom: 1px solid #e9ecef;
+                        border-bottom: 1px solid #21262d;
                     `;
 
                     const labelElement = document.createElement("span");
                     labelElement.textContent = label;
                     labelElement.style.cssText = `
-                        color: #6c757d;
+                        color: #8b949e;
                         flex: 1;
                         min-width: 0;
                         overflow-wrap: anywhere;
@@ -3427,7 +3801,7 @@
                     const valueElement = document.createElement("span");
                     valueElement.textContent = String(value);
                     valueElement.style.cssText = `
-                        color: #212529;
+                        color: #f0883e;
                         font-weight: 500;
                         text-align: right;
                         flex: 1;
@@ -3440,41 +3814,18 @@
                     infoBox.appendChild(row);
                 });
 
+                // Dock card neatly to the top-left corner of the map so it NEVER covers the culvert or right layers panel
+                infoBox.style.position = "absolute";
+                infoBox.style.left = "16px";
+                infoBox.style.top = "70px";
+                infoBox.style.right = "auto";
                 infoBox.style.display = "block";
-
-                if (event) {
-                    const workspaceRect = mapWorkspace.getBoundingClientRect();
-
-                    let left = event.clientX - workspaceRect.left + 14;
-                    let top = event.clientY - workspaceRect.top + 14;
-
-                    const cardWidth = infoBox.offsetWidth;
-                    const cardHeight = infoBox.offsetHeight;
-
-                    if (left + cardWidth > workspaceRect.width - 8) {
-                        left = event.clientX - workspaceRect.left - cardWidth - 14;
-                    }
-
-                    if (top + cardHeight > workspaceRect.height - 8) {
-                        top = event.clientY - workspaceRect.top - cardHeight - 14;
-                    }
-
-                    left = Math.max(
-                        8,
-                        Math.min(left, workspaceRect.width - cardWidth - 8)
-                    );
-
-                    top = Math.max(
-                        8,
-                        Math.min(top, workspaceRect.height - cardHeight - 8)
-                    );
-
-                    infoBox.style.left = `${left}px`;
-                    infoBox.style.top = `${top}px`;
-                }
             };
 
             const findCulvertAtPointer = (event) => {
+                if (typeof culvertSolidsGroup !== "undefined" && !culvertSolidsGroup.visible) {
+                    return -1;
+                }
                 const rect = renderer.domElement.getBoundingClientRect();
 
                 const pointer = new THREE.Vector2(
@@ -3484,21 +3835,44 @@
 
                 culvertRaycaster.setFromCamera(pointer, camera);
 
+                // Check 3D diamond pins & poles
+                if (typeof culvertPinGroup !== "undefined" && culvertPinGroup.children.length > 0) {
+                    const pinHits = culvertRaycaster.intersectObjects(culvertPinGroup.children, false);
+                    if (pinHits.length > 0 && typeof pinHits[0].object.userData.culvertIndex === "number") {
+                        return pinHits[0].object.userData.culvertIndex;
+                    }
+                }
+
                 const hits = culvertRaycaster.intersectObject(markers);
 
                 return hits.length ? hits[0].index : -1;
             };
 
-            // Change cursor to hand/pointer on hover so user knows it is clickable
+            // Change cursor to pointer when hovering over culvert pins
             renderer.domElement.addEventListener("pointermove", (event) => {
                 const index = findCulvertAtPointer(event);
                 renderer.domElement.style.cursor = (index !== -1) ? "pointer" : "default";
             });
 
+            let pointerDownPos = { x: 0, y: 0 };
+            renderer.domElement.addEventListener("pointerdown", (e) => {
+                pointerDownPos = { x: e.clientX, y: e.clientY };
+            });
+
+            renderer.domElement.addEventListener("click", (event) => {
+                // If mouse moved more than 5px between down and up, it was a camera rotate/pan, NOT a click!
+                const dist = Math.hypot(event.clientX - pointerDownPos.x, event.clientY - pointerDownPos.y);
+                if (dist > 5) return;
+                const index = findCulvertAtPointer(event);
+                if (index !== -1) {
+                    selectCulvertByIndex(index);
+                }
+            });
+
             // Show card ONLY when explicitly clicked
             // Smooth Camera Glide Function
             let cameraGlideAnimation = null;
-            function glideCameraTo(targetPos, viewDistance = 16) {
+            function glideCameraTo(targetPos, viewDistance = 20) {
                 if (!controls) return;
 
                 const startTarget = controls.target.clone();
@@ -3508,7 +3882,7 @@
                 // Position camera offset at a natural 3D view angle
                 const endCameraPos = new THREE.Vector3(
                     endTarget.x + viewDistance * 0.7,
-                    endTarget.y + viewDistance * 0.5,
+                    endTarget.y + viewDistance * 0.65,
                     endTarget.z + viewDistance * 0.7
                 );
 
@@ -3537,24 +3911,71 @@
                 cameraGlideAnimation = requestAnimationFrame(updateGlide);
             }
 
-            // Show card AND smoothly glide camera to culvert when clicked
-            renderer.domElement.addEventListener("click", (event) => {
-                const index = findCulvertAtPointer(event);
+            // =========================================================
+            // Sequential Culvert Stepper & Direct Jump Dropdown
+            // =========================================================
+            const culvertStepperEl = document.getElementById("survey-culvert-stepper");
+            const culvertSelectEl = document.getElementById("stepper-culvert-select");
+            const btnPrevCulvert = document.getElementById("btn-prev-culvert");
+            const btnNextCulvert = document.getElementById("btn-next-culvert");
 
-                if (index !== -1) {
-                    // selectedCulvertIndex = index;
-                    // showCulvertInfo(index, event);
+            function populateCulvertDropdown() {
+                if (!culvertSelectEl || !culvertMarkerData.length) return;
+                culvertSelectEl.innerHTML = "";
+                culvertMarkerData.forEach((marker, idx) => {
+                    const opt = document.createElement("option");
+                    opt.value = idx;
+                    const ch = marker.data && marker.data.Chainage ? Number(marker.data.Chainage) : 0;
+                    const chKm = Math.floor(ch / 1000);
+                    const chM = Math.floor(ch % 1000).toString().padStart(3, '0');
+                    opt.textContent = `Culvert No.${marker.data.LocationIndex} (Ch. ${chKm}+${chM})`;
+                    culvertSelectEl.appendChild(opt);
+                });
+            }
 
-                    // Smoothly focus camera on this culvert
-                    const marker = culvertMarkerData[index];
-                    if (marker) {
-                        glideCameraTo(marker.position, 16);
-                    }
-                } else if (!infoBox.contains(event.target)) {
-                    selectedCulvertIndex = -1;
-                    infoBox.style.display = "none";
+            function selectCulvertByIndex(index, glideCamera = true) {
+                if (!culvertMarkerData.length) return;
+                if (index < 0) index = culvertMarkerData.length - 1;
+                if (index >= culvertMarkerData.length) index = 0;
+
+                selectedCulvertIndex = index;
+                showCulvertInfo(index);
+
+                if (culvertSelectEl) {
+                    culvertSelectEl.value = String(index);
                 }
-            });
+
+                const marker = culvertMarkerData[index];
+                if (marker && glideCamera) {
+                    const roadProj = getRoadCenterlineProjection(marker.easting, marker.northing);
+                    const targetPos = toWorld(roadProj.e, roadProj.n, roadProj.rl);
+                    const roadLift = (typeof visualLift !== 'undefined') ? visualLift : 0.15;
+                    targetPos.y += roadLift;
+                    glideCameraTo(targetPos, 18);
+                }
+            }
+
+            if (culvertMarkerData.length > 0) {
+                if (culvertStepperEl) culvertStepperEl.style.display = "inline-flex";
+                populateCulvertDropdown();
+
+                culvertSelectEl?.addEventListener("change", (e) => {
+                    const idx = parseInt(e.target.value, 10);
+                    if (!isNaN(idx)) {
+                        selectCulvertByIndex(idx, true);
+                    }
+                });
+
+                btnPrevCulvert?.addEventListener("click", () => {
+                    const nextIdx = (selectedCulvertIndex <= 0) ? culvertMarkerData.length - 1 : selectedCulvertIndex - 1;
+                    selectCulvertByIndex(nextIdx, true);
+                });
+
+                btnNextCulvert?.addEventListener("click", () => {
+                    const nextIdx = (selectedCulvertIndex >= culvertMarkerData.length - 1) ? 0 : selectedCulvertIndex + 1;
+                    selectCulvertByIndex(nextIdx, true);
+                });
+            }
         }
 
         const span = Math.max(maxE - minE, maxN - minN, 10);
@@ -3564,7 +3985,7 @@
             0
         );
 
-        const initialDistance = span * 1.2;
+        const initialDistance = span * 0.50;
 
         const setCameraView = (view) => {
             const width = canvas.clientWidth || 800;
@@ -3599,7 +4020,7 @@
             const distance = Math.max(
                 distanceForWidth,
                 distanceForHeight
-            ) * 1.25;
+            ) * 0.70;
 
             if (view === "top" || view === "north") {
                 camera.position.set(
@@ -3611,9 +4032,9 @@
             } else {
                 camera.up.set(0, 1, 0);
                 camera.position.set(
-                    target.x + distance * 0.65,
-                    target.y + distance * 0.65,
-                    target.z + distance * 0.65
+                    target.x + distance * 0.45,
+                    target.y + distance * 0.35,
+                    target.z + distance * 0.45
                 );
             }
 
@@ -3626,9 +4047,9 @@
         };
 
         camera.position.set(
-            target.x + initialDistance * 0.65,
-            target.y + initialDistance * 0.65,
-            target.z + initialDistance * 0.65
+            target.x + initialDistance * 0.45,
+            target.y + initialDistance * 0.35,
+            target.z + initialDistance * 0.45
         );
         camera.lookAt(target);
 
@@ -3644,10 +4065,13 @@
             controls.rotateSpeed = 0.8;
 
             // Prevent the camera from getting too close to the terrain.
-            controls.minDistance = 0.000005;
+            controls.minDistance = 0.0005;
 
             // Prevent zooming so far out that the model becomes difficult to find.
             controls.maxDistance = Math.max(500, span * 10);
+
+            // Prevent camera from orbiting below ground level (clamp to ~84°, just above horizon)
+            controls.maxPolarAngle = Math.PI;
 
             // Enable rotation, zoom and panning.
             controls.enableRotate = true;
@@ -3712,35 +4136,57 @@
         });
 
         // Survey map navigation buttons
+        const topViewBtn = document.getElementById("survey-map-top-view");
+        const threeDViewBtn = document.getElementById("survey-map-3d-view");
+        const northUpBtn = document.getElementById("survey-map-north-up");
+        const layersToggleBtn = document.getElementById("survey-cad-layers-toggle");
+
+        function setActiveViewButton(activeBtn) {
+            [topViewBtn, threeDViewBtn, northUpBtn].forEach(btn => {
+                if (!btn) return;
+                const isActive = (btn === activeBtn);
+                btn.classList.toggle("active", isActive);
+                btn.setAttribute("aria-pressed", String(isActive));
+            });
+        }
+
         document.getElementById("survey-map-recenter")?.addEventListener("click", () => {
             window.setSurveyMapMode?.("3d");
             setCameraView("3d");
+            setActiveViewButton(threeDViewBtn);
         });
 
-        document.getElementById("survey-map-top-view")?.addEventListener("click", () => {
+        topViewBtn?.addEventListener("click", () => {
             window.setSurveyMapMode?.("top");
             setCameraView("top");
+            setActiveViewButton(topViewBtn);
         });
 
-        document.getElementById("survey-map-3d-view")?.addEventListener("click", () => {
+        threeDViewBtn?.addEventListener("click", () => {
             window.setSurveyMapMode?.("3d");
             setCameraView("3d");
+            setActiveViewButton(threeDViewBtn);
         });
 
-        document.getElementById("survey-map-north-up")?.addEventListener("click", () => {
+        northUpBtn?.addEventListener("click", () => {
             setCameraView("north");
+            setActiveViewButton(northUpBtn);
         });
 
         // Toggle & Close Floating CAD Layers Drawer
         const cadLayersDrawer = document.getElementById("survey-cad-layers-drawer");
-        document.getElementById("survey-cad-layers-toggle")?.addEventListener("click", () => {
+        layersToggleBtn?.addEventListener("click", () => {
             if (cadLayersDrawer) {
-                cadLayersDrawer.classList.toggle("collapsed");
+                const isCollapsed = cadLayersDrawer.classList.toggle("collapsed");
+                layersToggleBtn.classList.toggle("active", !isCollapsed);
+                layersToggleBtn.setAttribute("aria-pressed", String(!isCollapsed));
             }
         });
         document.getElementById("survey-cad-layers-close")?.addEventListener("click", () => {
             if (cadLayersDrawer) {
                 cadLayersDrawer.classList.add("collapsed");
+                layersToggleBtn?.classList.remove("active");
+                layersToggleBtn?.setAttribute("aria-pressed", "false");
             }
         });
 
