@@ -582,6 +582,25 @@
                            autocomplete="off" />
                 </div>
 
+            <div class="cad-history-filters">
+                <select id="cadHistoryProjectFilter" class="cad-history-select">
+                    <option value="all">All Projects</option>
+                    @if (ViewBag.Projects != null)
+                    {
+                        foreach (var p in ViewBag.Projects)
+                        {
+                            <option value="@p.Id">@p.ProjectCode — @p.ProjectName</option>
+                        }
+                    }
+                </select>
+                <div class="cad-history-type-pills" id="cadHistoryTypeFilters">
+                    <button type="button" class="hist-pill active" data-type="all">All</button>
+                    <button type="button" class="hist-pill" data-type="3D_SOLID">3D Solid</button>
+                    <button type="button" class="hist-pill" data-type="3D_STL">3D STL</button>
+                    <button type="button" class="hist-pill" data-type="2D_DXF">2D DXF</button>
+                </div>
+            </div>
+
                 <div id="cadHistoryList" class="cad-history-list">
                     <div class="cad-history-loading">
                         <i class="bi bi-arrow-repeat spin"></i>

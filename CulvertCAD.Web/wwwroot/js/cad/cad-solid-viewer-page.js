@@ -527,32 +527,132 @@ window.saveSolidModelToMongo = async function (file, content, modelType = "3D_SO
     }
 };
 
+let currentTypeFilter = "all";
+let currentProjectFilter = "all";
+let currentSearchQuery = "";
+
 async function fetchRecentModels() {
     if (!historyList) return;
     historyList.innerHTML = `
-            <div class="cad-history-loading">
-                <i class="bi bi-arrow-repeat spin"></i>
-                <span>Loading saved models from database...</span>
-            </div>
-        `;
+        <div class="cad-history-loading">
+            <i class="bi bi-arrow-repeat spin"></i>
+            <span>Loading saved models from database...</span>
+        </div>
+    `;
 
     try {
-        // Change from 3D_SOLID to 3D:
-        const resp = await fetch("/api/cad/recent-models?modelType=3D");
+        const resp = await fetch("/api/cad/recent-models?modelType=ALL");
         if (!resp.ok) throw new Error("Failed to query recent models");
         const data = await resp.json();
 
         loadedHistoryItems = data.items || [];
-        renderHistoryItems(loadedHistoryItems);
+        applyHistoryFilters();
     } catch (err) {
         console.error("Error loading recent models:", err);
         historyList.innerHTML = `
-                <div class="cad-history-empty">
-                    <i class="bi bi-exclamation-triangle" style="font-size:24px;color:#f85149;"></i>
-                    <span>Could not load saved models: ${err.message}</span>
-                </div>
-            `;
+            <div class="cad-history-empty">
+                <i class="bi bi-exclamation-triangle" style="font-size:24px;color:#f85149;"></i>
+                <span>Could not load saved models: ${err.message}</span>
+            </div>
+        `;
     }
+}
+
+function applyHistoryFilters() {
+    const filtered = loadedHistoryItems.filter(item => {
+        // Project filter
+        const matchProject = currentProjectFilter === "all" || String(item.projectId) === String(currentProjectFilter);
+
+        // Drawing Type filter
+        const matchType = currentTypeFilter === "all" || item.modelType === currentTypeFilter;
+
+        // Search text
+        const query = currentSearchQuery.toLowerCase();
+        const matchSearch = !query ||
+            (item.projectCode || "").toLowerCase().includes(query) ||
+            (item.projectName || "").toLowerCase().includes(query) ||
+            (item.fileName || "").toLowerCase().includes(query);
+
+        return matchProject && matchType && matchSearch;
+    });
+
+    renderHistoryItems(filtered);
+}
+
+function renderHistoryItems(items) {
+    if (!historyList) return;
+    if (!items || items.length === 0) {
+        historyList.innerHTML = `
+            <div class="cad-history-empty">
+                <i class="bi bi-box" style="font-size:24px;"></i>
+                <span>No matching drawings or models found.</span>
+            </div>
+        `;
+        return;
+    }
+
+    historyList.innerHTML = items.map(item => {
+        const is2D = item.modelType === "2D_DXF";
+        const badgeClass = is2D ? "model-badge-2d" : (item.modelType === "3D_STL" ? "model-badge-stl" : "model-badge-3d");
+        const typeLabel = is2D ? "2D DXF" : (item.modelType === "3D_STL" ? "3D STL" : "3D SOLID");
+
+        return `
+            <div class="cad-history-item" data-code="${escapeHtml((item.projectCode || '').toLowerCase())}" data-name="${escapeHtml((item.projectName || '').toLowerCase())}" data-file="${escapeHtml((item.fileName || '').toLowerCase())}">
+                <div class="cad-item-top">
+                    <span class="cad-item-badge">${escapeHtml(item.projectCode)}</span>
+                    <span class="model-badge ${badgeClass}" style="font-size: 10px; padding: 2px 7px;">${typeLabel}</span>
+                    <span class="cad-item-date">${new Date(item.uploadedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                </div>
+                <h4 class="cad-item-name">${escapeHtml(item.projectName)}</h4>
+                <p class="cad-item-sub"><i class="bi bi-file-earmark-code"></i> ${escapeHtml(item.fileName || 'Culvert Drawing')}</p>
+                <div class="cad-item-footer">
+                    ${is2D
+                ? `<a href="/CadDrawings?projectId=${item.projectId}" class="cad-btn-load" style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
+                             <i class="bi bi-arrow-up-right-square"></i> Open in 2D CAD
+                           </a>`
+                : `<button type="button" class="cad-btn-load" data-project-id="${item.projectId}" data-model-type="${item.modelType || '3D_SOLID'}">
+                             <i class="bi bi-box-arrow-in-down-right"></i> Load in Viewer
+                           </button>`
+            }
+                </div>
+            </div>
+        `;
+    }).join("");
+
+    // Attach Load buttons
+    historyList.querySelectorAll("button.cad-btn-load").forEach(btn => {
+        btn.addEventListener("click", () => {
+            const projId = btn.dataset.projectId;
+            const modelType = btn.dataset.modelType || "3D_SOLID";
+            loadSolidFromDatabase(projId, modelType);
+        });
+    });
+}
+
+// Wire up event listeners
+const projectFilterEl = document.getElementById("cadHistoryProjectFilter");
+if (projectFilterEl) {
+    projectFilterEl.addEventListener("change", (e) => {
+        currentProjectFilter = e.target.value;
+        applyHistoryFilters();
+    });
+}
+
+const typePills = document.querySelectorAll("#cadHistoryTypeFilters .hist-pill");
+typePills.forEach(pill => {
+    pill.addEventListener("click", () => {
+        typePills.forEach(p => p.classList.remove("active"));
+        pill.classList.add("active");
+        currentTypeFilter = pill.dataset.type || "all";
+        applyHistoryFilters();
+    });
+});
+
+if (historySearch) {
+    historySearch.addEventListener("input", (e) => {
+        currentSearchQuery = e.target.value.trim();
+        applyHistoryFilters();
+    });
 }
 
 function renderHistoryItems(items) {

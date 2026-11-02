@@ -1,10 +1,8 @@
-﻿
-/* =========================================================
+﻿/* =========================================================
    CULVERT LOCATOR — CAD SOLID VIEWER
    Unified tab-headed viewer card
    Aligned with the application design system
    ========================================================= */
-
 
 /* ---------------------------------------------------------
    1. PAGE FOUNDATION
@@ -26,7 +24,6 @@
     .cad-solid-page *::after {
         box-sizing: border-box;
     }
-
 
     /* ---------------------------------------------------------
    2. PAGE INTRODUCTION
@@ -56,7 +53,6 @@
             font-size: 1rem;
         }
 
-
     /* ---------------------------------------------------------
    3. UNIFIED VIEWER CARD
    --------------------------------------------------------- */
@@ -72,7 +68,6 @@
         border-radius: 11px;
         box-shadow: var(--shadow-sm, none);
     }
-
 
         /* ---------------------------------------------------------
    4. VIEWER TABS — CARD HEADER
@@ -156,7 +151,6 @@
                 display: none !important;
             }
 
-
     /* ---------------------------------------------------------
    6. INSTRUCTION PANEL
    --------------------------------------------------------- */
@@ -175,7 +169,6 @@
         .cad-solid-page .cad-instructions[open] {
             border-color: var(--acc);
         }
-
 
     /* Instruction heading */
 
@@ -207,7 +200,6 @@
             outline-offset: -3px;
         }
 
-
     /* Instruction title */
 
     .cad-solid-page .cad-instructions-title {
@@ -224,7 +216,6 @@
             color: var(--acc);
             font-size: 1rem;
         }
-
 
     /* Expand / collapse indicator */
 
@@ -248,7 +239,6 @@
         transform: rotate(180deg);
     }
 
-
     /* Expanded content */
 
     .cad-solid-page .cad-instructions-content {
@@ -271,7 +261,6 @@
         transform: translateY(0);
     }
 }
-
 
 /* ---------------------------------------------------------
    7. INSTRUCTION HIGHLIGHT
@@ -310,7 +299,6 @@
         line-height: 1.6;
     }
 
-
 /* ---------------------------------------------------------
    8. NUMBERED INSTRUCTION STEPS
    --------------------------------------------------------- */
@@ -338,7 +326,6 @@
         border-color: var(--acc);
     }
 
-
 /* Step number */
 
 .cad-solid-page .cad-step-number {
@@ -356,7 +343,6 @@
     font-weight: var(--fw-semibold, 600);
     font-variant-numeric: tabular-nums;
 }
-
 
 /* Step text */
 
@@ -387,7 +373,6 @@
     border-radius: 4px;
     font-size: 0.76rem;
 }
-
 
 /* ---------------------------------------------------------
    9. IMPORTANT WARNING — YELLOW HIGHLIGHT
@@ -426,7 +411,6 @@
         line-height: 1.6;
     }
 
-
 /* ---------------------------------------------------------
    10. FILE IMPORT TOOLBARS
    --------------------------------------------------------- */
@@ -444,7 +428,6 @@
     border: 1px solid var(--bdr);
     border-radius: 8px;
 }
-
 
     /* File selection */
 
@@ -482,7 +465,6 @@
             .cad-solid-page .cad-solid-toolbar input[type="file"]::file-selector-button:hover {
                 border-color: var(--acc);
             }
-
 
     /* Toolbar buttons */
 
@@ -523,7 +505,6 @@
             cursor: not-allowed;
         }
 
-
 /* Primary action */
 
 .cad-solid-page #fitModel {
@@ -538,14 +519,12 @@
         filter: brightness(1.08);
     }
 
-
 /* Secondary actions */
 
 .cad-solid-page #resetModel,
 .cad-solid-page #clearHtmlViewer {
     background: var(--bg-in);
 }
-
 
 /* ---------------------------------------------------------
    11. VIEWER STATUS INFORMATION
@@ -588,7 +567,6 @@
         display: none;
     }
 
-
 /* ---------------------------------------------------------
    12. STL THREE.JS VIEWPORT
    --------------------------------------------------------- */
@@ -612,7 +590,6 @@
     width: 100%;
     height: 100%;
 }
-
 
 /* ---------------------------------------------------------
    13. HTML PREVIEW
@@ -641,7 +618,6 @@
         display: none !important;
     }
 
-
 /* Empty-state icon */
 
 .cad-solid-page .cad-html-empty-icon {
@@ -660,7 +636,6 @@
         font-size: 1.8rem;
     }
 
-
 /* Empty-state text */
 
 .cad-solid-page .cad-html-empty-state h3 {
@@ -677,7 +652,6 @@
     font-size: 0.83rem;
     line-height: 1.6;
 }
-
 
 /* HTML iframe container */
 
@@ -706,7 +680,6 @@
     background: #1b2029;
 }
 
-
 /* ---------------------------------------------------------
    14. ACCESSIBILITY AND INTERACTION
    --------------------------------------------------------- */
@@ -719,13 +692,11 @@
     outline-offset: 2px;
 }
 
-
 /* ---------------------------------------------------------
    15. RESPONSIVE LAYOUT
    --------------------------------------------------------- */
 
 @media (max-width: 900px) {
-
     .cad-solid-page .cad-viewer-viewport,
     .cad-solid-page .cad-html-frame-container {
         height: 65vh;
@@ -734,14 +705,12 @@
 }
 
 @media (max-width: 760px) {
-
     .cad-solid-page .cad-instruction-steps {
         grid-template-columns: 1fr;
     }
 }
 
 @media (max-width: 640px) {
-
     .cad-solid-page {
         padding: var(--sp-4, 16px);
     }
@@ -832,13 +801,11 @@
         }
 }
 
-
 /* ---------------------------------------------------------
    16. REDUCED MOTION
    --------------------------------------------------------- */
 
 @media (prefers-reduced-motion: reduce) {
-
     .cad-solid-page .cad-viewer-tab,
     .cad-solid-page .cad-instructions,
     .cad-solid-page .cad-instructions-summary,
@@ -984,7 +951,6 @@
 /* Responsive arrangement. */
 
 @media (max-width: 640px) {
-
     .cad-solid-page .cad-viewer-status.is-model-loaded {
         gap: 8px;
         padding: 9px;
@@ -1065,7 +1031,7 @@
 .cad-solid-page .cad-status-dimension {
     display: flex;
     align-items: center;
-    justify-content:flex-start;
+    justify-content: flex-start;
     gap: 8px;
     min-width: 0;
     padding-right: 9px;
@@ -1110,7 +1076,6 @@
 /* Responsive proportions */
 
 @media (max-width: 760px) {
-
     .cad-solid-page .cad-status-metrics {
         grid-template-columns: minmax(130px, 1fr) minmax(0, 2fr);
     }
@@ -1126,7 +1091,6 @@
 }
 
 @media (max-width: 520px) {
-
     .cad-solid-page .cad-status-metrics {
         grid-template-columns: 1fr;
     }
@@ -1135,7 +1099,6 @@
         grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 }
-
 
 /* ---------------------------------------------------------
    19. HTML PREVIEW — FULL SCREEN MODE
@@ -1448,6 +1411,61 @@
             border-color: #f0883e;
             outline: none;
         }
+
+/* Drawer Filters (Project & Type) */
+.cad-history-filters {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 0 1.5rem 10px 1.5rem;
+    border-bottom: 1px solid #30363d;
+}
+
+.cad-history-select {
+    width: 100%;
+    padding: 7px 10px;
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 6px;
+    color: #e6edf3;
+    font-size: 12px;
+}
+
+    .cad-history-select:focus {
+        border-color: #f0883e;
+        outline: none;
+    }
+
+.cad-history-type-pills {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+}
+
+.hist-pill {
+    background: #0d1117;
+    border: 1px solid #30363d;
+    color: #8b949e;
+    padding: 4px 10px;
+    border-radius: 100px;
+    font-size: 11px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+    .hist-pill:hover {
+        border-color: #8b949e;
+        color: #e6edf3;
+    }
+
+    .hist-pill.active {
+        background: rgba(240, 136, 62, 0.15);
+        border-color: #f0883e;
+        color: #f0883e;
+        font-weight: 600;
+    }
 
 .cad-history-list {
     flex: 1;

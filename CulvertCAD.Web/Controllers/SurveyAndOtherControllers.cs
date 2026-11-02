@@ -7,7 +7,6 @@ using CulvertCAD.Infrastructure.MySQL.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 
-
 // CulvertCAD.Web/Controllers/SurveyController.cs
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -946,18 +945,22 @@ public class SurveyController : Controller
 
     [HttpGet]
     [Route("api/cad/recent-models")]
-    public async Task<IActionResult> GetRecentModels([FromQuery] string modelType = "3D_SOLID")
+    public async Task<IActionResult> GetRecentModels([FromQuery] string? modelType = null, [FromQuery] int? projectId = null)
     {
         if (User.Identity?.IsAuthenticated != true)
             return Unauthorized();
 
         bool isAdmin = User.IsInRole("SuperAdmin") || User.IsInRole("Admin");
 
-        // Fetch accessible projects for the current user
         var projectQuery = _db.Projects.AsQueryable();
         if (!isAdmin)
         {
             projectQuery = projectQuery.Where(p => p.CreatedByUserId == CurrentUserId || p.Members.Any(m => m.UserId == CurrentUserId));
+        }
+
+        if (projectId.HasValue && projectId.Value > 0)
+        {
+            projectQuery = projectQuery.Where(p => p.Id == projectId.Value);
         }
 
         var accessibleProjects = await projectQuery
@@ -972,17 +975,17 @@ public class SurveyController : Controller
         List<CulvertSolidDocument> solids = new();
         try
         {
-            solids = await _solidRepo.GetRecentSolidsAsync(accessibleProjects.Keys, limit: 20);
+            solids = await _solidRepo.GetRecentSolidsAsync(accessibleProjects.Keys, limit: 100);
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             return Json(new { success = false, message = "Document database is temporarily unreachable.", items = new List<object>() });
         }
 
         var items = solids
-       .Where(s => string.IsNullOrEmpty(modelType)
-             || (modelType == "3D" && (s.ModelType == "3D_SOLID" || s.ModelType == "3D_STL"))
-             || string.Equals(s.ModelType, modelType, StringComparison.OrdinalIgnoreCase))
+            .Where(s => string.IsNullOrEmpty(modelType) || modelType.Equals("ALL", StringComparison.OrdinalIgnoreCase)
+                 || (modelType.Equals("3D", StringComparison.OrdinalIgnoreCase) && (s.ModelType == "3D_SOLID" || s.ModelType == "3D_STL"))
+                 || string.Equals(s.ModelType, modelType, StringComparison.OrdinalIgnoreCase))
             .Select(s => new
             {
                 id = s.Id,
