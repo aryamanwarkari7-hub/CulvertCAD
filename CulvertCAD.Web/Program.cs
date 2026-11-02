@@ -70,32 +70,11 @@ builder.Services.ConfigureApplicationCookie(opt =>
 
 // ── Repositories ──────────────────────────────────────────────────────────────
 builder.Services.AddScoped<ISurveyRepository, SurveyRepository>();
-builder.Services.AddScoped<ICalcResultRepository, CalcResultRepository>();
-builder.Services.AddScoped<IRevisionInputRepository, RevisionInputRepository>();
-builder.Services.AddScoped<IDrawingRepository, DrawingRepository>();
 builder.Services.AddScoped<IAlignmentRepository, AlignmentRepository>();
-builder.Services.AddScoped<IBatchRunRepository, BatchRunRepository>();
 builder.Services.AddScoped<ICulvertSolidRepository, CulvertSolidRepository>();
-builder.Services.AddScoped<IPipeCatalogRepository, PipeCatalogRepository>();
-builder.Services.AddScoped<IRevisionRepository, RevisionRepository>();
 
 // ── Application Services ──────────────────────────────────────────────────────
-builder.Services.AddScoped<IHydrologyCalculationService, HydrologyCalculationService>();
-builder.Services.AddScoped<IHeadwaterCalculationService, HeadwaterCalculationService>();
-builder.Services.AddScoped<IHydraulicCalculationService, HydraulicCalculationService>();
-builder.Services.AddScoped<IStructuralCalculationService, StructuralCalculationService>();
-builder.Services.AddScoped<IPipeSelectionService, PipeSelectionService>();
-builder.Services.AddScoped<IDesignCalculationService, DesignCalculationService>();
-builder.Services.AddScoped<IFOSCalculationService, FOSCalculationService>();
-builder.Services.AddScoped<ILiveLoadService, LiveLoadService>();
-builder.Services.AddScoped<IBeddingService, BeddingService>();
-builder.Services.AddScoped<IRevisionService, RevisionService>();
 builder.Services.AddScoped<ISurveyImportService, SurveyImportService>();
-builder.Services.AddScoped<IBOQService, BOQService>();
-builder.Services.AddScoped<IDxfDrawingEngine, DxfDrawingEngine>();
-
-builder.Services.AddScoped<IEngineeringInputValidationService, EngineeringInputValidationService>();
-
 builder.Services.AddScoped<
     IChannelSequenceEvaluationService,
     ChannelSequenceEvaluationService>();
@@ -103,21 +82,6 @@ builder.Services.AddScoped<
 // ── MVC ───────────────────────────────────────────────────────────────────────
 builder.Services.AddControllersWithViews();
 builder.Services.AddHttpContextAccessor();
-
-builder.Services.AddSingleton(
-    builder
-        .Configuration.GetSection("EngineeringCalculationSettings")
-        .Get<EngineeringCalculationSettings>()
-        ?? new EngineeringCalculationSettings
-        {
-            ManningN = 0.015,
-            TrenchWidthClearanceM = 0.6,
-            StructuralKmu = 0.150,
-            BeddingClass = "ClassB",
-            BeddingFactor = 1.9,
-            StructuralFosMinimum = 1.5
-        }
-);
 
 // ── Rate Limiting (DoS Protection) ───────────────────────────────────────────
 builder.Services.AddRateLimiter(options =>
@@ -151,7 +115,10 @@ using (var scope = app.Services.CreateScope())
     var rm = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<int>>>();
 
     await db.Database.MigrateAsync();
-    await SeedAsync(db, um, rm);
+    if (app.Environment.IsDevelopment())
+    {
+        await SeedAsync(db, um, rm);
+    }
 }
 
 if (!app.Environment.IsDevelopment())

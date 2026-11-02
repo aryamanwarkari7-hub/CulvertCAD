@@ -1,4 +1,5 @@
 ﻿using CulvertCAD.Core.Repositories;
+
 // CulvertCAD.Web/Controllers/ProjectsController.cs
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
@@ -44,18 +45,28 @@ public class ProjectsController : Controller
 
         var dtos = projects.Select(p => new ProjectDto
         {
-            Id = p.Id, ProjectName = p.ProjectName, ProjectCode = p.ProjectCode,
-            ClientName = p.ClientName, ConsultantName = p.ConsultantName,
-            Location = p.Location, State = p.State, District = p.District,
-            RoadName = p.RoadName, ChainageFrom = p.ChainageFrom, ChainageTo = p.ChainageTo,
-            Status = p.Status.ToString(), CreatedAt = p.CreatedAt,
+            Id = p.Id,
+            ProjectName = p.ProjectName,
+            ProjectCode = p.ProjectCode,
+            ClientName = p.ClientName,
+            ConsultantName = p.ConsultantName,
+            Location = p.Location,
+            State = p.State,
+            District = p.District,
+            RoadName = p.RoadName,
+            ChainageFrom = p.ChainageFrom,
+            ChainageTo = p.ChainageTo,
+            Status = p.Status.ToString(),
+            CreatedAt = p.CreatedAt,
             CreatedByName = p.CreatedBy?.FullName ?? "",
             HasSurveyData = !string.IsNullOrEmpty(p.SurveyCollectionId),
-            HasAlignment  = !string.IsNullOrEmpty(p.AlignmentCollectionId),
+            HasAlignment = !string.IsNullOrEmpty(p.AlignmentCollectionId),
             Members = p.Members?.Select(m => new ProjectMemberDto
             {
-                UserId = m.UserId, FullName = m.User?.FullName ?? "",
-                Email = m.User?.Email ?? "", Role = m.Role.ToString()
+                UserId = m.UserId,
+                FullName = m.User?.FullName ?? "",
+                Email = m.User?.Email ?? "",
+                Role = m.Role.ToString()
             }).ToList() ?? new()
         }).ToList();
 
@@ -71,27 +82,40 @@ public class ProjectsController : Controller
 
         if (p == null) return NotFound();
 
+        bool isAdmin = User.IsInRole("SuperAdmin") || User.IsInRole("Admin");
+        if (!isAdmin && p.CreatedByUserId != CurrentUserId && !p.Members.Any(m => m.UserId == CurrentUserId))
+        {
+            return Forbid();
+        }
+
         var survey = await _surveyRepo.GetByProjectAsync(id);
 
         var dto = new ProjectDto
         {
-            Id = p.Id, ProjectName = p.ProjectName, ProjectCode = p.ProjectCode,
-            ClientName = p.ClientName, ConsultantName = p.ConsultantName,
-            Location = p.Location, State = p.State, District = p.District,
-            RoadName = p.RoadName, ChainageFrom = p.ChainageFrom, ChainageTo = p.ChainageTo,
-            Status = p.Status.ToString(), CreatedAt = p.CreatedAt,
+            Id = p.Id,
+            ProjectName = p.ProjectName,
+            ProjectCode = p.ProjectCode,
+            ClientName = p.ClientName,
+            ConsultantName = p.ConsultantName,
+            Location = p.Location,
+            State = p.State,
+            District = p.District,
+            RoadName = p.RoadName,
+            ChainageFrom = p.ChainageFrom,
+            ChainageTo = p.ChainageTo,
+            Status = p.Status.ToString(),
+            CreatedAt = p.CreatedAt,
             CreatedByName = p.CreatedBy?.FullName ?? "",
 
             HasSurveyData = survey != null,
             Members = p.Members?.Select(m => new ProjectMemberDto
             {
-                UserId = m.UserId, FullName = m.User?.FullName ?? "",
-                Email = m.User?.Email ?? "", Role = m.Role.ToString()
+                UserId = m.UserId,
+                FullName = m.User?.FullName ?? "",
+                Email = m.User?.Email ?? "",
+                Role = m.Role.ToString()
             }).ToList() ?? new()
         };
-
-
-
 
         var alignment = survey == null
             ? null
@@ -109,7 +133,6 @@ public class ProjectsController : Controller
             DetectedCulverts = survey.DetectedCulverts.Count,
             AlignmentLengthM = alignment?.TotalLengthM ?? 0
         };
-
 
         return View(dto);
     }
@@ -130,16 +153,16 @@ public class ProjectsController : Controller
         var project = new Project
         {
             OrganisationId = org.Id,
-            ProjectName    = model.ProjectName,
-            ProjectCode    = model.ProjectCode,
-            ClientName     = model.ClientName,
+            ProjectName = model.ProjectName,
+            ProjectCode = model.ProjectCode,
+            ClientName = model.ClientName,
             ConsultantName = model.ConsultantName,
-            Location       = model.Location,
-            State          = model.State,
-            District       = model.District,
-            RoadName       = model.RoadName,
-            ChainageFrom   = model.ChainageFrom,
-            ChainageTo     = model.ChainageTo,
+            Location = model.Location,
+            State = model.State,
+            District = model.District,
+            RoadName = model.RoadName,
+            ChainageFrom = model.ChainageFrom,
+            ChainageTo = model.ChainageTo,
             CreatedByUserId = CurrentUserId,
         };
         _db.Projects.Add(project);
@@ -147,7 +170,8 @@ public class ProjectsController : Controller
 
         _db.ProjectMembers.Add(new ProjectMember
         {
-            ProjectId = project.Id, UserId = CurrentUserId,
+            ProjectId = project.Id,
+            UserId = CurrentUserId,
             Role = ProjectMemberRole.ProjectManager
         });
         await _db.SaveChangesAsync();
@@ -228,8 +252,26 @@ public class ProjectsController : Controller
         if (!Enum.TryParse<ProjectMemberRole>(role, out var roleEnum))
             return BadRequest("Invalid role.");
 
-        _db.ProjectMembers.Add(new ProjectMember
+        var project = await _db.Projects.FindAsync(projectId);
+        if (project == null) return NotFound();
+
+        bool isAdmin = User.IsInRole("SuperAdmin") || User.IsInRole("Admin");
+        bool isManager = await _db.ProjectMembers.AnyAsync(m => m.ProjectId == projectId && m.UserId == CurrentUserId && m.Role == ProjectMemberRole.ProjectManager);
+        if (!isAdmin && !isManager && project.CreatedByUserId != CurrentUserId)
+        {
+            return Forbid();
+        }
+
+        var existing = await _db.ProjectMembers.FirstOrDefaultAsync(m => m.ProjectId == projectId && m.UserId == userId);
+        if (existing != null)
+        {
+            existing.Role = roleEnum;
+        }
+        else
+        {
+            _db.ProjectMembers.Add(new ProjectMember
             { ProjectId = projectId, UserId = userId, Role = roleEnum });
+        }
         await _db.SaveChangesAsync();
 
         return RedirectToAction("Details", new { id = projectId });
@@ -239,12 +281,23 @@ public class ProjectsController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RemoveMember(int projectId, int userId)
     {
+        var project = await _db.Projects.FindAsync(projectId);
+        if (project == null) return NotFound();
+
+        bool isAdmin = User.IsInRole("SuperAdmin") || User.IsInRole("Admin");
+        bool isManager = await _db.ProjectMembers.AnyAsync(m => m.ProjectId == projectId && m.UserId == CurrentUserId && m.Role == ProjectMemberRole.ProjectManager);
+        if (!isAdmin && !isManager && project.CreatedByUserId != CurrentUserId)
+        {
+            return Forbid();
+        }
+
         var m = await _db.ProjectMembers
             .FirstOrDefaultAsync(x => x.ProjectId == projectId && x.UserId == userId);
-        if (m != null) { _db.ProjectMembers.Remove(m); await _db.SaveChangesAsync(); }
+        if (m != null)
+        {
+            _db.ProjectMembers.Remove(m);
+            await _db.SaveChangesAsync();
+        }
         return RedirectToAction("Details", new { id = projectId });
     }
 }
-
-
-

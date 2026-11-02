@@ -568,7 +568,7 @@ function renderHistoryItems(items) {
     }
 
     historyList.innerHTML = items.map(item => `
-            <div class="cad-history-item" data-code="${(item.projectCode || '').toLowerCase()}" data-name="${(item.projectName || '').toLowerCase()}" data-file="${(item.fileName || '').toLowerCase()}">
+            <div class="cad-history-item" data-code="${escapeHtml((item.projectCode || '').toLowerCase())}" data-name="${escapeHtml((item.projectName || '').toLowerCase())}" data-file="${escapeHtml((item.fileName || '').toLowerCase())}">
                 <div class="cad-item-top">
                     <span class="cad-item-badge">${escapeHtml(item.projectCode)}</span>
                     <span class="cad-item-date">${new Date(item.uploadedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
@@ -692,7 +692,12 @@ async function loadSolidFromDatabase(projectId, modelType = "3D_SOLID") {
 
 function escapeHtml(str) {
     if (!str) return "";
-    return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
 }
 
 if (btnOpenHistory && historyDrawer) {

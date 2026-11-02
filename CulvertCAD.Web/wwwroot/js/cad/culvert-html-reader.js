@@ -81,16 +81,11 @@
         },
 
         /**
-         * Safely evaluates raw JS object text or JSON.
+         * Safely evaluates raw JSON solid model data.
          */
         _evaluateData(rawString) {
             const clean = rawString.trim().replace(/;$/, "");
-            try {
-                return JSON.parse(clean);
-            } catch (jsonErr) {
-                // If not strict JSON (e.g., JS object with unquoted keys), evaluate via scoped function
-                return new Function(`"use strict"; return (${clean});`)();
-            }
+            return JSON.parse(clean);
         },
 
         /**

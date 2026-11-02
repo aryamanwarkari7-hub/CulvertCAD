@@ -497,7 +497,12 @@
 
     function escapeHtml(str) {
         if (!str) return "";
-        return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        return String(str)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#39;");
     }
 
     /* =========================================================
@@ -586,13 +591,13 @@
             }
 
             historyList.innerHTML = items.map(item => `
-                <div class="cad-history-item" data-code="${(item.projectCode || '').toLowerCase()}" data-name="${(item.projectName || '').toLowerCase()}" data-file="${(item.fileName || '').toLowerCase()}">
+                <div class="cad-history-item" data-code="${escapeHtml((item.projectCode || '').toLowerCase())}" data-name="${escapeHtml((item.projectName || '').toLowerCase())}" data-file="${escapeHtml((item.fileName || '').toLowerCase())}">
                     <div class="cad-item-top">
-                        <span class="cad-item-badge">${item.projectCode}</span>
+                        <span class="cad-item-badge">${escapeHtml(item.projectCode)}</span>
                         <span class="cad-item-date">${new Date(item.uploadedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
                     </div>
-                    <h4 class="cad-item-name">${item.projectName}</h4>
-                    <p class="cad-item-sub"><i class="bi bi-file-earmark-ruled"></i> ${item.fileName || '2D Drawing'}</p>
+                    <h4 class="cad-item-name">${escapeHtml(item.projectName)}</h4>
+                    <p class="cad-item-sub"><i class="bi bi-file-earmark-ruled"></i> ${escapeHtml(item.fileName || '2D Drawing')}</p>
                     <div class="cad-item-footer">
                         <button type="button" class="cad-btn-load" data-project-id="${item.projectId}">
                             <i class="bi bi-box-arrow-in-down-right"></i> Load in Viewer
