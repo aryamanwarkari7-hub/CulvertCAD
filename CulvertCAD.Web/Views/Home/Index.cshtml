@@ -21,8 +21,9 @@
 <div class="page">
     <partial name="_PageHeader" />
 
-    <!-- Top Statistics -->
+    <!-- Top Statistics (Dynamic Main Cards) -->
     <div class="stat-grid">
+        <!-- 1. Total Projects -->
         <div class="stat-card">
             <div class="stat-icon stat-icon-accent">
                 <i class="bi bi-folder2-open" aria-hidden="true"></i>
@@ -33,6 +34,7 @@
             </div>
         </div>
 
+        <!-- 2. Active Projects -->
         <div class="stat-card">
             <div class="stat-icon stat-icon-success">
                 <i class="bi bi-check-circle" aria-hidden="true"></i>
@@ -40,6 +42,39 @@
             <div class="stat-body">
                 <div class="stat-val">@Model.ActiveProjects</div>
                 <div class="stat-lbl">Active Projects</div>
+            </div>
+        </div>
+
+        <!-- 3. Total CAD Drawings -->
+        <div class="stat-card">
+            <div class="stat-icon stat-icon-info">
+                <i class="bi bi-file-earmark-ruled" aria-hidden="true"></i>
+            </div>
+            <div class="stat-body">
+                <div class="stat-val">@Model.TotalDrawings</div>
+                <div class="stat-lbl">Total Drawings</div>
+            </div>
+        </div>
+
+        <!-- 4. 2D DXF Drawings -->
+        <div class="stat-card">
+            <div class="stat-icon stat-icon-cyan">
+                <i class="bi bi-aspect-ratio" aria-hidden="true"></i>
+            </div>
+            <div class="stat-body">
+                <div class="stat-val">@Model.Total2DDrawings</div>
+                <div class="stat-lbl">2D DXF Drawings</div>
+            </div>
+        </div>
+
+        <!-- 5. 3D Solid Models -->
+        <div class="stat-card">
+            <div class="stat-icon stat-icon-purple">
+                <i class="bi bi-box" aria-hidden="true"></i>
+            </div>
+            <div class="stat-body">
+                <div class="stat-val">@Model.Total3DModels</div>
+                <div class="stat-lbl">3D CAD Models</div>
             </div>
         </div>
     </div>

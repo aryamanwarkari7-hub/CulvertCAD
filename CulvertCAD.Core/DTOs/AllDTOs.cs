@@ -34,6 +34,19 @@ public class UserProfileDto
     public List<string> Roles { get; set; } = new();
 }
 
+public class EditUserDto
+{
+    public int Id { get; set; }
+    public string FullName { get; set; } = "";
+    public string Email { get; set; } = "";
+    public string? EmployeeCode { get; set; }
+    public string? Designation { get; set; }
+    public string? Department { get; set; }
+    public bool IsActive { get; set; } = true;
+    public string Role { get; set; } = "DesignEngineer";
+    public string? NewPassword { get; set; }
+}
+
 public class ProjectDto
 {
     public int Id { get; set; }
@@ -336,6 +349,9 @@ public class DashboardDto
 {
     public int TotalProjects { get; set; }
     public int ActiveProjects { get; set; }
+    public int TotalDrawings { get; set; }
+    public int Total3DModels { get; set; }
+    public int Total2DDrawings { get; set; }
     public List<ProjectSummaryDto> MyProjects { get; set; } = new();
     public List<DrawingSummaryDto> MyDrawings { get; set; } = new(); // <-- ADD
 }

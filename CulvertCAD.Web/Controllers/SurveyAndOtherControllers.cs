@@ -1087,7 +1087,7 @@ public class HomeController : Controller
         if (!isAdmin)
         {
             projectQuery = projectQuery.Where(
-                p => p.Members.Any(m => m.UserId == CurrentUserId));
+                p => p.CreatedByUserId == CurrentUserId || p.Members.Any(m => m.UserId == CurrentUserId));
         }
 
         int totalProjects = await projectQuery.CountAsync();
@@ -1110,12 +1110,20 @@ public class HomeController : Controller
             .ToListAsync();
 
         var myDrawings = new List<DrawingSummaryDto>();
+        int totalDrawings = 0;
+        int total3DModels = 0;
+        int total2DDrawings = 0;
+
         try
         {
             if (accessibleProjects.Any())
             {
-                var solids = await _solidRepo.GetRecentSolidsAsync(accessibleProjects.Keys, limit: 8);
-                myDrawings = solids.Select(s => new DrawingSummaryDto
+                var solids = await _solidRepo.GetRecentSolidsAsync(accessibleProjects.Keys, limit: 100);
+                totalDrawings = solids.Count;
+                total3DModels = solids.Count(s => s.ModelType == "3D_SOLID" || s.ModelType == "3D_STL");
+                total2DDrawings = solids.Count(s => s.ModelType == "2D_DXF");
+
+                myDrawings = solids.Take(8).Select(s => new DrawingSummaryDto
                 {
                     Id = s.Id,
                     ProjectId = s.ProjectId,
@@ -1136,6 +1144,9 @@ public class HomeController : Controller
         {
             TotalProjects = totalProjects,
             ActiveProjects = activeProjects,
+            TotalDrawings = totalDrawings,
+            Total3DModels = total3DModels,
+            Total2DDrawings = total2DDrawings,
             MyProjects = myProjects,
             MyDrawings = myDrawings
         });

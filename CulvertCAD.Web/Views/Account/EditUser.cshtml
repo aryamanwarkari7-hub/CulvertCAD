@@ -1,0 +1,140 @@
+﻿@* Views/Account/EditUser.cshtml *@
+@model CulvertCAD.Core.DTOs.EditUserDto
+
+@{
+    ViewData["Title"] = $"Edit User — {Model.FullName}";
+}
+
+<div class="page">
+    <div class="page-header">
+        <div>
+            <div class="breadcrumb">
+                <a asp-action="Users">
+                    <i class="bi bi-people" aria-hidden="true"></i>
+                    Users
+                </a>
+                <span>/</span>
+                <span class="breadcrumb-current">Edit User</span>
+            </div>
+
+            <h1 class="page-title">Edit User</h1>
+            <p class="page-sub">Update profile details, permissions, or reset password</p>
+        </div>
+    </div>
+
+    <form asp-action="EditUser" asp-route-id="@Model.Id" method="post" class="card project-form">
+        @Html.AntiForgeryToken()
+        <input type="hidden" asp-for="Id" />
+
+        <partial name="_ValidationSummary" />
+
+        <!-- 1. PERSONAL INFORMATION -->
+        <div class="form-section">
+            <div class="form-section-header">
+                <i class="bi bi-person" aria-hidden="true"></i>
+                <div>
+                    <h3>Personal Information</h3>
+                    <p>Basic employee and contact information.</p>
+                </div>
+            </div>
+
+            <div class="form-row-2">
+                <div class="fg">
+                    <label asp-for="FullName">
+                        Full Name <span class="required-mark">*</span>
+                    </label>
+                    <input asp-for="FullName" class="fi" placeholder="Jane Doe" required />
+                    <span asp-validation-for="FullName" class="field-validation"></span>
+                </div>
+
+                <div class="fg">
+                    <label asp-for="Email">
+                        Email Address <span class="required-mark">*</span>
+                    </label>
+                    <input asp-for="Email" type="email" class="fi" placeholder="jane@company.com" required />
+                    <span asp-validation-for="Email" class="field-validation"></span>
+                </div>
+            </div>
+
+            <div class="form-row-3">
+                <div class="fg">
+                    <label asp-for="EmployeeCode">Employee Code</label>
+                    <input asp-for="EmployeeCode" class="fi" placeholder="EMP042" />
+                    <span asp-validation-for="EmployeeCode" class="field-validation"></span>
+                </div>
+
+                <div class="fg">
+                    <label asp-for="Designation">Designation</label>
+                    <input asp-for="Designation" class="fi" placeholder="Design Engineer" />
+                    <span asp-validation-for="Designation" class="field-validation"></span>
+                </div>
+
+                <div class="fg">
+                    <label asp-for="Department">Department</label>
+                    <input asp-for="Department" class="fi" placeholder="Design" />
+                    <span asp-validation-for="Department" class="field-validation"></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. ACCOUNT ACCESS & ROLE -->
+        <div class="form-section">
+            <div class="form-section-header">
+                <i class="bi bi-shield-lock" aria-hidden="true"></i>
+                <div>
+                    <h3>Account Access & Role</h3>
+                    <p>Manage system role and account active status.</p>
+                </div>
+            </div>
+
+            <div class="form-row-2">
+                <div class="fg">
+                    <label asp-for="Role">System Role</label>
+                    <select asp-for="Role" class="fi">
+                        <option value="SuperAdmin">Super Admin</option>
+                        <option value="Admin">Admin</option>
+                        <option value="DesignEngineer">Design Engineer</option>
+                        <option value="CheckingEngineer">Checking Engineer</option>
+                        <option value="Viewer">Viewer</option>
+                    </select>
+                </div>
+
+                <div class="fg" style="display: flex; flex-direction: column; justify-content: center;">
+                    <label style="margin-bottom: 0.5rem;">Account Status</label>
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <input type="checkbox" asp-for="IsActive" style="width: 18px; height: 18px;" />
+                        <span>Account is Active (can log in)</span>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. RESET PASSWORD (OPTIONAL) -->
+        <div class="form-section">
+            <div class="form-section-header">
+                <i class="bi bi-key" aria-hidden="true"></i>
+                <div>
+                    <h3>Reset Password (Optional)</h3>
+                    <p>Leave blank to keep the user's existing password unchanged.</p>
+                </div>
+            </div>
+
+            <div class="form-row-2">
+                <div class="fg">
+                    <label asp-for="NewPassword">New Password</label>
+                    <input asp-for="NewPassword" type="password" class="fi" placeholder="Leave empty to keep current" autocomplete="new-password" />
+                    <span asp-validation-for="NewPassword" class="field-validation"></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- ACTIONS -->
+        <div class="form-actions">
+            <a asp-action="Users" class="btn-ghost">Cancel</a>
+            <button type="submit" class="btn-primary">
+                <i class="bi bi-check-lg" aria-hidden="true"></i>
+                <span>Save Changes</span>
+            </button>
+        </div>
+    </form>
+</div>

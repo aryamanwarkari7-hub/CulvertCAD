@@ -19,6 +19,41 @@
         line-height: 1;
     }
 
+/* ---------------------------------------------------------
+   View Toggle Buttons (Cards vs Table List)
+   --------------------------------------------------------- */
+.dash-view-toggle {
+    display: flex;
+    background: var(--bg);
+    border: 1px solid var(--bdr);
+    border-radius: var(--r-md, 8px);
+    padding: 2px;
+}
+
+.view-btn {
+    background: transparent;
+    border: none;
+    color: var(--tx-m);
+    padding: 0.4rem 0.65rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.95rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+    .view-btn:hover {
+        color: var(--tx);
+    }
+
+    .view-btn.active {
+        background: var(--bg-card);
+        color: var(--acc);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    }
+
 /* Header with inline summary stat badges */
 .survey-map-header {
     display: flex;

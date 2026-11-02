@@ -18,9 +18,30 @@
     };
 }
 
-
 <div class="page users-page">
     <partial name="_PageHeader" />
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success" style="margin-bottom: 1rem;">
+            <i class="bi bi-check-circle" aria-hidden="true"></i>
+            <span>@TempData["Success"]</span>
+        </div>
+    }
+    @if (TempData["Warning"] != null)
+    {
+        <div class="alert alert-warning" style="margin-bottom: 1rem;">
+            <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
+            <span>@TempData["Warning"]</span>
+        </div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger" style="margin-bottom: 1rem;">
+            <i class="bi bi-x-circle" aria-hidden="true"></i>
+            <span>@TempData["Error"]</span>
+        </div>
+    }
 
     <div class="card table-card">
         <div class="table-wrap">
@@ -34,13 +55,14 @@
                         <th>Roles</th>
                         <th>Status</th>
                         <th>Last Login</th>
+                        <th style="width: 100px; text-align: center;">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     @if (Model.Count == 0)
                     {
                         <tr>
-                            <td colspan="7" class="dt-empty">
+                            <td colspan="8" class="dt-empty">
                                 <i class="bi bi-people" aria-hidden="true"></i>
                                 <strong>No users found</strong>
                                 <span>Registered users will appear here.</span>
@@ -72,6 +94,16 @@
                                     </span>
                                 </td>
                                 <td>@(u.LastLoginAt?.ToString("dd MMM yyyy") ?? "Never")</td>
+                                <td style="text-align: center;">
+                                    <div style="display: inline-flex; gap: 8px;">
+                                        <a asp-action="EditUser" asp-route-id="@u.Id" class="btn-xs btn-ghost" title="Edit User" style="color: var(--tx);">
+                                            <i class="bi bi-pencil" aria-hidden="true"></i>
+                                        </a>
+                                        <button type="button" class="btn-xs btn-ghost" data-id="@u.Id" data-name="@u.FullName" title="Delete User" style="color: var(--red); border-color: rgba(248, 81, 73, 0.3);">
+                                            <i class="bi bi-trash" aria-hidden="true"></i>
+                                        </button>
+                                    </div>
+                                </td>
                             </tr>
                         }
                     }
@@ -80,6 +112,65 @@
         </div>
     </div>
 </div>
+
+<!-- Delete User Confirmation Modal -->
+<div class="modal-bg" id="delete-user-modal" style="display: none;">
+    <div class="modal modal-sm">
+        <div class="modal-hd">
+            <h3>Delete User</h3>
+            <button type="button" id="btn-close-delete-modal" aria-label="Close modal">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+        <form asp-action="DeleteUser" method="post" id="delete-user-form">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="id" id="delete-user-id" value="" />
+            <div class="modal-body">
+                <p>Are you sure you want to delete user <strong id="delete-user-name"></strong>?</p>
+                <p style="font-size: 0.8rem; color: var(--tx-2); margin-top: 0.5rem;">
+                    If this user owns project records, their account will be deactivated instead to preserve historical data.
+                </p>
+                <div class="modal-actions">
+                    <button type="button" class="btn-ghost" id="btn-cancel-delete">Cancel</button>
+                    <button type="submit" class="btn-warn">Delete</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const modal = document.getElementById('delete-user-modal');
+            const nameEl = document.getElementById('delete-user-name');
+            const idInput = document.getElementById('delete-user-id');
+            const closeBtn = document.getElementById('btn-close-delete-modal');
+            const cancelBtn = document.getElementById('btn-cancel-delete');
+
+            document.querySelectorAll('.btn-delete-user').forEach(btn => {
+                btn.addEventListener('click', function () {
+                    const id = this.dataset.id;
+                    const name = this.dataset.name;
+                    idInput.value = id;
+                    nameEl.textContent = name;
+                    modal.style.display = 'flex';
+                });
+            });
+
+            function closeModal() {
+                modal.style.display = 'none';
+            }
+
+            if (closeBtn) closeBtn.addEventListener('click', closeModal);
+            if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
+
+            modal.addEventListener('click', function (e) {
+                if (e.target === modal) closeModal();
+            });
+        });
+    </script>
+}
 
 @functions {
     string RoleBadge(string r) => r switch
