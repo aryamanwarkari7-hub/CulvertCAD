@@ -545,84 +545,87 @@
     }
 
 /* =========================================================
-   Road Elevation vs Datum — Summary Card
+   Road Elevation vs Datum — Summary Bar
    ========================================================= */
 .survey-datum-summary {
     box-sizing: border-box;
     width: 100%;
-    margin: 12px 0 16px;
-    padding: 14px 18px;
+    margin: 8px 0 12px;
+    padding: 10px 14px;
     background: var(--bg-card);
     border: 1px solid var(--bdr);
     border-radius: var(--r-lg);
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 6px;
 }
 
-.survey-datum-header {
+.survey-datum-main-bar {
     display: flex;
     align-items: center;
     justify-content: space-between;
     flex-wrap: wrap;
-    gap: 8px 16px;
+    gap: 8px 14px;
+    width: 100%;
 }
 
-.survey-datum-header > strong {
-    font-size: var(--fs-base);
+.survey-datum-title-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.survey-datum-title-group .text-acc {
+    color: var(--acc);
+    font-size: 0.95rem;
+}
+
+.survey-datum-title {
+    font-size: var(--fs-sm);
     font-weight: var(--fw-semibold);
     color: var(--tx);
+    letter-spacing: -0.01em;
 }
 
-    .survey-datum-header .survey-datum-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        padding: 5px 12px;
-        background: var(--bg-in);
-        border: 1px solid var(--bdr);
-        border-radius: 999px;
-        color: var(--tx-2);
-        font-size: 0.75rem;
-        
-        line-height: 1.4;
-    }
+.survey-datum-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 9px;
+    background: var(--bg-in);
+    border: 1px solid var(--bdr);
+    border-radius: var(--r-pill);
+    color: var(--tx-2);
+    font-size: 0.72rem;
+    line-height: 1.3;
+}
 
-.survey-datum-header .survey-datum-badge strong {
+.survey-datum-badge strong {
     color: var(--acc);
     font-family: var(--mono);
     font-weight: var(--fw-semibold);
     font-variant-numeric: tabular-nums;
 }
 
-.survey-datum-stats-row {
+.survey-datum-legend,
+.survey-datum-extremes {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    gap: 6px;
     flex-wrap: wrap;
-    gap: 10px;
-    width: 100%;
-}
-
-.survey-datum-legend {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-wrap: wrap;
-    gap: 8px;
 }
 
 /* Stat Pills with UI Color Codes */
 .survey-datum-pill {
     display: inline-flex;
     align-items: center;
-    gap: 7px;
-    padding: 6px 14px;
+    gap: 6px;
+    padding: 3px 10px;
     background: var(--bg-in);
     border: 1px solid var(--bdr);
-    border-radius: 999px;
-    font-size: 0.75rem;
-    
+    border-radius: var(--r-pill);
+    font-size: 0.72rem;
     color: var(--tx-2);
     white-space: nowrap;
     transition: border-color 0.15s ease, background-color 0.15s ease;
@@ -637,36 +640,36 @@
 
 .survey-datum-pill .unit {
     color: var(--tx-m);
-    font-size: var(--fs-xs);
+    font-size: 0.65rem;
 }
 
 /* Swatches */
 .survey-datum-swatch {
     display: inline-block;
-    width: 8px;
-    height: 8px;
-    flex: 0 0 8px;
+    width: 7px;
+    height: 7px;
+    flex: 0 0 7px;
     border-radius: 50%;
 }
 
 .survey-datum-swatch.above {
     background: var(--blue);
-    box-shadow: 0 0 6px rgba(88, 166, 255, 0.45);
+    box-shadow: 0 0 5px rgba(88, 166, 255, 0.45);
 }
 
 .survey-datum-swatch.near {
     background: var(--green);
-    box-shadow: 0 0 6px rgba(63, 185, 80, 0.45);
+    box-shadow: 0 0 5px rgba(63, 185, 80, 0.45);
 }
 
 .survey-datum-swatch.below {
     background: var(--red);
-    box-shadow: 0 0 6px rgba(248, 81, 73, 0.45);
+    box-shadow: 0 0 5px rgba(248, 81, 73, 0.45);
 }
 
 /* Semantic UI Color coding on pills */
 .survey-datum-pill.max {
-    border-color: rgba(88, 166, 255, 0.28);
+    border-color: rgba(88, 166, 255, 0.32);
     background: var(--blue-bg);
 }
 .survey-datum-pill.max i,
@@ -690,23 +693,29 @@
 }
 
 .survey-datum-pill.min {
-    border-color: rgba(248, 81, 73, 0.28);
+    border-color: rgba(248, 81, 73, 0.32);
     background: var(--red-bg);
 }
 .survey-datum-pill.min i,
 .survey-datum-pill.min strong {
     color: var(--red);
-    
 }
 
-/* Note */
-.survey-datum-note {
-    margin: 0;
-    padding-top: 10px;
-    border-top: 1px solid var(--bdr);
-    font-size: var(--fs-xs);
+/* Subtext Note */
+.survey-datum-subtext {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.70rem;
+    color: var(--tx-m);
+    line-height: 1.35;
+    padding-top: 5px;
+    border-top: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.survey-datum-subtext i {
+    font-size: 0.75rem;
     color: var(--tx-2);
-    line-height: 1.45;
 }
 
 /* UPLOAD PAGE */

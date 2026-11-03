@@ -304,53 +304,56 @@
             </div>
 
             <div class="survey-datum-summary">
-                <div class="survey-datum-header">
-                    <strong>Road Elevation vs Datum</strong>
-                    <span class="survey-datum-badge">
-                        Datum RL: <strong id="survey-datum-rl">—</strong> m
-                    </span>
-                </div>
-
-                <div class="survey-datum-stats-row">
-                    <div class="survey-datum-pill max">
-                        <i class="bi bi-arrow-up-short"></i>
-                        <span>Maximum difference:</span>
-                        <strong id="survey-datum-max-difference">—</strong>
-                        <span class="unit">m</span>
+                <div class="survey-datum-main-bar">
+                    <div class="survey-datum-title-group">
+                        <i class="bi bi-layers-half text-acc"></i>
+                        <span class="survey-datum-title">Road Elevation vs Datum</span>
+                        <span class="survey-datum-badge" title="Survey Datum Elevation">
+                            Datum RL: <strong id="survey-datum-rl">—</strong> m
+                        </span>
                     </div>
 
                     <div class="survey-datum-legend">
-                        <div class="survey-datum-pill above">
+                        <div class="survey-datum-pill above" title="Road points above datum">
                             <span class="survey-datum-swatch above"></span>
                             <span>Above datum</span>
                             <strong id="survey-datum-above-count">—</strong>
                         </div>
 
-                        <div class="survey-datum-pill near">
+                        <div class="survey-datum-pill near" title="Road points near datum (±0.10 m)">
                             <span class="survey-datum-swatch near"></span>
                             <span>Near datum (±0.10 m)</span>
                             <strong id="survey-datum-near-count">—</strong>
                         </div>
 
-                        <div class="survey-datum-pill below">
+                        <div class="survey-datum-pill below" title="Road points below datum">
                             <span class="survey-datum-swatch below"></span>
                             <span>Below datum</span>
                             <strong id="survey-datum-below-count">—</strong>
                         </div>
                     </div>
 
-                    <div class="survey-datum-pill min">
-                        <i class="bi bi-arrow-down-short"></i>
-                        <span>Minimum difference:</span>
-                        <strong id="survey-datum-min-difference">—</strong>
-                        <span class="unit">m</span>
+                    <div class="survey-datum-extremes">
+                        <div class="survey-datum-pill max" title="Maximum difference from datum">
+                            <i class="bi bi-arrow-up-short"></i>
+                            <span>Max Δ:</span>
+                            <strong id="survey-datum-max-difference">—</strong>
+                            <span class="unit">m</span>
+                        </div>
+
+                        <div class="survey-datum-pill min" title="Minimum difference from datum">
+                            <i class="bi bi-arrow-down-short"></i>
+                            <span>Min Δ:</span>
+                            <strong id="survey-datum-min-difference">—</strong>
+                            <span class="unit">m</span>
+                        </div>
                     </div>
                 </div>
 
-                <p class="survey-datum-note">
-                    Road elevations without an imported Existing RL may be estimated
-                    from nearby survey points. These estimates are not surveyed road levels.
-                </p>
+                <div class="survey-datum-subtext">
+                    <i class="bi bi-info-circle"></i>
+                    <span>Road elevations without an imported Existing RL may be estimated from nearby survey points. These estimates are not surveyed road levels.</span>
+                </div>
             </div>
 
             <div id="survey-map-status" role="status" aria-live="polite">
