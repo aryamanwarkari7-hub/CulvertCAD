@@ -65,7 +65,7 @@ builder.Services.ConfigureApplicationCookie(opt =>
     opt.SlidingExpiration = true;
     opt.Cookie.HttpOnly = true;
     opt.Cookie.SameSite = SameSiteMode.Lax;
-    opt.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+    opt.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
 });
 
 // ── Repositories ──────────────────────────────────────────────────────────────
