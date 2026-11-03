@@ -18,47 +18,107 @@
     }
 
     try {
+
+        // =====================================================
+        //
+        // Purpose:
+        // Read JSON data embedded in the page by the ASP.NET
+        // Core application.
+        //
+        // The application prepares the data; this JavaScript
+        // reads it for subsequent visualization and processing.
+        //
+        // =====================================================
+
         const readJson = (id) => {
             const element = document.getElementById(id);
             return element ? JSON.parse(element.textContent || "null") : null;
         };
 
+        // Survey observations supplied by the application.
         const surveyPoints = readJson("survey-map-points-data") || [];
+
+        // Coordinate Reference System associated with the survey.
         const workingCrs = readJson("survey-map-working-crs-data");
 
+        // =====================================================
+        // SECTION 03: CRS VALIDATION AND 2D MAP INITIALIZATION
+        // =====================================================
+        //
+        // Purpose:
+        // Validate the survey coordinate reference system and
+        // prepare Leaflet for geographic map visualization.
+        //
+        // Three.js displays the survey in local 3D coordinates.
+        // Leaflet displays the same survey geographically on
+        // an OpenStreetMap background.
+        //
+        // proj4 converts between projected survey coordinates
+        // (Easting, Northing) and geographic coordinates
+        // (Longitude, Latitude).
+        //
+        // =====================================================
+
         if (!window.L || !leafletContainer || !window.proj4) {
-            status.textContent = "Leaflet or coordinate conversion library could not be loaded.";
+            // Stop 2D map initialization if Leaflet, its HTML
+            // container or the coordinate conversion library
+            // is unavailable.
+            status.textContent =
+                "Leaflet or coordinate conversion library could not be loaded.";
         } else {
+
+            // Currently supported CRS:
+            // WGS84 / UTM Northern Hemisphere, zones 42–47.
+            //
+            // Example: EPSG:32643 represents UTM Zone 43N.
+            // The application must supply the working CRS in
+            // the expected EPSG format.
             const utmMatch =
                 typeof workingCrs === "string"
                     ? workingCrs.match(/^EPSG:326(4[2-7])$/)
                     : null;
 
+            // Reject missing or unsupported coordinate systems.
             if (!utmMatch) {
                 throw new Error(
                     `Unsupported or missing survey CRS: ${workingCrs}`
                 );
             }
 
+            // Extract the UTM zone number from the EPSG code.
             const utmZone = Number(utmMatch[1]);
 
+            // Define the working CRS for proj4.
+            // Coordinates are expressed in metres using WGS84.
             proj4.defs(
                 workingCrs,
                 `+proj=utm +zone=${utmZone} +datum=WGS84 +units=m +no_defs`
             );
 
+            // Create the Leaflet map inside its HTML container.
             const leafletMap = L.map(leafletContainer);
+
+            // Keep the Leaflet map hidden initially.
+            // The 3D Three.js viewer is the initial display.
             leafletContainer.style.display = "none";
 
+            // Add OpenStreetMap as the geographic background.
             L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
                 attribution: "&copy; OpenStreetMap contributors"
             }).addTo(leafletMap);
 
+            // Make the Leaflet map accessible to other functions
+            // in the application through the global window object.
             window.surveyLeafletMap = leafletMap;
 
+            // Switch between the geographic 2D map and the
+            // Three.js 3D survey viewer.
             window.setSurveyMapMode = function (mode) {
+
                 const leaflet = document.getElementById("survey-leaflet-map");
                 const surveyCanvas = document.getElementById("survey-map-canvas");
+
+                // Only the explicit "2d" mode displays Leaflet.
                 const show2D = mode === "2d";
 
                 if (leaflet) {
@@ -66,29 +126,110 @@
                     leaflet.style.visibility = show2D ? "visible" : "hidden";
                     leaflet.style.pointerEvents = show2D ? "auto" : "none";
 
+                    // Leaflet needs its dimensions recalculated
+                    // when its container becomes visible.
                     if (show2D && window.surveyLeafletMap) {
                         window.surveyLeafletMap.invalidateSize();
                     }
                 }
 
+                // Display Three.js whenever the 2D map is hidden.
                 if (surveyCanvas) {
                     surveyCanvas.style.display = show2D ? "none" : "block";
                 }
             };
         }
 
+        // =====================================================
+        // SECTION 04: ALIGNMENT AND CULVERT DATA
+        // =====================================================
+        //
+        // Purpose:
+        // Read the remaining datasets required by the survey
+        // viewer.
+        //
+        // Three primary spatial inputs are now available:
+        //
+        // 1. Survey points:
+        //    Actual surveyed Easting, Northing and RL values.
+        //
+        // 2. Alignment points:
+        //    Imported road alignment coordinates and chainage.
+        //
+        // 3. Culvert records:
+        //    Detected culvert locations and their associated
+        //    survey point references.
+        //
+        // These datasets are prepared by the application.
+        // Subsequent sections determine how each is visualized.
+        //
+        // =====================================================
+
+        // Read imported road alignment data.
         const alignmentPoints = readJson("survey-map-alignment-data") || [];
+
+        // Read detected culvert location records.
         const culverts = readJson("survey-map-culverts-data") || [];
 
+        // At least one spatial dataset must be available:
+        // survey observations or alignment coordinates.
+        //
+        // Without either dataset, the 3D viewer cannot establish
+        // a meaningful horizontal spatial extent.
         if (!surveyPoints.length && !alignmentPoints.length) {
             status.textContent = "No survey or alignment points are available.";
             return;
         }
 
+        // Access the Three.js library for subsequent scene,
+        // geometry, coordinate transformation and rendering work.
         const THREE = window.THREE;
 
+        // =====================================================
+        // SECTION 05: THREE.JS SCENE INITIALIZATION
+        // =====================================================
+        //
+        // Purpose:
+        // Establish the 3D environment in which survey terrain,
+        // alignment geometry, culvert locations and other
+        // visualization elements will be displayed.
+        //
+        // Three.js uses three main components:
+        //
+        // Scene:
+        //    Container holding all 3D objects and lights.
+        //
+        // Camera:
+        //    Defines the viewing position and perspective.
+        //
+        // Renderer:
+        //    Draws the scene onto the HTML canvas.
+        //
+        // =====================================================
+
+        // Create the main 3D scene.
         const scene = new THREE.Scene();
+
+        // Keep the scene background transparent so the canvas
+        // can use the background styling of its parent element.
         scene.background = null;
+
+        // -----------------------------------------------------
+        // Perspective Camera
+        // -----------------------------------------------------
+        //
+        // A perspective camera provides a 3D viewing effect.
+        //
+        // Parameters:
+        // 50     = Vertical field of view in degrees.
+        // 1      = Initial aspect ratio (updated during resize).
+        // 0.5    = Minimum camera viewing distance.
+        // 50000  = Maximum camera viewing distance.
+        //
+        // The camera position and orientation are configured
+        // later, after the survey spatial bounds are calculated.
+        //
+        // -----------------------------------------------------
 
         const camera = new THREE.PerspectiveCamera(
             50,
@@ -97,37 +238,138 @@
             50000
         );
 
+        // -----------------------------------------------------
+        // WebGL Renderer
+        // -----------------------------------------------------
+        //
+        // Connect the Three.js scene to the existing HTML canvas.
+        //
+        // antialias:
+        //    Reduces visible jagged edges.
+        //
+        // alpha:
+        //    Allows a transparent canvas background.
+        //
+        // logarithmicDepthBuffer:
+        //    Improves depth-buffer precision across large
+        //    viewing-distance ranges.
+        //
+        // pixelRatio:
+        //    Limits rendering resolution to a maximum device
+        //    pixel ratio of 2 to balance quality and performance.
+        //
+        // -----------------------------------------------------
+
         const renderer = new THREE.WebGLRenderer({
             canvas,
             antialias: true,
             alpha: true,
-            logarithmicDepthBuffer: true // Guarantees razor-sharp depth at macro & micro scales
+            logarithmicDepthBuffer: true
         });
 
+        // Explicitly keep the renderer background transparent.
         renderer.setClearColor(0x000000, 0);
 
+        // Set the renderer's pixel density according to the device.
         renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
 
-        // Dynamic CAD Sun & Sky Lighting for real 3D depth and topographical relief
+        // -----------------------------------------------------
+        // Scene Lighting
+        // -----------------------------------------------------
+        //
+        // Purpose:
+        // Provide illumination so terrain relief and 3D objects
+        // can be visually distinguished.
+        //
+        // Ambient light:
+        //    Provides general illumination from all directions.
+        //
+        // Directional light:
+        //    Simulates light coming from a particular direction
+        //    and produces surface shading.
+        //
+        // Sky fill light:
+        //    Provides additional illumination from another
+        //    direction to soften darker areas.
+        //
+        // These lighting settings affect visualization only.
+        // They do not modify survey elevations or geometry.
+        //
+        // -----------------------------------------------------
+
+        // General illumination across the scene.
         scene.add(new THREE.AmbientLight(0xffffff, 0.65));
 
+        // Main directional light.
         const sunLight = new THREE.DirectionalLight(0xfff8ee, 1.35);
         sunLight.position.set(250, 600, 350);
         scene.add(sunLight);
 
+        // Secondary directional fill light.
         const skyFillLight = new THREE.DirectionalLight(0x7da4d4, 0.45);
         skyFillLight.position.set(-250, 400, -350);
         scene.add(skyFillLight);
 
-        /*  Step 2 : Checks whether the coordinates are usable : Numeric validity
+        // =====================================================
+        // SECTION 06: SURVEY AND ALIGNMENT DATA VALIDATION
+        // =====================================================
+        //
+        // Purpose:
+        // Identify usable survey and alignment records before
+        // using them for spatial processing and visualization.
+        //
+        // Survey points require:
+        //    Easting  - Horizontal coordinate (X)
+        //    Northing - Horizontal coordinate (Y / Z)
+        //    RL       - Reduced Level / ground elevation
+        //
+        // Alignment points require:
+        //    Easting  - Horizontal coordinate
+        //    Northing - Horizontal coordinate
+        //
+        // Survey points provide terrain elevations.
+        // Alignment points provide the road's horizontal path.
+        //
+        // =====================================================
 
-        Filters survey points to keep records with numeric Easting, Northing and RL values */
+        // -----------------------------------------------------
+        // 6.1 Validate Survey Points
+        // -----------------------------------------------------
+        //
+        // Retain survey records whose Easting, Northing and RL
+        // values can be converted into finite JavaScript numbers.
+        //
+        // These valid records will subsequently be used for:
+        //    - Survey point visualization.
+        //    - Terrain triangulation.
+        //    - Elevation calculations.
+        //    - Culvert location association.
+        //
+        // -----------------------------------------------------
 
         const validSurvey = surveyPoints.filter(p =>
             Number.isFinite(Number(p.Easting)) &&
             Number.isFinite(Number(p.Northing)) &&
             Number.isFinite(Number(p.RL))
         );
+
+        // -----------------------------------------------------
+        // 6.2 Position the Survey on the 2D Geographic Map
+        // -----------------------------------------------------
+        //
+        // Leaflet requires geographic coordinates:
+        //    Latitude and Longitude.
+        //
+        // Survey data is stored in projected coordinates:
+        //    Easting and Northing.
+        //
+        // proj4 converts the survey coordinates from the
+        // working UTM CRS into geographic EPSG:4326.
+        //
+        // The resulting coordinates are supplied to Leaflet
+        // so that the map automatically frames the survey area.
+        //
+        // -----------------------------------------------------
 
         if (window.surveyLeafletMap && validSurvey.length > 0) {
             const geographicPoints = validSurvey
@@ -139,22 +381,50 @@
                         return null;
                     }
 
+                    // Convert projected coordinates into:
+                    // [Longitude, Latitude]
                     const [longitude, latitude] = proj4(
                         workingCrs,
                         "EPSG:4326",
                         [easting, northing]
                     );
 
+                    // Leaflet expects:
+                    // [Latitude, Longitude]
                     return [latitude, longitude];
                 })
                 .filter(p => p !== null);
 
+            // Adjust the geographic map view to include all
+            // available valid survey points.
             if (geographicPoints.length > 0) {
                 window.surveyLeafletMap.fitBounds(geographicPoints, {
                     padding: [20, 20]
                 });
             }
         }
+
+        // -----------------------------------------------------
+        // 6.3 Validate and Order Alignment Points
+        // -----------------------------------------------------
+        //
+        // Alignment points require valid horizontal coordinates.
+        // RL is not mandatory at this stage.
+        //
+        // Sort the alignment records by Chainage so that
+        // subsequent road geometry follows the intended
+        // alignment sequence.
+        //
+        // Missing or null Chainage values default to zero
+        // during sorting.
+        //
+        // These records are subsequently used for:
+        //    - Road alignment visualization.
+        //    - Road centreline generation.
+        //    - Culvert positioning relative to the road.
+        //    - Chainage milestone placement.
+        //
+        // -----------------------------------------------------
 
         const validAlignment = alignmentPoints.filter(p =>
             Number.isFinite(Number(p.Easting)) &&
@@ -165,10 +435,47 @@
             return ca - cb;
         });
 
-        /* Step 3: Calculate viewers horizontal bound  = survey horizontal + alignment horiontal
+        // =====================================================
+        // SECTION 07: SPATIAL BOUNDS CALCULATION
+        // =====================================================
+        //
+        // Purpose:
+        // Calculate the horizontal and vertical extents of the
+        // available survey and alignment datasets.
+        //
+        // Horizontal bounds:
+        //    Calculated using both survey and alignment points.
+        //
+        // Vertical bounds:
+        //    Calculated exclusively from actual surveyed RL values.
+        //
+        // Why separate these calculations?
+        //    Alignment points extend the horizontal viewing area,
+        //    but they do not automatically provide actual terrain
+        //    elevation observations.
+        //
+        // These bounds are subsequently used for:
+        //    - Establishing the local coordinate origin.
+        //    - Positioning the ground grid and datum sheet.
+        //    - Calculating the initial camera view.
+        //
+        // =====================================================
 
-        Horizontal bounds use both survey and alignment coordinates.
-        Elevation bounds use only actual surveyed RL values. */
+        // -----------------------------------------------------
+        // 7.1 Collect Horizontal Coordinates
+        // -----------------------------------------------------
+        //
+        // Combine Easting and Northing coordinates from:
+        //    1. Valid survey points.
+        //    2. Valid alignment points.
+        //
+        // Three.js uses:
+        //    X = Easting
+        //    Z = Northing
+        //
+        // RL is deliberately excluded from this collection.
+        //
+        // -----------------------------------------------------
 
         const horizontalPoints = [
             ...validSurvey.map(p => ({
@@ -181,19 +488,69 @@
             }))
         ];
 
+        // -----------------------------------------------------
+        // 7.2 Collect Survey Elevations
+        // -----------------------------------------------------
+        //
+        // Extract actual surveyed Reduced Levels.
+        //
+        // Alignment elevations are not included here because
+        // their values may be missing or derived later.
+        //
+        // -----------------------------------------------------
+
         const elevations = validSurvey.map(p => Number(p.RL));
 
+        // Stop terrain initialization when either:
+        //    - No valid horizontal coordinates are available.
+        //    - No actual surveyed elevations are available.
+        //
+        // A terrain surface requires both horizontal positions
+        // and surveyed elevation observations.
         if (!horizontalPoints.length || !elevations.length) {
             status.textContent = "Insufficient valid survey data to render terrain.";
             return;
         }
 
+        // -----------------------------------------------------
+        // 7.3 Calculate Horizontal and Vertical Limits
+        // -----------------------------------------------------
+        //
+        // Horizontal limits:
+        //    Minimum and maximum Easting.
+        //    Minimum and maximum Northing.
+        //
+        // Vertical limits:
+        //    Minimum and maximum surveyed RL.
+        //
+        // Together, these values define the overall spatial
+        // extent used by the 3D viewer.
+        //
+        // -----------------------------------------------------
+
         const minE = Math.min(...horizontalPoints.map(p => p.x));
         const maxE = Math.max(...horizontalPoints.map(p => p.x));
         const minN = Math.min(...horizontalPoints.map(p => p.z));
         const maxN = Math.max(...horizontalPoints.map(p => p.z));
+
         const minRL = Math.min(...elevations);
         const maxRL = Math.max(...elevations);
+
+        // -----------------------------------------------------
+        // 7.4 Coordinate Bounds Diagnostics
+        // -----------------------------------------------------
+        //
+        // Log survey and alignment coordinate extents separately.
+        //
+        // These diagnostics help identify:
+        //    - Differences between survey and alignment coverage.
+        //    - Alignment coordinates outside the survey extent.
+        //    - Unexpected coordinate ranges.
+        //
+        // These logs do not modify the spatial data.
+        //
+        // -----------------------------------------------------
+
         console.log("Survey coordinate bounds:", {
             minE: Math.min(...validSurvey.map(p => Number(p.Easting))),
             maxE: Math.max(...validSurvey.map(p => Number(p.Easting))),
@@ -216,16 +573,110 @@
                 : null
         });
 
-        /* Step 4 : Transformation from Real Survey to coordinate system of three.js
+        // =====================================================
+        // SECTION 08: REAL-WORLD TO THREE.JS COORDINATE
+        //             TRANSFORMATION
+        // =====================================================
+        //
+        // Purpose:
+        // Convert actual survey coordinates into a local
+        // coordinate system suitable for Three.js rendering.
+        //
+        // REAL-WORLD COORDINATES:
+        //    Easting  = UTM Easting (metres)
+        //    Northing = UTM Northing (metres)
+        //    RL       = Reduced Level (metres)
+        //
+        // THREE.JS COORDINATES:
+        //    X = Local Easting
+        //    Y = Local elevation
+        //    Z = Local Northing
+        //
+        // Why use a local origin?
+        //    UTM coordinates contain large numerical values.
+        //    Subtracting a local origin keeps the 3D coordinates
+        //    relatively small and manageable.
+        //
+        // IMPORTANT:
+        //    The transformation changes the coordinate origin.
+        //    It does not change the original survey observations.
+        //
+        // =====================================================
 
-        Local origin keeps large UTM coordinates numerically manageable. */
+        // -----------------------------------------------------
+        // 8.1 Establish the Horizontal Local Origin
+        // -----------------------------------------------------
+        //
+        // Use the midpoint of the combined horizontal bounds
+        // calculated from survey and alignment coordinates.
+        //
+        // This makes the centre of the overall viewing area
+        // approximately (0, 0) in the Three.js X-Z plane.
+        //
+        // -----------------------------------------------------
 
         const centerE = (minE + maxE) / 2;
         const centerN = (minN + maxN) / 2;
+
+        // -----------------------------------------------------
+        // 8.2 Establish the Vertical Reference
+        // -----------------------------------------------------
+        //
+        // Use the minimum actual surveyed RL as the vertical
+        // reference elevation.
+        //
+        // Consequently, the lowest surveyed elevation becomes
+        // Y = 0 before vertical exaggeration is applied.
+        //
+        // -----------------------------------------------------
+
         const baseRL = minRL;
 
-        const terrainScale = 1; // Horizontal preserved numerically
-        const verticalExaggeration = 3; // Scale vertically enlarged 3x
+        // -----------------------------------------------------
+        // 8.3 Configure Coordinate Scaling
+        // -----------------------------------------------------
+        //
+        // terrainScale:
+        //    Horizontal scale factor.
+        //    Value 1 preserves horizontal numerical distances.
+        //
+        // verticalExaggeration:
+        //    Vertical display multiplier.
+        //    Value 3 makes elevation differences appear three
+        //    times larger in the 3D visualization.
+        //
+        // IMPORTANT:
+        //    Vertical exaggeration is for visual interpretation.
+        //    It is not a modification of actual RL values.
+        //
+        // -----------------------------------------------------
+
+        const terrainScale = 1;
+        const verticalExaggeration = 3;
+
+        // -----------------------------------------------------
+        // 8.4 Coordinate Transformation Function
+        // -----------------------------------------------------
+        //
+        // Input:
+        //    easting  = Real-world Easting
+        //    northing = Real-world Northing
+        //    rl       = Real-world Reduced Level
+        //
+        // Processing:
+        //    1. Subtract the local Easting origin.
+        //    2. Subtract the vertical reference elevation.
+        //    3. Subtract the local Northing origin.
+        //    4. Apply the configured scale factors.
+        //
+        // Output:
+        //    THREE.Vector3 containing local X, Y and Z values.
+        //
+        // This function is reused throughout the viewer for
+        // survey points, terrain vertices, road geometry,
+        // culvert locations and other spatial objects.
+        //
+        // -----------------------------------------------------
 
         const toWorld = (easting, northing, rl) => new THREE.Vector3(
             (Number(easting) - centerE) * terrainScale,
@@ -233,16 +684,76 @@
             (Number(northing) - centerN) * terrainScale
         );
 
-        /* 5. GRID BELOW SURVEY TERRAIN
+        // =====================================================
+        // SECTION 09: GROUND GRID GENERATION
+        // =====================================================
+        //
+        // Purpose:
+        // Create a rectangular reference grid below the survey
+        // terrain to provide a visual sense of spatial scale
+        // and orientation in the 3D viewer.
+        //
+        // The grid is constructed using individual line
+        // segments in the horizontal X-Z plane.
+        //
+        // IMPORTANT:
+        // This is a visualization reference only.
+        // It does not represent actual surveyed ground,
+        // geological strata or a physical foundation.
+        //
+        // =====================================================
 
-        Add simple rectangular grid below the survey terrain. */
+        // -----------------------------------------------------
+        // 9.1 Determine Grid Dimensions
+        // -----------------------------------------------------
+        //
+        // Grid width:
+        //    Based on the horizontal Easting extent.
+        //
+        // Grid length:
+        //    Based on the horizontal Northing extent.
+        //
+        // A minimum dimension of 10 metres is maintained
+        // to prevent a zero-sized or excessively small grid.
+        //
+        // Both dimensions are centred around the local origin.
+        //
+        // -----------------------------------------------------
+
         const gridWidth = Math.max(maxE - minE, 10);
         const gridLength = Math.max(maxN - minN, 10);
+
+        // Distance between consecutive grid lines, in metres.
         const gridSpacing = 50;
+
+        // Vertical position of the reference grid in Three.js.
+        // The negative value places it below the local elevation
+        // origin (baseRL).
+        //
+        // This is a display position, not an actual RL datum.
         const gridY = -120;
+
+        // -----------------------------------------------------
+        // 9.2 Generate Grid Line Coordinates
+        // -----------------------------------------------------
+        //
+        // Store the line coordinates in an array.
+        //
+        // Each line requires two 3D endpoints:
+        //    X, Y, Z of starting point.
+        //    X, Y, Z of ending point.
+        //
+        // First loop:
+        //    Generates lines parallel to the Northing axis (Z).
+        //
+        // Second loop:
+        //    Generates lines parallel to the Easting axis (X).
+        //
+        // -----------------------------------------------------
 
         const gridVertices = [];
 
+        // Generate lines parallel to the Z axis.
         for (let x = -gridWidth / 2; x <= gridWidth / 2; x += gridSpacing) {
             gridVertices.push(
                 x, gridY, -gridLength / 2,
@@ -250,6 +761,7 @@
             );
         }
 
+        // Generate lines parallel to the X axis.
         for (let z = -gridLength / 2; z <= gridLength / 2; z += gridSpacing) {
             gridVertices.push(
                 -gridWidth / 2, gridY, z,
@@ -257,11 +769,35 @@
             );
         }
 
+        // -----------------------------------------------------
+        // 9.3 Create Three.js Grid Geometry
+        // -----------------------------------------------------
+        //
+        // BufferGeometry stores the generated vertex coordinates.
+        //
+        // Each pair of points defines one independent line
+        // segment. LineSegments renders these pairs without
+        // connecting one grid line to another.
+        //
+        // -----------------------------------------------------
+
         const gridGeometry = new THREE.BufferGeometry();
+
         gridGeometry.setAttribute(
             "position",
             new THREE.Float32BufferAttribute(gridVertices, 3)
         );
+
+        // -----------------------------------------------------
+        // 9.4 Define Grid Appearance
+        // -----------------------------------------------------
+        //
+        // LineBasicMaterial controls the grid colour and opacity.
+        //
+        // The grid is displayed using a muted colour so that
+        // it does not dominate the terrain visualization.
+        //
+        // -----------------------------------------------------
 
         const groundGrid = new THREE.LineSegments(
             gridGeometry,
@@ -272,9 +808,24 @@
             })
         );
 
+        // Add the completed grid to the main Three.js scene.
         scene.add(groundGrid);
 
-        // Ground grid on/off control.
+        // -----------------------------------------------------
+        // 9.5 Ground Grid Visibility Control
+        // -----------------------------------------------------
+        //
+        // Connect the grid to its corresponding toolbar button.
+        //
+        // Clicking the button:
+        //    1. Toggles grid visibility.
+        //    2. Updates the button's accessibility state.
+        //    3. Updates the displayed button text.
+        //
+        // The grid geometry itself remains unchanged.
+        //
+        // -----------------------------------------------------
+
         const groundSheetToggle = document.getElementById(
             "survey-map-toggle-ground-sheet"
         );
@@ -290,27 +841,121 @@
                 : '<i class="bi bi-grid-3x3"></i> Ground Grid: Off';
         });
 
-        /* 5. TRANSPARENT DATUM SHEET
+        // =====================================================
+        // SECTION 10: DATUM SHEET GENERATION
+        // =====================================================
+        //
+        // Purpose:
+        // Create a horizontal reference plane within the 3D
+        // survey viewer using a representative surveyed RL.
+        //
+        // The reference RL is calculated using the MEDIAN
+        // of all valid surveyed elevations.
+        //
+        // Why median?
+        //    The median represents the middle value of the
+        //    ordered elevation dataset.
+        //
+        //    Unlike the arithmetic mean, it is less affected
+        //    by unusually high or low elevation observations.
+        //
+        // IMPORTANT:
+        //    This is a visualization reference plane.
+        //    It is not automatically an engineering datum,
+        //    formation level or construction reference level.
+        //
+        // =====================================================
 
-        Default datum RL: median of the actual surveyed elevations.  */
+        // -----------------------------------------------------
+        // 10.1 Calculate the Median Surveyed RL
+        // -----------------------------------------------------
+        //
+        // First, create a sorted copy of the surveyed elevations.
+        //
+        // Sorting is performed in ascending numerical order.
+        // The original elevations array remains unchanged.
+        //
+        // -----------------------------------------------------
+
         const sortedElevations = [...elevations].sort((a, b) => a - b);
+
+        // Determine the middle position in the sorted dataset.
         const middleIndex = Math.floor(sortedElevations.length / 2);
 
+        // For an odd number of observations:
+        //    The median is the single middle value.
+        //
+        // For an even number of observations:
+        //    The median is the arithmetic mean of the two
+        //    middle values.
+        //
         const datumRL = sortedElevations.length % 2 === 0
             ? (sortedElevations[middleIndex - 1] +
                 sortedElevations[middleIndex]) / 2
             : sortedElevations[middleIndex];
 
-        // Use the same world-coordinate transformation as survey terrain.
+        // -----------------------------------------------------
+        // 10.2 Convert Datum RL into Three.js Elevation
+        // -----------------------------------------------------
+        //
+        // Use the same vertical transformation established
+        // in Section 08.
+        //
+        // Subtract baseRL to obtain the local elevation.
+        // Apply verticalExaggeration for display.
+        //
+        // The resulting datumY is the vertical position of
+        // the reference plane in Three.js coordinates.
+        //
+        // -----------------------------------------------------
+
         const datumY = (datumRL - baseRL) * verticalExaggeration;
+
+        // -----------------------------------------------------
+        // 10.3 Create the Datum Plane Geometry
+        // -----------------------------------------------------
+        //
+        // Create a rectangular plane using the same horizontal
+        // dimensions as the ground grid.
+        //
+        // PlaneGeometry initially lies in the X-Y plane.
+        // Rotate it by -90 degrees around the X axis to place
+        // it horizontally in the X-Z plane.
+        //
+        // -----------------------------------------------------
 
         const datumGeometry = new THREE.PlaneGeometry(
             gridWidth,
             gridLength
         );
 
-        // Rotate the plane horizontally into the X-Z ground plane.
+        // Rotate the plane into the horizontal ground plane.
         datumGeometry.rotateX(-Math.PI / 2);
+
+        // -----------------------------------------------------
+        // 10.4 Define Datum Sheet Appearance
+        // -----------------------------------------------------
+        //
+        // MeshBasicMaterial displays the plane using its
+        // specified colour without requiring scene lighting.
+        //
+        // transparent:
+        //    Allows other objects to remain visible through it.
+        //
+        // opacity:
+        //    Controls the transparency level.
+        //
+        // DoubleSide:
+        //    Allows the plane to be visible from either side.
+        //
+        // depthWrite:
+        //    Disabled to reduce depth-buffer conflicts caused
+        //    by transparent surfaces.
+        //
+        // depthTest:
+        //    Retains depth testing against other scene objects.
+        //
+        // -----------------------------------------------------
 
         const datumMaterial = new THREE.MeshBasicMaterial({
             color: 0xA98262,
@@ -321,27 +966,52 @@
             depthTest: true
         });
 
+        // Create the actual datum sheet mesh from its geometry
+        // and material.
         const datumSheet = new THREE.Mesh(
             datumGeometry,
             datumMaterial
         );
 
+        // Position the plane at the calculated datum elevation.
+        // Its horizontal position remains at the local origin.
         datumSheet.position.set(0, datumY, 0);
+
+        // Rendering order controls its drawing priority
+        // relative to other scene objects.
         datumSheet.renderOrder = 0;
-        datumSheet.visible = true; // Disabled by default so it does not wash out the 3D road and terrain
+
+        // The current implementation displays the datum sheet
+        // by default when the viewer is initialized.
+        datumSheet.visible = true;
+
+        // Add the datum sheet to the main Three.js scene.
         scene.add(datumSheet);
 
-        // Independent datum visibility control.
+        // -----------------------------------------------------
+        // 10.5 Datum Sheet Visibility Control
+        // -----------------------------------------------------
+        //
+        // Allow the user to independently switch the datum
+        // sheet on or off from the map toolbar.
+        //
+        // The button's initial state must match the mesh's
+        // initial visibility.
+        //
+        // -----------------------------------------------------
+
         const datumToggle = document.getElementById(
             "survey-map-toggle-datum"
         );
 
-        // Set default UI state to active
+        // Set the toolbar button's initial state to active.
         if (datumToggle) {
             datumToggle.setAttribute("aria-pressed", "true");
-            datumToggle.innerHTML = '<i class="bi bi-layers"></i> Datum Sheet: On';
+            datumToggle.innerHTML =
+                '<i class="bi bi-layers"></i> Datum Sheet: On';
         }
 
+        // Toggle datum sheet visibility when the user clicks.
         datumToggle?.addEventListener("click", () => {
             datumSheet.visible = !datumSheet.visible;
 
@@ -357,6 +1027,17 @@
                 : '<i class="bi bi-layers"></i> Datum Sheet: Off';
         });
 
+        // -----------------------------------------------------
+        // 10.6 Datum Sheet Diagnostic Information
+        // -----------------------------------------------------
+        //
+        // Log the calculated reference elevation and plane
+        // dimensions for verification during development.
+        //
+        // This is diagnostic information only.
+        //
+        // -----------------------------------------------------
+
         console.info("[Survey Terrain] Datum sheet created:", {
             datumRL: Number(datumRL.toFixed(3)),
             datumWorldY: Number(datumY.toFixed(3)),
@@ -364,31 +1045,154 @@
             lengthM: Number(gridLength.toFixed(2))
         });
 
+        // =====================================================
+        // SECTION 11: SURVEY POINT GEOMETRY
+        // =====================================================
+        //
+        // Purpose:
+        // Convert actual surveyed observations into Three.js
+        // point geometry for visualization.
+        //
+        // Each survey observation contains:
+        //    Easting  - Horizontal position.
+        //    Northing - Horizontal position.
+        //    RL       - Observed ground elevation.
+        //
+        // The original survey records remain unchanged.
+        // Only their display coordinates are transformed.
+        //
+        // =====================================================
+
+        // -----------------------------------------------------
+        // 11.1 Datum Elevation Comparison Tolerance
+        // -----------------------------------------------------
+        //
+        // Define the elevation tolerance used later when
+        // comparing road alignment elevations against datumRL.
+        //
+        // A difference within +/- 0.10 m is considered
+        // approximately equal to the datum for visualization.
+        //
+        // This tolerance does not change surveyed RL values.
+        //
+        // -----------------------------------------------------
+
         const DATUM_ELEVATION_TOLERANCE_M = 0.10;
 
-        // Survey points: observed survey locations and elevations.
-        const surveyGeometry = new THREE.BufferGeometry(); // Stores Geometric data
+        // -----------------------------------------------------
+        // 11.2 Create Survey Point Geometry
+        // -----------------------------------------------------
+        //
+        // BufferGeometry stores the 3D positions of survey points.
+        //
+        // Each point is transformed from real-world coordinates
+        // into the local Three.js coordinate system using toWorld().
+        //
+        // The resulting position array contains consecutive
+        // X, Y and Z values for every valid survey observation.
+        //
+        // -----------------------------------------------------
+
+        // Create an empty geometry to hold survey point positions.
+        const surveyGeometry = new THREE.BufferGeometry();
+
+        // Temporary array for transformed XYZ coordinates.
         const surveyPositions = [];
 
+        // Convert every valid survey observation into
+        // its corresponding local Three.js position.
         validSurvey.forEach(p => {
             const v = toWorld(p.Easting, p.Northing, p.RL);
+
             surveyPositions.push(v.x, v.y, v.z);
         });
 
-        surveyGeometry.setAttribute(  // Tells that data consists of 3 points
+        // Attach the generated coordinates to the geometry.
+        //
+        // Each group of three numbers represents one vertex:
+        //    X, Y, Z.
+        //
+        surveyGeometry.setAttribute(
             "position",
             new THREE.Float32BufferAttribute(surveyPositions, 3)
         );
 
-        const surveyMaterial = new THREE.PointsMaterial({ // Look of survey points
+        // -----------------------------------------------------
+        // 11.3 Define Survey Point Appearance
+        // -----------------------------------------------------
+        //
+        // PointsMaterial controls how individual survey
+        // observations appear in the 3D viewer.
+        //
+        // color:
+        //    Blue identifies actual surveyed points.
+        //
+        // size:
+        //    Defines the point display size.
+        //
+        // sizeAttenuation:
+        //    Allows point size to change with camera distance.
+        //
+        // This material controls appearance only.
+        // It does not modify the survey coordinates.
+        //
+        // -----------------------------------------------------
+
+        const surveyMaterial = new THREE.PointsMaterial({
             color: 0x2f81f7,
-            size: 6,
+            size: 4,
             sizeAttenuation: true
         });
 
-        // Terrain surface generated from actual surveyed Easting, Northing and RL.
+        // =====================================================
+        // SECTION 12: TERRAIN TIN GENERATION
+        // =====================================================
+        //
+        // Purpose:
+        // Generate an initial Triangulated Irregular Network
+        // (TIN) using the actual surveyed point distribution.
+        //
+        // A TIN represents the terrain as interconnected
+        // triangular facets.
+        //
+        // Each triangle connects three surveyed vertices.
+        //
+        // Delaunator determines the horizontal triangulation
+        // using Easting and Northing coordinates.
+        //
+        // RL is retained as the elevation of each vertex and
+        // is used later when constructing the 3D terrain mesh.
+        //
+        // IMPORTANT:
+        // This stage generates the initial triangulation.
+        // It does not yet decide which triangles are suitable
+        // for displaying as accepted terrain.
+        //
+        // =====================================================
 
+        // Delaunay triangulation requires at least three valid
+        // survey points and the Delaunator library.
         if (window.Delaunator && validSurvey.length >= 3) {
+
+            // -------------------------------------------------
+            // 12.1 Prepare Terrain Vertices
+            // -------------------------------------------------
+            //
+            // Convert the validated survey records into a
+            // simplified structure for terrain processing.
+            //
+            // Each terrain point retains:
+            //    easting  - Horizontal coordinate.
+            //    northing - Horizontal coordinate.
+            //    rl       - Actual surveyed elevation.
+            //    pointNo  - Survey point identification.
+            //    code     - Survey point classification, if available.
+            //
+            // Point identification and classification are retained
+            // for diagnostics; they do not control triangulation.
+            //
+            // -------------------------------------------------
+
             const terrainPoints = validSurvey.map(p => ({
                 easting: Number(p.Easting),
                 northing: Number(p.Northing),
@@ -397,11 +1201,64 @@
                 code: p.Code ?? p.CodeType ?? p.code ?? null
             }));
 
+            // -------------------------------------------------
+            // 12.2 Generate Delaunay Triangulation
+            // -------------------------------------------------
+            //
+            // Delaunator.from() generates triangles from the
+            // horizontal distribution of terrain vertices.
+            //
+            // X coordinate:
+            //    Local Easting.
+            //
+            // Y coordinate supplied to Delaunator:
+            //    Local Northing.
+            //
+            // The local origin is subtracted before triangulation.
+            // Translation does not change the relative geometry
+            // of the point distribution.
+            //
+            // Output:
+            //    triangulation.triangles contains vertex indices
+            //    arranged in groups of three.
+            //
+            // These indices reference terrainPoints.
+            //
+            // Example:
+            //    [0, 1, 2, 2, 1, 3]
+            //
+            //    Triangle 1 = vertices 0, 1 and 2.
+            //    Triangle 2 = vertices 2, 1 and 3.
+            //
+            // -------------------------------------------------
+
             const triangulation = window.Delaunator.from(
                 terrainPoints,
                 p => (p.easting - centerE) * terrainScale,
                 p => (p.northing - centerN) * terrainScale
             );
+
+            // -------------------------------------------------
+            // 12.3 Temporary Survey Point Diagnostics
+            // -------------------------------------------------
+            //
+            // Inspect selected entries from the terrainPoints
+            // array during development.
+            //
+            // These entries help verify the relationship between
+            // array indices and their original survey records.
+            //
+            // IMPORTANT:
+            // The indices below (23, 3566, 3568) are fixed
+            // diagnostic samples from a particular investigation.
+            //
+            // They do not influence Delaunay triangulation,
+            // triangle acceptance or terrain generation.
+            //
+            // This diagnostic should eventually be generalized
+            // or removed from the production viewer.
+            //
+            // -------------------------------------------------
 
             window.__terrainGapPointSamples = [23, 3566, 3568].map(index => ({
                 index,
@@ -417,25 +1274,97 @@
 
             console.table(window.__terrainGapPointSamples);
 
-            // Estimate local survey spacing from Delaunay edges. The nearest
-            // neighbour of a point is connected by a Delaunay edge, so this
-            // avoids an all-pairs O(n^2) scan for large survey datasets.
+            // =================================================
+            // SECTION 13: LOCAL SURVEY-POINT SPACING
+            // =================================================
+            //
+            // Purpose:
+            // Estimate the local spacing between surveyed points
+            // using the edges of the generated Delaunay network.
+            //
+            // Why is this required?
+            //    A triangle's edge length should be evaluated
+            //    relative to the surrounding survey-point density.
+            //
+            //    An edge of 10 m may be reasonable in a sparsely
+            //    surveyed area but unusually large in a densely
+            //    surveyed area.
+            //
+            // The Delaunay network provides a spatially efficient
+            // way to identify neighbouring survey points without
+            // comparing every point against every other point.
+            //
+            // This calculation does not modify the triangulation.
+            //
+            // =================================================
+
+            // -------------------------------------------------
+            // 13.1 Initialize Local Spacing for Every Survey Point
+            // -------------------------------------------------
+            //
+            // localSpacingM stores the shortest observed
+            // Delaunay-edge distance connected to each point.
+            //
+            // Initially set every value to Infinity because
+            // no neighbouring edge has been evaluated yet.
+            //
+            // Array index corresponds directly to the index
+            // of the corresponding terrainPoints entry.
+            //
+            // -------------------------------------------------
+
             const localSpacingM = new Array(terrainPoints.length).fill(Infinity);
+
+            // Access the triangle vertex-index array generated
+            // by Delaunator.
             const delaunayTriangles = triangulation.triangles;
+
+            // -------------------------------------------------
+            // 13.2 Calculate Neighbouring Edge Distances
+            // -------------------------------------------------
+            //
+            // Each Delaunay triangle contains three vertices:
+            //    a, b and c.
+            //
+            // Therefore, each triangle contributes three edges:
+            //    a-b
+            //    b-c
+            //    c-a
+            //
+            // Calculate the horizontal distance of each edge
+            // using its original Easting and Northing coordinates.
+            //
+            // Update both endpoint records with the minimum
+            // edge distance encountered so far.
+            //
+            // The resulting value represents the shortest
+            // connected Delaunay edge at each survey point.
+            //
+            // -------------------------------------------------
 
             for (let i = 0; i < delaunayTriangles.length; i += 3) {
                 const a = delaunayTriangles[i];
                 const b = delaunayTriangles[i + 1];
                 const c = delaunayTriangles[i + 2];
 
+                // Evaluate all three edges of the triangle.
                 for (const [u, v] of [[a, b], [b, c], [c, a]]) {
                     const pu = terrainPoints[u];
                     const pv = terrainPoints[v];
+
+                    // Calculate horizontal distance in metres.
+                    //
+                    // RL is deliberately excluded because this
+                    // is a horizontal survey-spacing measurement.
                     const distance = Math.hypot(
                         pu.easting - pv.easting,
                         pu.northing - pv.northing
                     );
 
+                    // Ignore zero-length edges.
+                    //
+                    // Retain the shortest positive edge distance
+                    // for both connected survey points.
                     if (distance > 0) {
                         localSpacingM[u] = Math.min(localSpacingM[u], distance);
                         localSpacingM[v] = Math.min(localSpacingM[v], distance);
@@ -443,9 +1372,37 @@
                 }
             }
 
+            // -------------------------------------------------
+            // 13.3 Prepare Local Spacing Distribution
+            // -------------------------------------------------
+            //
+            // Collect finite local-spacing values and sort them
+            // in ascending order.
+            //
+            // Points without a valid neighbouring edge retain
+            // Infinity and are excluded from this distribution.
+            //
+            // -------------------------------------------------
+
             const sortedLocalSpacingM = localSpacingM
                 .filter(Number.isFinite)
                 .sort((a, b) => a - b);
+
+            // -------------------------------------------------
+            // 13.4 Calculate a Spacing Percentile
+            // -------------------------------------------------
+            //
+            // Retrieve a value from the sorted local-spacing
+            // distribution at the requested percentile.
+            //
+            // p = 0.50 represents the approximate median.
+            // p = 0.95 represents the approximate 95th percentile.
+            //
+            // The selected index uses zero-based array positioning.
+            //
+            // If no finite spacing values exist, return Infinity.
+            //
+            // -------------------------------------------------
 
             const spacingPercentile = (p) => sortedLocalSpacingM.length
                 ? sortedLocalSpacingM[Math.min(
@@ -454,121 +1411,560 @@
                 )]
                 : Infinity;
 
+            // -------------------------------------------------
+            // 13.5 Calculate Global P95 Local Spacing
+            // -------------------------------------------------
+            //
+            // Determine the 95th-percentile value of the
+            // point-wise nearest Delaunay-edge distances.
+            //
+            // This provides a dataset-level reference for
+            // evaluating unusually long terrain edges.
+            //
+            // It will be used later in the selective
+            // reconstruction support assessment.
+            //
+            // IMPORTANT:
+            // P95 is a statistical spacing reference.
+            // It is not itself a terrain acceptance rule.
+            //
+            // -------------------------------------------------
+
             const localSpacingP95M = spacingPercentile(0.95);
+
+            // =================================================
+            // SECTION 14: TERRAIN MESH PREPARATION
+            // =================================================
+            //
+            // Purpose:
+            // Prepare the geometry containers, visual properties
+            // and evaluation thresholds required to construct
+            // the accepted terrain surface.
+            //
+            // The initial Delaunay triangulation contains all
+            // generated candidate triangles.
+            //
+            // Not every candidate triangle will be accepted.
+            // Each triangle must pass the geometric support
+            // evaluation performed in the following sections.
+            //
+            // =================================================
+
+            // -------------------------------------------------
+            // 14.1 Initialize Terrain Geometry Containers
+            // -------------------------------------------------
+            //
+            // terrainGeometry:
+            //    Final BufferGeometry for the accepted terrain.
+            //
+            // terrainPositions:
+            //    Stores transformed XYZ coordinates of accepted
+            //    terrain triangle vertices.
+            //
+            // terrainColors:
+            //    Stores RGB colour values for individual
+            //    terrain triangle vertices.
+            //
+            // Separate vertices are stored for each triangle
+            // to allow independent triangle colouring.
+            //
+            // -------------------------------------------------
 
             const terrainGeometry = new THREE.BufferGeometry();
             const terrainPositions = [];
             const terrainColors = [];
 
-            const naturalColor = new THREE.Color(0x5c7f5a); // Natural sage green terrain
-            const fallColor = new THREE.Color(0x8a7055);    // Earthy slope / drainage embankment
+            // -------------------------------------------------
+            // 14.2 Define Terrain Classification Colours
+            // -------------------------------------------------
+            //
+            // Natural terrain:
+            //    Green colour for slopes below the configured
+            //    slope classification threshold.
+            //
+            // Steep terrain:
+            //    Earth-brown colour for slopes at or above
+            //    the configured threshold.
+            //
+            // These colours communicate visual terrain
+            // classification, not engineering material types.
+            //
+            // -------------------------------------------------
 
-            // Classify triangles by slope, but only render triangles
-            // whose horizontal circumradius is within the supported scale.
+            const naturalColor = new THREE.Color(0x5c7f5a);
+            const fallColor = new THREE.Color(0x8a7055);
+
+            // -------------------------------------------------
+            // 14.3 Establish Triangle Evaluation Parameters
+            // -------------------------------------------------
+            //
+            // The following parameters control which Delaunay
+            // triangles are accepted for the primary terrain mesh.
+            //
+            // Triangle acceptance is initially based on
+            // horizontal circumradius and geometric validity.
+            //
+            // Additional support measurements are retained
+            // for diagnostic and experimental evaluation.
+            //
+            // -------------------------------------------------
+
             const triangles = triangulation.triangles;
-            const FALL_SLOPE_THRESHOLD = 30; // degrees
 
-            // Survey dataset: approximately 3 x the measured 95th-percentile
-            // nearest-neighbour spacing (5.154 m).
+            // Slope classification threshold in degrees.
+            const FALL_SLOPE_THRESHOLD = 30;
+
+            // Maximum permitted horizontal circumradius
+            // for the primary accepted terrain mesh.
+            //
+            // Triangles exceeding this threshold are rejected
+            // unless a separate selective reconstruction rule
+            // explicitly permits their restoration.
             const MAX_TERRAIN_CIRCUMRADIUS_M = 15.5;
+
+            // Minimum permitted twice-area of a triangle.
+            //
+            // Used to identify degenerate or nearly collinear
+            // horizontal triangles.
+            //
+            // Such triangles cannot provide a reliable
+            // horizontal terrain facet.
             const MIN_TWICE_AREA_M2 = 0.001;
 
-            // Safety gate: keep false until the candidate region report has been
-            // reviewed against this survey. No inferred facet is enabled by default.
+            // -------------------------------------------------
+            // 14.4 Selective Gap Reconstruction Configuration
+            // -------------------------------------------------
+            //
+            // Experimental reconstruction settings.
+            //
+            // The intention is to evaluate whether certain
+            // rejected triangles inside enclosed regions have
+            // sufficient surrounding survey support.
+            //
+            // Reconstruction is disabled by default.
+            // No rejected terrain is restored under the current
+            // default configuration.
+            //
+            // The additional limits provide conservative
+            // screening criteria if this feature is enabled.
+            //
+            // -------------------------------------------------
+
             const ENABLE_SELECTIVE_GAP_RECONSTRUCTION = false;
+
             const MAX_RECONSTRUCTION_EDGE_TO_LOCAL_SPACING = 3.0;
             const MAX_RECONSTRUCTION_EDGE_TO_P95_SPACING = 4.0;
             const MAX_RECONSTRUCTION_REGION_SPAN_M = 30.0;
+
+            // -------------------------------------------------
+            // 14.5 Initialize Triangle Evaluation Counters
+            // -------------------------------------------------
+            //
+            // These counters record the results of terrain
+            // triangle evaluation.
+            //
+            // acceptedTriangles:
+            //    Total triangles included in the terrain mesh.
+            //
+            // rejectedTriangles:
+            //    Total triangles rejected from the primary mesh.
+            //
+            // rejectedLargeCircumradius:
+            //    Rejected triangles exceeding the maximum
+            //    circumradius threshold.
+            //
+            // rejectedDegenerate:
+            //    Rejected triangles that fail the minimum
+            //    horizontal area requirement.
+            //
+            // -------------------------------------------------
 
             let acceptedTriangles = 0;
             let rejectedTriangles = 0;
             let rejectedLargeCircumradius = 0;
             let rejectedDegenerate = 0;
-            // Keep the accepted triangle indices so we can draw a separate
-            // coverage-edge guide without creating or extrapolating terrain.
+
+            // -------------------------------------------------
+            // 14.6 Retain Triangle Index Collections
+            // -------------------------------------------------
+            //
+            // acceptedTriangleIndices:
+            //    Retains the original survey-point indices
+            //    belonging to accepted triangles.
+            //
+            //    Used later for terrain boundary extraction
+            //    and coverage analysis.
+            //
+            // rejectedTriangleIndices:
+            //    Retains the original survey-point indices
+            //    belonging to rejected triangles.
+            //
+            //    Used to generate diagnostic triangle edges.
+            //
+            // SHOW_REJECTED_TRIANGLES:
+            //    Controls whether rejected triangle edges
+            //    are prepared for visualization.
+            //
+            // -------------------------------------------------
+
             const acceptedTriangleIndices = [];
 
             const rejectedTriangleIndices = [];
             const SHOW_REJECTED_TRIANGLES = true;
 
-            // Full diagnostic collection. Does not affect terrain filtering.
+            // Store detailed measurements for every rejected
+            // triangle.
+            //
+            // These records support subsequent investigations
+            // into unsupported terrain regions and coverage gaps.
+            //
+            // Diagnostic collection does not independently
+            // determine triangle acceptance.
             const rejectedTriangleDiagnostics = [];
 
+            // =================================================
+            // SECTION 15: HORIZONTAL CIRCUMRADIUS CALCULATION
+            // =================================================
+            //
+            // Purpose:
+            // Calculate the horizontal circumradius of a
+            // candidate triangle.
+            //
+            // Circumradius:
+            //    Radius of the circle passing through all
+            //    three vertices of a triangle.
+            //
+            // Why horizontal circumradius?
+            //    Terrain triangulation is generated using
+            //    Easting and Northing.
+            //
+            //    The acceptance threshold therefore evaluates
+            //    the horizontal geometry rather than the
+            //    vertically exaggerated Three.js geometry.
+            //
+            // Formula:
+            //
+            //              R = (a x b x c) / (4 x A)
+            //
+            // Where:
+            //    a, b, c = Horizontal side lengths.
+            //    A       = Horizontal triangle area.
+            //
+            // IMPORTANT:
+            // The function returns Infinity for degenerate
+            // or nearly collinear triangles.
+            //
+            // =================================================
+
             function horizontalCircumradius(a, b, c) {
+
+                // Calculate horizontal lengths of all three sides.
                 const ab = Math.hypot(
                     b.easting - a.easting,
                     b.northing - a.northing
                 );
+
                 const bc = Math.hypot(
                     c.easting - b.easting,
                     c.northing - b.northing
                 );
+
                 const ca = Math.hypot(
                     a.easting - c.easting,
                     a.northing - c.northing
                 );
 
-                // Twice the horizontal triangle area.
+                // Calculate twice the horizontal triangle area
+                // using the coordinate cross-product formula.
+                //
+                // twiceArea = 2 x A
+                //
+                // This avoids requiring the triangle's angles
+                // or vertical RL differences.
                 const twiceArea = Math.abs(
                     (b.easting - a.easting) * (c.northing - a.northing) -
                     (b.northing - a.northing) * (c.easting - a.easting)
                 );
 
-                // Degenerate or nearly collinear triangles do not define
-                // a reliable terrain facet.
+                // Reject degenerate or nearly collinear triangles.
+                //
+                // Such triangles have insufficient horizontal
+                // area to define a numerically reliable facet.
                 if (twiceArea < MIN_TWICE_AREA_M2) {
                     return Infinity;
                 }
 
-                // R = abc / (4A) = abc / (2 * twiceArea).
+                // Calculate the horizontal circumradius.
+                //
+                // Since twiceArea = 2A:
+                //
+                // R = (a x b x c) / (2 x twiceArea)
+                //
                 return (ab * bc * ca) / (2 * twiceArea);
             }
 
-            // Precompute the full Delaunay adjacency once. This enables a
-            // generalized, conservative facet-level exception without hard-coded
-            // triangle indices or changing the global circumradius threshold.
+            // =================================================
+            // SECTION 16: TRIANGLE EVIDENCE AND ADJACENCY
+            // =================================================
+            //
+            // Purpose:
+            // Examine every Delaunay triangle and collect its
+            // geometric measurements and topological relationships.
+            //
+            // Geometric evidence:
+            //    - Side lengths.
+            //    - Maximum edge length.
+            //    - Minimum internal angle.
+            //    - Horizontal circumradius.
+            //    - Elevation range.
+            //    - Local survey-point spacing.
+            //
+            // Topological evidence:
+            //    - Shared edges with neighbouring triangles.
+            //    - Whether edges belong to the Delaunay convex hull.
+            //    - Whether neighbouring triangles pass the
+            //      initial circumradius acceptance threshold.
+            //
+            // IMPORTANT:
+            // This section prepares evidence for subsequent
+            // evaluation. It does not change terrain geometry
+            // or restore rejected triangles.
+            //
+            // =================================================
+
+            // -------------------------------------------------
+            // 16.1 Initialize Triangle Evidence Collections
+            // -------------------------------------------------
+            //
+            // triangleEvidence:
+            //    Stores one evidence record for every Delaunay
+            //    triangle.
+            //
+            // terrainEdgeToTriangleIds:
+            //    Maps each unique Delaunay edge to the IDs of
+            //    triangles sharing that edge.
+            //
+            // This edge map allows efficient identification
+            // of triangle neighbours.
+            //
+            // -------------------------------------------------
+
             const triangleEvidence = [];
             const terrainEdgeToTriangleIds = new Map();
+
+            // Generate a consistent edge identifier.
+            //
+            // The same edge must produce the same key regardless
+            // of the order in which its two vertex indices appear.
+            //
+            // Example:
+            //    (4, 9) and (9, 4) both produce "4,9".
+            //
             const terrainEdgeKey = (u, v) => u < v ? `${u},${v}` : `${v},${u}`;
+
+            // -------------------------------------------------
+            // 16.2 Build Evidence for Every Delaunay Triangle
+            // -------------------------------------------------
+            //
+            // Delaunator stores triangle vertices in consecutive
+            // groups of three indices.
+            //
+            // Each iteration processes one triangle.
+            //
+            // triangleId:
+            //    Zero-based identifier of the current triangle.
+            //
+            // indices:
+            //    Original indices of its three survey vertices.
+            //
+            // -------------------------------------------------
 
             for (let i = 0; i < triangles.length; i += 3) {
                 const triangleId = i / 3;
-                const indices = [triangles[i], triangles[i + 1], triangles[i + 2]];
+
+                const indices = [
+                    triangles[i],
+                    triangles[i + 1],
+                    triangles[i + 2]
+                ];
+
                 const [ia, ib, ic] = indices;
-                const [a, b, c] = [terrainPoints[ia], terrainPoints[ib], terrainPoints[ic]];
+
+                const [a, b, c] = [
+                    terrainPoints[ia],
+                    terrainPoints[ib],
+                    terrainPoints[ic]
+                ];
+
+                // -------------------------------------------------
+                // 16.2.1 Calculate Horizontal Side Lengths
+                // -------------------------------------------------
+                //
+                // Calculate all three horizontal triangle edges.
+                //
+                // These measurements are based on actual
+                // Easting and Northing coordinates.
+                //
+                // RL is not included in horizontal edge lengths.
+                //
+                // -------------------------------------------------
+
                 const sides = [
                     Math.hypot(a.easting - b.easting, a.northing - b.northing),
                     Math.hypot(b.easting - c.easting, b.northing - c.northing),
                     Math.hypot(c.easting - a.easting, c.northing - a.northing)
                 ];
+
+                // -------------------------------------------------
+                // 16.2.2 Calculate Horizontal Triangle Area
+                // -------------------------------------------------
+                //
+                // Calculate twice the horizontal triangle area
+                // using the coordinate cross-product formula.
+                //
+                // This is retained as a geometric measurement
+                // for evaluating triangle shape and validity.
+                //
+                // -------------------------------------------------
+
                 const twiceArea = Math.abs(
                     (b.easting - a.easting) * (c.northing - a.northing) -
                     (b.northing - a.northing) * (c.easting - a.easting)
                 );
+
+                // -------------------------------------------------
+                // 16.2.3 Calculate Internal Triangle Angles
+                // -------------------------------------------------
+                //
+                // Calculate each internal angle using the
+                // cosine rule.
+                //
+                // Formula:
+                //
+                // cos(A) = (b² + c² - a²) / (2bc)
+                //
+                // The resulting cosine is clamped between
+                // -1 and 1 to prevent floating-point errors
+                // from producing invalid inverse cosine values.
+                //
+                // -------------------------------------------------
+
                 const angleFromSides = (opposite, side1, side2) => {
                     if (side1 <= 0 || side2 <= 0) return 0;
+
                     const cosine = THREE.MathUtils.clamp(
                         (side1 * side1 + side2 * side2 - opposite * opposite) /
                         (2 * side1 * side2), -1, 1
                     );
+
                     return THREE.MathUtils.radToDeg(Math.acos(cosine));
                 };
+
+                // Calculate the three internal angles.
                 const angles = [
                     angleFromSides(sides[1], sides[0], sides[2]),
                     angleFromSides(sides[2], sides[0], sides[1]),
                     angleFromSides(sides[0], sides[1], sides[2])
                 ];
+
+                // -------------------------------------------------
+                // 16.2.4 Obtain Local Survey Spacing at Vertices
+                // -------------------------------------------------
+                //
+                // Retrieve the previously calculated nearest
+                // Delaunay-edge spacing for each triangle vertex.
+                //
+                // Use the median of the available vertex spacings
+                // as the representative local spacing for this
+                // triangle.
+                //
+                // The median reduces the influence of one unusually
+                // small or large vertex-spacing measurement.
+                //
+                // -------------------------------------------------
+
                 const vertexSpacings = indices.map(index => localSpacingM[index]);
-                const finiteSpacings = vertexSpacings.filter(Number.isFinite).sort((x, y) => x - y);
+
+                const finiteSpacings = vertexSpacings
+                    .filter(Number.isFinite)
+                    .sort((x, y) => x - y);
+
                 const medianVertexSpacingM = finiteSpacings.length
                     ? finiteSpacings[Math.floor((finiteSpacings.length - 1) / 2)]
                     : Infinity;
+
+                // -------------------------------------------------
+                // 16.2.5 Calculate Triangle Elevation Range
+                // -------------------------------------------------
+                //
+                // Obtain the actual surveyed RL values of the
+                // three triangle vertices.
+                //
+                // Elevation range:
+                //    Maximum vertex RL - Minimum vertex RL.
+                //
+                // This records the vertical variation between
+                // the measured vertices.
+                //
+                // It is not an average slope measurement.
+                //
+                // -------------------------------------------------
+
                 const rlValues = [a.rl, b.rl, c.rl];
+
                 const rlRangeM = Math.max(...rlValues) - Math.min(...rlValues);
+
+                // -------------------------------------------------
+                // 16.2.6 Calculate Triangle Circumradius
+                // -------------------------------------------------
+                //
+                // Use the horizontal circumradius function
+                // established in Section 15.
+                //
+                // This provides the primary geometric measurement
+                // used by the existing terrain acceptance rule.
+                //
+                // -------------------------------------------------
+
                 const circumradiusM = horizontalCircumradius(a, b, c);
+
+                // -------------------------------------------------
+                // 16.2.7 Generate Triangle Edge Identifiers
+                // -------------------------------------------------
+                //
+                // Create consistent keys for the three edges:
+                //    ia-ib
+                //    ib-ic
+                //    ic-ia
+                //
+                // These identifiers are used to establish
+                // relationships between neighbouring triangles.
+                //
+                // -------------------------------------------------
+
                 const edges = [[ia, ib], [ib, ic], [ic, ia]].map(
                     ([u, v]) => terrainEdgeKey(u, v)
                 );
+
+                // -------------------------------------------------
+                // 16.2.8 Create the Triangle Evidence Record
+                // -------------------------------------------------
+                //
+                // Store all measurements in one record.
+                //
+                // baselineAccepted:
+                //    Indicates whether this triangle passes the
+                //    initial circumradius threshold.
+                //
+                // acceptedNeighbours:
+                //    Initialized to zero and calculated after
+                //    all triangle evidence records are available.
+                //
+                // hullEdgeCount:
+                //    Number of edges belonging to the outer convex
+                //    hull of the Delaunay triangulation.
+                //
+                // -------------------------------------------------
 
                 const evidence = {
                     triangleId, indices, edges, sides,
@@ -582,20 +1978,73 @@
                     acceptedNeighbours: 0,
                     hullEdgeCount: 0
                 };
+
                 triangleEvidence.push(evidence);
+
+                // -------------------------------------------------
+                // 16.2.9 Build the Edge-to-Triangle Relationship
+                // -------------------------------------------------
+                //
+                // Register the current triangle against each
+                // of its three edges.
+                //
+                // Later, triangles sharing the same edge can
+                // be identified as direct neighbours.
+                //
+                // A Delaunay edge normally belongs to:
+                //    - One triangle at the convex hull.
+                //    - Two triangles in the interior.
+                //
+                // -------------------------------------------------
 
                 for (const edgeKey of edges) {
                     if (!terrainEdgeToTriangleIds.has(edgeKey)) {
                         terrainEdgeToTriangleIds.set(edgeKey, []);
                     }
+
                     terrainEdgeToTriangleIds.get(edgeKey).push(triangleId);
                 }
             }
 
+            // -------------------------------------------------
+            // 16.3 Evaluate Triangle Neighbour Relationships
+            // -------------------------------------------------
+            //
+            // By this stage, all triangle evidence records and
+            // their edge relationships have been created.
+            //
+            // Now evaluate each triangle's three edges.
+            //
+            // For each edge:
+            //
+            // 1. Retrieve all triangles sharing that edge.
+            //
+            // 2. If only one triangle uses the edge, identify it
+            //    as a convex-hull boundary edge.
+            //
+            // 3. Identify adjacent triangles that pass the
+            //    baseline circumradius acceptance threshold.
+            //
+            // acceptedNeighbours counts shared edges with
+            // baseline-accepted adjacent triangles.
+            //
+            // It does not count shared vertices.
+            //
+            // hullEdgeCount identifies exposure to the outer
+            // convex hull of the original Delaunay triangulation.
+            //
+            // -------------------------------------------------
+
             for (const evidence of triangleEvidence) {
                 for (const edgeKey of evidence.edges) {
                     const adjacent = terrainEdgeToTriangleIds.get(edgeKey) || [];
+
+                    // An edge used by only one triangle belongs
+                    // to the outer convex hull of the triangulation.
                     if (adjacent.length === 1) evidence.hullEdgeCount++;
+
+                    // Identify adjacent triangles that pass
+                    // the initial circumradius threshold.
                     for (const adjacentId of adjacent) {
                         if (adjacentId !== evidence.triangleId &&
                             triangleEvidence[adjacentId]?.baselineAccepted) {
@@ -603,19 +2052,35 @@
                         }
                     }
                 }
-                // acceptedNeighbours counts shared edges; this is the intended
-                // support measure, not merely shared vertices.
+
+                // acceptedNeighbours counts shared edges,
+                // representing direct accepted-triangle support.
             }
 
-            // Diagnostic only: identify unusually long-edge triangles
-            // and group them by shared Delaunay edges.
-            // This does not change terrain acceptance.
+            // -------------------------------------------------
+            // 16.4 Long-edge Gap Diagnostic
+            // -------------------------------------------------
+            //
+            // Purpose:
+            // Identify triangles containing unusually long edges
+            // and group connected flagged triangles into regions.
+            //
+            // This is a diagnostic operation only.
+            // It does not accept or reject terrain triangles.
+            //
+            // The comparison is relative to the dataset:
+            // the median of all triangle maximum-edge lengths
+            // provides the reference value.
+            //
+            // -------------------------------------------------
 
             const longestEdgesM = triangleEvidence
                 .map(evidence => evidence.maxEdgeM)
                 .filter(Number.isFinite)
                 .sort((a, b) => a - b);
 
+            // Calculate the statistical median of the supplied values.
+            // Return Infinity when no valid values are available.
             const medianOf = values => {
                 if (!values.length) return Infinity;
 
@@ -628,13 +2093,19 @@
 
             const medianLongestEdgeM = medianOf(longestEdgesM);
 
-            // Experimental screening threshold only.
+            // Diagnostic screening threshold.
+            // A triangle is flagged when its longest edge exceeds
+            // 2.5 times the median longest edge in this dataset.
+            //
+            // This multiplier is an experimental diagnostic setting,
+            // not an engineering acceptance criterion.
             const diagnosticEdgeMultiplier = 2.5;
             const diagnosticLongEdgeLimitM =
                 medianLongestEdgeM * diagnosticEdgeMultiplier;
 
             const longEdgeTriangleIds = new Set();
 
+            // Identify triangles exceeding the diagnostic threshold.
             for (const evidence of triangleEvidence) {
                 if (Number.isFinite(diagnosticLongEdgeLimitM) &&
                     evidence.maxEdgeM > diagnosticLongEdgeLimitM) {
@@ -642,7 +2113,20 @@
                 }
             }
 
-            // Group flagged triangles connected by shared edges.
+            // -------------------------------------------------
+            // Group Connected Long-edge Triangles
+            // -------------------------------------------------
+            //
+            // Flagged triangles are grouped when they share
+            // a Delaunay edge.
+            //
+            // Shared vertices alone do not establish connectivity.
+            //
+            // A stack-based traversal discovers each connected
+            // component without processing the same triangle twice.
+            //
+            // -------------------------------------------------
+
             const visitedLongEdgeTriangles = new Set();
             const longEdgeComponents = [];
 
@@ -660,11 +2144,14 @@
 
                     const evidence = triangleEvidence[currentId];
 
+                    // Find triangles sharing each edge of the current triangle.
+                    const adjacentIds = [];
+
                     for (const edgeKey of evidence.edges) {
-                        const adjacentIds =
+                        const sharedTriangles =
                             terrainEdgeToTriangleIds.get(edgeKey) || [];
 
-                        for (const adjacentId of adjacentIds) {
+                        for (const adjacentId of sharedTriangles) {
                             if (!longEdgeTriangleIds.has(adjacentId) ||
                                 visitedLongEdgeTriangles.has(adjacentId)) {
                                 continue;
@@ -676,10 +2163,13 @@
                     }
                 }
 
+                // Retrieve the evidence records belonging to this component.
                 const componentTriangles = componentTriangleIds.map(
                     id => triangleEvidence[id]
                 );
 
+                // Summarize the component's size and its relationship
+                // to the original Delaunay convex-hull boundary.
                 longEdgeComponents.push({
                     triangleCount: componentTriangleIds.length,
                     triangleIds: componentTriangleIds,
@@ -695,6 +2185,8 @@
                 });
             }
 
+            // Consolidate the diagnostic results.
+            // Components are ordered from largest to smallest.
             const terrainEdgeGapDiagnostic = {
                 triangleCount: triangleEvidence.length,
                 medianLongestEdgeM: Number.isFinite(medianLongestEdgeM)
@@ -712,6 +2204,7 @@
                 )
             };
 
+            // Expose diagnostic information for browser-console inspection.
             window.__terrainEdgeGapDiagnostic =
                 terrainEdgeGapDiagnostic;
             window.__terrainTriangleEvidence = triangleEvidence;
@@ -721,68 +2214,208 @@
                 terrainEdgeGapDiagnostic
             );
 
+            // -------------------------------------------------
+            // 16.5 Selective Gap Reconstruction Rules
+            // -------------------------------------------------
+            //
+            // Defines the geometric and survey-support conditions
+            // required before a baseline-rejected triangle can be
+            // considered for selective reconstruction.
+            //
+            // These rules are additional safeguards, not a
+            // replacement for the baseline terrain acceptance test.
+            //
+            // Reconstruction remains controlled by
+            // ENABLE_SELECTIVE_GAP_RECONSTRUCTION.
+            //
+            // -------------------------------------------------
+
             const reconstructionRule = {
                 enabled: ENABLE_SELECTIVE_GAP_RECONSTRUCTION,
-                maxCircumradiusM: 16.0,
+
+                // Maximum permitted horizontal circumradius.
+                maxCircumradiusM: 20.0,
+
+                // Maximum permitted horizontal edge length.
                 maxEdgeM: 20.0,
+
+                // Reject triangles with an excessively narrow angle.
                 minimumAngleDegrees: 15.0,
+
+                // Maximum permitted elevation difference (RL)
+                // between the triangle's three survey vertices.
                 maxRlRangeM: 1.0,
+
+                // Minimum number of baseline-accepted neighbouring
+                // triangles required for local edge support.
                 minimumAcceptedNeighbours: 2,
+
+                // Restrict edge length relative to the median
+                // local survey-point spacing of the triangle vertices.
                 maxEdgeToMedianVertexSpacing: MAX_RECONSTRUCTION_EDGE_TO_LOCAL_SPACING,
+
+                // Restrict edge length relative to the global
+                // 95th-percentile local survey-point spacing.
                 maxEdgeToGlobalP95Spacing: MAX_RECONSTRUCTION_EDGE_TO_P95_SPACING,
+
+                // Prevent reconstruction of triangles touching
+                // the original Delaunay convex-hull boundary.
                 rejectConvexHullFacets: true
             };
 
+            // -------------------------------------------------
+            // 16.6 Selective Reconstruction Decision
+            // -------------------------------------------------
+            //
+            // Evaluates whether a triangle rejected by the
+            // baseline circumradius filter can be selectively
+            // restored.
+            //
+            // Every configured safeguard must pass.
+            // Failure of any condition immediately rejects
+            // the reconstruction attempt.
+            //
+            // -------------------------------------------------
+
             const selectiveReconstructionDecision = (evidence) => {
+
+                // Master safety switch:
+                // reconstruction is disabled unless explicitly enabled.
                 if (!ENABLE_SELECTIVE_GAP_RECONSTRUCTION) return false;
+
+                // Geometric size check:
+                // circumradius must be valid and within the configured limit.
                 if (!Number.isFinite(evidence.circumradiusM) ||
                     evidence.circumradiusM > reconstructionRule.maxCircumradiusM) return false;
+
+                // Reject triangles with excessively long edges.
                 if (evidence.maxEdgeM > reconstructionRule.maxEdgeM) return false;
+
+                // Reject narrow or poorly shaped triangles.
                 if (evidence.minAngleDegrees < reconstructionRule.minimumAngleDegrees) return false;
+
+                // Reject triangles with excessive elevation variation
+                // between their three survey vertices.
                 if (evidence.rlRangeM > reconstructionRule.maxRlRangeM) return false;
+
+                // Require sufficient support from neighbouring
+                // triangles that passed baseline acceptance.
                 if (evidence.acceptedNeighbours < reconstructionRule.minimumAcceptedNeighbours) return false;
+
+                // Reject triangles exposed to the original
+                // Delaunay convex-hull boundary.
                 if (reconstructionRule.rejectConvexHullFacets && evidence.hullEdgeCount > 0) return false;
+
+                // Local support check:
+                // the maximum triangle edge must remain within
+                // the configured multiple of its median vertex spacing.
+                // Missing or invalid local spacing also causes rejection.
                 if (!Number.isFinite(evidence.medianVertexSpacingM) ||
                     evidence.maxEdgeM > reconstructionRule.maxEdgeToMedianVertexSpacing *
                     evidence.medianVertexSpacingM) return false;
+
+                // Dataset-wide support check:
+                // compare the maximum edge against the configured
+                // multiple of the survey's 95th-percentile local spacing.
                 if (Number.isFinite(localSpacingP95M) &&
                     evidence.maxEdgeM > reconstructionRule.maxEdgeToGlobalP95Spacing *
                     localSpacingP95M) return false;
+
+                // Final condition:
+                // only triangles rejected by the baseline test
+                // can be considered for selective reconstruction.
                 return !evidence.baselineAccepted;
             };
+
+            // -------------------------------------------------
+            // 16.7 Selective Reconstruction Tracking
+            // -------------------------------------------------
+            //
+            // Track the number of triangles restored through
+            // the selective reconstruction process.
+            //
+            // The report collection stores the geometric and
+            // survey-support evidence for each restored triangle.
+            //
+            // These records are diagnostic and provide traceability
+            // for reviewing reconstruction decisions.
+            //
+            // -------------------------------------------------
 
             let selectivelyRestoredTriangles = 0;
             const selectivelyRestoredFacetReport = [];
 
+            // -------------------------------------------------
+            // 16.8 Main Triangle Processing
+            // -------------------------------------------------
+            //
+            // Process the Delaunay triangulation one triangle
+            // at a time. Each triangle is represented by three
+            // consecutive vertex indices.
+            //
+            // -------------------------------------------------
+
             for (let i = 0; i < triangles.length; i += 3) {
+
+                // Retrieve the three survey-point indices
+                // belonging to the current triangle.
                 const ia = triangles[i];
                 const ib = triangles[i + 1];
                 const ic = triangles[i + 2];
 
+                // Retrieve the corresponding survey-point records.
+                // Each record contains the original survey coordinates
+                // and associated point information.
                 const a = terrainPoints[ia];
                 const b = terrainPoints[ib];
                 const c = terrainPoints[ic];
 
+                // Calculate the triangle's horizontal circumradius.
+                // This is used to evaluate the triangle's geometric
+                // spread independently of its displayed 3D slope.
                 const circumradius = horizontalCircumradius(a, b, c);
 
-                // Do not create terrain facets across unsupported gaps
-                // or from nearly collinear points.
+                // Reject invalid or degenerate triangles.
+                // A non-finite circumradius indicates that a reliable
+                // horizontal circumradius could not be calculated.
+                //
+                // Such triangles are counted separately and are not
+                // included in the terrain mesh.
                 if (!Number.isFinite(circumradius)) {
                     rejectedTriangles++;
                     rejectedDegenerate++;
                     continue;
                 }
 
+                // Retrieve the previously calculated evidence for
+                // this triangle, using its position in the triangulation.
                 const facetEvidence = triangleEvidence[i / 3];
+
+                // Check whether a baseline-rejected triangle qualifies
+                // for selective reconstruction under the configured rules.
                 const selectivelyRestoreFacet =
                     circumradius > MAX_TERRAIN_CIRCUMRADIUS_M &&
                     selectiveReconstructionDecision(facetEvidence);
 
+                // Reject triangles exceeding the baseline circumradius
+                // threshold unless they qualify for selective restoration.
                 if (circumradius > MAX_TERRAIN_CIRCUMRADIUS_M &&
                     !selectivelyRestoreFacet) {
                     rejectedTriangles++;
                     rejectedLargeCircumradius++;
+                    // -------------------------------------------------
+                    // Rejected Triangle: Geometric Diagnostics
+                    // -------------------------------------------------
+                    //
+                    // Calculate additional geometric measurements
+                    // for a triangle rejected by the circumradius limit.
+                    //
+                    // These measurements are recorded for diagnosis.
+                    // They do not change the rejection decision.
+                    //
+                    // -------------------------------------------------
 
+                    // Calculate the horizontal lengths of all three edges.
                     const edgeAB = Math.hypot(
                         a.easting - b.easting,
                         a.northing - b.northing
@@ -798,48 +2431,118 @@
                         c.northing - a.northing
                     );
 
+                    // Calculate twice the horizontal triangle area
+                    // using the coordinate cross-product.
+                    // The absolute value removes orientation dependence.
                     const twiceArea = Math.abs(
                         (b.easting - a.easting) * (c.northing - a.northing) -
                         (b.northing - a.northing) * (c.easting - a.easting)
                     );
 
                     const sideLengths = [edgeAB, edgeBC, edgeCA];
+
+                    // Calculate an internal angle from its three side lengths
+                    // using the cosine rule.
                     const angleFromSides = (opposite, side1, side2) => {
                         if (side1 <= 0 || side2 <= 0) return 0;
+
+                        // Clamp the cosine to the valid inverse-cosine range
+                        // to protect against floating-point rounding errors.
                         const cosine = THREE.MathUtils.clamp(
                             (side1 * side1 + side2 * side2 - opposite * opposite) /
                             (2 * side1 * side2),
                             -1,
                             1
                         );
+
                         return THREE.MathUtils.radToDeg(Math.acos(cosine));
                     };
+
+                    // Calculate the three internal angles.
                     const angles = [
                         angleFromSides(edgeBC, edgeAB, edgeCA),
                         angleFromSides(edgeCA, edgeAB, edgeBC),
                         angleFromSides(edgeAB, edgeBC, edgeCA)
                     ];
+
+
+                    // -------------------------------------------------
+                    // Vertex Spacing and Elevation Analysis
+                    // -------------------------------------------------
+                    //
+                    // Examine the local survey-point spacing at each
+                    // triangle vertex and the elevation variation
+                    // across its three vertices.
+                    //
+                    // These measurements help assess whether the
+                    // triangle is supported by the surrounding survey data.
+                    //
+                    // -------------------------------------------------
+
+                    // Retrieve local spacing for each triangle vertex.
+                    // Invalid spacing values are represented as null
+                    // in the diagnostic report.
                     const vertexLocalSpacingM = [ia, ib, ic].map(index =>
                         Number.isFinite(localSpacingM[index])
                             ? Number(localSpacingM[index].toFixed(3))
                             : null
                     );
+
+                    // Retrieve the three vertex reduced levels (RL).
                     const vertexRlValues = [a.rl, b.rl, c.rl];
+
+                    // Calculate the elevation range between the
+                    // highest and lowest triangle vertices.
                     const rlRangeM = Math.max(...vertexRlValues) - Math.min(...vertexRlValues);
+
+                    // Identify the smallest internal angle and
+                    // longest horizontal edge for geometric screening.
                     const minimumAngleDegrees = Math.min(...angles);
                     const maxEdgeM = Math.max(...sideLengths);
+
+                    // Assign an initial diagnostic classification.
+                    // This classification describes the evidence
+                    // and does not independently approve reconstruction.
                     let supportClass = "review_with_feature_context";
+
+                    // Very small minimum angles indicate a narrow
+                    // or nearly collinear triangle.
                     if (minimumAngleDegrees < 10) {
                         supportClass = "sliver_or_near_collinear";
+
+                        // Long spans require further evidence before
+                        // they can be considered locally supported.
                     } else if (maxEdgeM > 30) {
                         supportClass = "long_span_unsupported_pending_evidence";
+
+                        // Moderately long edges or significant RL variation
+                        // indicate uncertain local survey support.
                     } else if (maxEdgeM > 20 || rlRangeM > 1) {
                         supportClass = "uncertain_local_support";
                     }
 
+                    // -------------------------------------------------
+                    // 16.12 Store Rejected Triangle Diagnostics
+                    // -------------------------------------------------
+                    //
+                    // Record the geometric measurements, survey-point
+                    // information and diagnostic classification for
+                    // the rejected triangle.
+                    //
+                    // These records support later analysis of rejected
+                    // regions and their relationship to accepted terrain.
+                    //
+                    // Recording evidence does not change acceptance.
+                    //
+                    // -------------------------------------------------
+
                     rejectedTriangleDiagnostics.push({
+
+                        // Original triangle identifier and vertex indices.
                         triangleId: i / 3,
                         indices: [ia, ib, ic],
+
+                        // Horizontal geometric measurements.
                         circumradiusM: Number(circumradius.toFixed(3)),
                         edgeAB_M: Number(edgeAB.toFixed(3)),
                         edgeBC_M: Number(edgeBC.toFixed(3)),
@@ -847,9 +2550,14 @@
                         maxEdgeM: Number(maxEdgeM.toFixed(3)),
                         minAngleDegrees: Number(minimumAngleDegrees.toFixed(3)),
                         horizontalAreaM2: Number((twiceArea / 2).toFixed(3)),
+
+                        // Survey support and elevation information.
                         rlRangeM: Number(rlRangeM.toFixed(3)),
                         vertexLocalSpacingM,
                         supportClass,
+
+                        // Preserve the original survey information
+                        // for all three triangle vertices.
                         vertices: [a, b, c].map(p => ({
                             pointNo: p.pointNo,
                             code: p.code,
@@ -866,18 +2574,32 @@
                     continue;
                 }
 
+                // Record triangles accepted through the selective reconstruction rules.
+                // These triangles exceeded the normal circumradius limit but passed
+                // the additional geometry and neighbourhood-support checks.
                 if (selectivelyRestoreFacet) {
+
+                    // Count how many triangles have been selectively restored.
                     selectivelyRestoredTriangles++;
+
+                    // Preserve the evidence used to justify accepting this triangle.
                     selectivelyRestoredFacetReport.push({
                         triangleId: facetEvidence.triangleId,
                         indices: facetEvidence.indices,
+
+                        // Record the principal geometric measurements.
                         circumradiusM: Number(facetEvidence.circumradiusM.toFixed(3)),
                         maxEdgeM: Number(facetEvidence.maxEdgeM.toFixed(3)),
                         minAngleDegrees: Number(facetEvidence.minAngleDegrees.toFixed(3)),
                         rlRangeM: Number(facetEvidence.rlRangeM.toFixed(3)),
                         medianVertexSpacingM: Number(facetEvidence.medianVertexSpacingM.toFixed(3)),
+
+                        // Record the triangle's support from neighbouring accepted
+                        // triangles and its relationship to the terrain hull.
                         acceptedNeighbours: facetEvidence.acceptedNeighbours,
                         hullEdgeCount: facetEvidence.hullEdgeCount,
+
+                        // Preserve the original survey-point details for traceability.
                         vertices: [a, b, c].map(point => ({
                             pointNo: point.pointNo,
                             code: point.code,
@@ -888,10 +2610,13 @@
                     });
                 }
 
+                // Convert the three survey vertices from geographic coordinates
+                // and RL values into the Three.js world coordinate system.
                 const va = toWorld(a.easting, a.northing, a.rl);
                 const vb = toWorld(b.easting, b.northing, b.rl);
                 const vc = toWorld(c.easting, c.northing, c.rl);
 
+                // Calculate two edges originating from the first vertex.
                 const ab = new THREE.Vector3(
                     vb.x - va.x,
                     vb.y - va.y,
@@ -904,10 +2629,13 @@
                     vc.z - va.z
                 );
 
+                // Calculate the triangle's normal vector.
+                // Its orientation is used to determine the terrain slope.
                 const normal = new THREE.Vector3()
                     .crossVectors(ab, ac)
                     .normalize();
 
+                // Calculate the slope angle relative to the horizontal plane.
                 const slopeDegrees = THREE.MathUtils.radToDeg(
                     Math.acos(
                         THREE.MathUtils.clamp(
@@ -918,6 +2646,8 @@
                     )
                 );
 
+                // Select the terrain colour according to the configured
+                // fall-slope threshold.
                 const triangleColor =
                     slopeDegrees >= FALL_SLOPE_THRESHOLD
                         ? fallColor
@@ -933,20 +2663,25 @@
                     );
                 }
 
+                // Record the accepted triangle and update its count.
                 acceptedTriangleIndices.push(ia, ib, ic);
                 acceptedTriangles++;
             }
 
-            // Read-only diagnostic: classify rejected triangle edges
-            // against the accepted mesh boundary and interior.
+            // Read-only diagnostic: count how many accepted triangles share
+            // each edge. An edge used once is a boundary edge; an edge used
+            // twice is an interior edge.
             const diagnosticAcceptedEdgeCounts = new Map();
 
+            // Create a consistent edge key regardless of vertex order.
+            // This allows the same edge to be matched across triangles.
             function makeEdgeKey(a, b) {
                 return a < b ? `${a},${b}` : `${b},${a}`;
             }
 
             const coverageEdgeCounts = new Map();
 
+            // Process accepted triangles and count their three edges.
             for (let i = 0; i < acceptedTriangleIndices.length; i += 3) {
                 const a = acceptedTriangleIndices[i];
                 const b = acceptedTriangleIndices[i + 1];
@@ -960,12 +2695,14 @@
                     );
                 }
             }
+
+            // Expose edge counts for inspection in browser diagnostics.
             window.__acceptedEdgeCounts = Object.fromEntries(
                 diagnosticAcceptedEdgeCounts
             );
 
-            // Read-only diagnostic: map accepted terrain boundary edges
-            // to rejected triangles sharing those exact edges.
+            // Read-only diagnostic: find rejected triangles that share
+            // an edge with the accepted terrain boundary.
             const rejectedTrianglesByAcceptedBoundaryEdge = new Map();
 
             for (let triangleIndex = 0;
@@ -977,15 +2714,18 @@
                 for (const [u, v] of [[a, b], [b, c], [c, a]]) {
                     const edgeKey = makeEdgeKey(u, v);
 
-                    // Only consider edges on the accepted terrain boundary.
+                    // Only consider edges used by exactly one accepted triangle.
                     if (diagnosticAcceptedEdgeCounts.get(edgeKey) !== 1) {
                         continue;
                     }
 
+                    // Create an entry for this boundary edge when first encountered.
                     if (!rejectedTrianglesByAcceptedBoundaryEdge.has(edgeKey)) {
                         rejectedTrianglesByAcceptedBoundaryEdge.set(edgeKey, []);
                     }
 
+                    // Associate the rejected triangle and its diagnostic evidence
+                    // with the accepted boundary edge it shares.
                     rejectedTrianglesByAcceptedBoundaryEdge
                         .get(edgeKey)
                         .push({
@@ -998,6 +2738,8 @@
                 }
             }
 
+            // Build a complete boundary-edge report, including edges
+            // that have no adjacent rejected triangle.
             const acceptedBoundaryRejectedAdjacency = [];
 
             for (const [edgeKey, acceptedCount] of diagnosticAcceptedEdgeCounts) {
@@ -1014,9 +2756,12 @@
                 });
             }
 
+            // Expose the adjacency report for browser-side inspection.
             window.__acceptedBoundaryRejectedAdjacency =
                 acceptedBoundaryRejectedAdjacency;
 
+            // Summarize how many accepted boundary edges have rejected
+            // triangles beside them and how many do not.
             console.info(
                 "[Survey Terrain] Accepted-boundary / rejected-triangle adjacency:",
                 {
@@ -1039,10 +2784,8 @@
                 }
             );
 
-            // Generalized rejected-region analysis.
-            // Groups rejected triangles by shared edges and classifies each connected
-            // region using its boundary relationship to the accepted terrain mesh.
-            // This is intentionally diagnostic-only: it does not invent terrain.
+            // Build an edge-to-triangle lookup for all rejected triangles.
+            // Triangles sharing an edge will be treated as neighbours.
             const rejectedTriangleByEdge = new Map();
 
             rejectedTriangleDiagnostics.forEach((triangle, triangleIndex) => {
@@ -1053,6 +2796,7 @@
                     makeEdgeKey(c, a)
                 ];
 
+                // Associate each triangle with its three shared-edge keys.
                 for (const edgeKey of edges) {
                     if (!rejectedTriangleByEdge.has(edgeKey)) {
                         rejectedTriangleByEdge.set(edgeKey, []);
@@ -1061,8 +2805,10 @@
                 }
             });
 
+            // Create a neighbour set for every rejected triangle.
             const rejectedNeighbours = rejectedTriangleDiagnostics.map(() => new Set());
 
+            // Establish connections between rejected triangles that share an edge.
             for (const adjacentTriangles of rejectedTriangleByEdge.values()) {
                 for (let i = 0; i < adjacentTriangles.length; i++) {
                     for (let j = i + 1; j < adjacentTriangles.length; j++) {
@@ -1072,12 +2818,15 @@
                 }
             }
 
+            // Track visited triangles so each connected region is processed once.
             const visitedRejectedTriangles = new Set();
             const rejectedRegions = [];
 
+            // Start a connected-component search from every unvisited triangle.
             for (let seed = 0; seed < rejectedTriangleDiagnostics.length; seed++) {
                 if (visitedRejectedTriangles.has(seed)) continue;
 
+                // Use a stack to traverse all rejected triangles connected to this seed.
                 const stack = [seed];
                 const regionTriangleIds = [];
                 visitedRejectedTriangles.add(seed);
@@ -1086,6 +2835,7 @@
                     const current = stack.pop();
                     regionTriangleIds.push(current);
 
+                    // Add unvisited rejected neighbours to the current region.
                     for (const neighbour of rejectedNeighbours[current]) {
                         if (visitedRejectedTriangles.has(neighbour)) continue;
                         visitedRejectedTriangles.add(neighbour);
@@ -1093,6 +2843,7 @@
                     }
                 }
 
+                // Initialise measurements and collections for the current region.
                 const regionEdgeCounts = new Map();
                 const regionVertexSet = new Set();
                 let areaM2 = 0;
@@ -1106,12 +2857,16 @@
                 let maximumLocalSpacingRatio = 0;
                 let allEdgesLocallySupported = true;
 
+                // Aggregate geometry, coordinates, elevation and edge support
+                // across every rejected triangle belonging to this region.
                 for (const triangleId of regionTriangleIds) {
                     const triangle = rejectedTriangleDiagnostics[triangleId];
                     const [a, b, c] = triangle.indices;
                     areaM2 += triangle.horizontalAreaM2;
                     maxTriangleEdgeM = Math.max(maxTriangleEdgeM, triangle.maxEdgeM);
 
+                    // Collect unique vertices and calculate the region's
+                    // coordinate and elevation bounds.
                     for (const vertexIndex of triangle.indices) {
                         regionVertexSet.add(vertexIndex);
                         const point = terrainPoints[vertexIndex];
@@ -1123,6 +2878,8 @@
                         maxRL = Math.max(maxRL, point.rl);
                     }
 
+                    // Count region edges and evaluate each edge against
+                    // the local spacing of its endpoint survey points.
                     for (const [u, v] of [[a, b], [b, c], [c, a]]) {
                         const edgeKey = makeEdgeKey(u, v);
                         regionEdgeCounts.set(
@@ -1145,6 +2902,8 @@
                             ? edgeLengthM / endpointSupportM
                             : Infinity;
 
+                        // Track the largest edge-to-local-spacing ratio
+                        // and flag regions containing unsupported edges.
                         maximumLocalSpacingRatio = Math.max(
                             maximumLocalSpacingRatio,
                             localRatio
@@ -1160,25 +2919,33 @@
                     }
                 }
 
+                // Identify the boundary edges of this connected rejected region.
+                // An edge used once within the region belongs to its boundary.
                 const regionBoundaryEdges = [...regionEdgeCounts.entries()]
                     .filter(([, count]) => count === 1)
                     .map(([key]) => key);
 
+                // Check how many accepted triangles use each region boundary edge.
                 const boundaryAcceptedCounts = regionBoundaryEdges.map(
                     edgeKey => diagnosticAcceptedEdgeCounts.get(edgeKey) || 0
                 );
 
+                // Determine whether every region boundary edge touches
+                // exactly one accepted triangle.
                 const boundaryEdgesAllTouchAcceptedMesh =
                     regionBoundaryEdges.length > 0 &&
                     boundaryAcceptedCounts.every(count => count === 1);
 
+                // Detect boundary edges with no accepted neighbouring triangle.
                 const hasUnsupportedOuterBoundary =
                     boundaryAcceptedCounts.some(count => count === 0);
 
+                // Calculate the region's horizontal extent.
                 const spanE = maxE - minE;
                 const spanN = maxN - minN;
                 const spanM = Math.hypot(spanE, spanN);
 
+                // Assign a topological classification based on boundary evidence.
                 let classification;
                 let reason;
 
@@ -1193,6 +2960,8 @@
                     reason = "Boundary adjacency is not sufficient to establish a safely enclosed gap.";
                 }
 
+                // Store the region's classification, geometry measurements,
+                // survey support and coordinate bounds.
                 rejectedRegions.push({
                     regionId: rejectedRegions.length + 1,
                     triangleIndices: regionTriangleIds,
@@ -1228,9 +2997,14 @@
                 });
             }
 
+            // Sort regions by area, largest first, and expose the report
+            // for inspection in browser diagnostics.
             rejectedRegions.sort((a, b) => b.areaM2 - a.areaM2);
             window.__rejectedTerrainRegions = rejectedRegions;
 
+            // Identify regions eligible for selective reconstruction.
+            // Eligibility requires an enclosed boundary, local edge support
+            // and a diagonal span within the configured limit.
             const eligibleReconstructionRegionIds = new Set(
                 rejectedRegions
                     .filter(region =>
@@ -1241,21 +3015,28 @@
                     .map(region => region.regionId)
             );
 
+            // Track rejected triangles that have been reconstructed
+            // and maintain a separate reconstruction count.
             const reconstructedRejectedTriangleIds = new Set();
             let selectivelyReconstructedTriangles = 0;
 
+            // Reconstruction requires both the explicit feature switch
+            // and at least one region that passed the eligibility checks.
             if (ENABLE_SELECTIVE_GAP_RECONSTRUCTION && eligibleReconstructionRegionIds.size) {
                 for (const region of rejectedRegions) {
+                    // Skip regions that did not pass the reconstruction assessment.
                     if (!eligibleReconstructionRegionIds.has(region.regionId)) continue;
 
-                    // Rebuild region membership by matching its triangle indices
-                    // through the connected-component traversal order.
-                    // Region membership is retained below during analysis.
+                    // Retrieve the rejected triangles belonging to this region.
                     const regionTriangles = region.triangleIndices || [];
                     for (const triangleId of regionTriangles) {
                         const triangle = rejectedTriangleDiagnostics[triangleId];
+
+                        // Skip missing triangles and triangles already reconstructed.
                         if (!triangle || reconstructedRejectedTriangleIds.has(triangleId)) continue;
 
+                        // Retrieve the original survey vertices and convert them
+                        // into Three.js world coordinates.
                         const [ia, ib, ic] = triangle.indices;
                         const a = terrainPoints[ia];
                         const b = terrainPoints[ib];
@@ -1263,21 +3044,29 @@
                         const va = toWorld(a.easting, a.northing, a.rl);
                         const vb = toWorld(b.easting, b.northing, b.rl);
                         const vc = toWorld(c.easting, c.northing, c.rl);
+
+                        // Calculate the triangle normal and terrain slope.
                         const ab = new THREE.Vector3(vb.x - va.x, vb.y - va.y, vb.z - va.z);
                         const ac = new THREE.Vector3(vc.x - va.x, vc.y - va.y, vc.z - va.z);
                         const normal = new THREE.Vector3().crossVectors(ab, ac).normalize();
                         const slopeDegrees = THREE.MathUtils.radToDeg(
                             Math.acos(THREE.MathUtils.clamp(Math.abs(normal.y), 0, 1))
                         );
+
+                        // Apply the same slope-based colour classification
+                        // used for the baseline accepted terrain triangles.
                         const triangleColor = slopeDegrees >= FALL_SLOPE_THRESHOLD
                             ? fallColor
                             : naturalColor;
 
+                        // Add the reconstructed triangle's vertices and colours
+                        // to the terrain geometry buffers.
                         for (const point of [va, vb, vc]) {
                             terrainPositions.push(point.x, point.y, point.z);
                             terrainColors.push(triangleColor.r, triangleColor.g, triangleColor.b);
                         }
 
+                        // Update accepted/rejected counts and record reconstruction.
                         acceptedTriangleIndices.push(ia, ib, ic);
                         reconstructedRejectedTriangleIds.add(triangleId);
                         selectivelyReconstructedTriangles++;
@@ -1288,6 +3077,9 @@
                 }
             }
 
+            // Expose the reconstruction assessment for browser-side inspection.
+            // This records whether reconstruction was enabled, how many regions
+            // qualified, and how many rejected triangles were reconstructed.
             window.__terrainReconstructionAssessment = {
                 enabled: ENABLE_SELECTIVE_GAP_RECONSTRUCTION,
                 localSpacingP95M: Number.isFinite(localSpacingP95M)
@@ -1299,6 +3091,8 @@
                 note: "Reconstruction uses measured vertices only. The safety gate is disabled by default pending review of this survey's region report."
             };
 
+            // Log a summary of connected rejected regions, their classifications,
+            // reconstruction eligibility and the largest regions for review.
             console.info("[Survey Terrain] Connected rejected-region assessment:", {
                 regionCount: rejectedRegions.length,
                 enclosedCandidateGaps: rejectedRegions.filter(
@@ -1319,6 +3113,9 @@
                 note: "No region is reconstructed unless enclosed, locally supported, and within the configured span; feature remains disabled by default."
             });
 
+            // Build an edge-adjacency report for every rejected triangle.
+            // This shows whether its edges coincide with accepted boundary,
+            // interior or unexpected accepted-mesh edges.
             const rejectedEdgeAdjacencyReport =
                 rejectedTriangleDiagnostics.map(t => {
                     const [a, b, c] = t.indices;
@@ -1356,8 +3153,11 @@
                     };
                 });
 
+            // Expose the rejected-triangle edge report for inspection.
             window.__rejectedEdgeAdjacencyReport = rejectedEdgeAdjacencyReport;
 
+            // Inspect the first rejected triangle separately to make its
+            // individual edge relationships easier to examine.
             const firstRejectedEdgeCheck = rejectedTriangleDiagnostics.length
                 ? (() => {
                     const t = rejectedTriangleDiagnostics[0];
@@ -1381,11 +3181,14 @@
                 })()
                 : null;
 
+            // Log the individual edge check for the first rejected triangle.
             console.info(
                 "[Survey Terrain] First rejected triangle edge check:",
                 firstRejectedEdgeCheck
             );
 
+            // Summarize accepted-mesh edge topology and rejected-triangle
+            // relationships to support review of terrain coverage.
             console.info(
                 "[Survey Terrain] Rejected triangle edge classification:",
                 {
@@ -1414,6 +3217,8 @@
                 }
             );
 
+            // Expose the selectively restored facet evidence and report
+            // the rules used by the individual-facet reconstruction gate.
             window.__selectivelyRestoredTerrainFacets = selectivelyRestoredFacetReport;
             console.info("[Survey Terrain] Selective reconstruction gate:", {
                 enabled: ENABLE_SELECTIVE_GAP_RECONSTRUCTION,
@@ -1423,6 +3228,7 @@
                 note: "Only non-hull facets passing all geometric/local-support gates are restored. This is a conservative visualization heuristic, not an authoritative surveyed surface."
             });
 
+            // Summarize the baseline terrain triangulation filtering results.
             console.info("[Survey Terrain] TIN support filtering:", {
                 inputTriangles: triangles.length / 3,
                 acceptedTriangles,
@@ -1433,6 +3239,8 @@
                 selectivelyRestoredTriangles
             });
 
+            // Expose detailed rejected-triangle evidence and group the
+            // rejected facets by their assigned support classification.
             window.__rejectedTriangleDiagnostics = rejectedTriangleDiagnostics;
             window.__rejectedFacetSupportReport = {
                 total: rejectedTriangleDiagnostics.length,
@@ -1447,24 +3255,29 @@
                 note: "Diagnostic triage only; no rejected facet is accepted solely by this classification."
             };
 
+            // Log the rejected-facet classification totals for review.
             console.info("[Survey Terrain] Rejected-facet support triage:", {
                 count: rejectedTriangleDiagnostics.length,
                 byClass: window.__rejectedFacetSupportReport.byClass,
                 note: window.__rejectedFacetSupportReport.note
             });
 
+            // Attach the accepted terrain vertex coordinates to the geometry.
             terrainGeometry.setAttribute(
                 "position",
                 new THREE.Float32BufferAttribute(terrainPositions, 3)
             );
 
+            // Attach the per-vertex colour data used to distinguish terrain slopes.
             terrainGeometry.setAttribute(
                 "color",
                 new THREE.Float32BufferAttribute(terrainColors, 3)
             );
 
+            // Calculate surface normals for lighting and terrain shading.
             terrainGeometry.computeVertexNormals();
 
+            // Configure the material using vertex colours and double-sided rendering.
             const terrainMaterial = new THREE.MeshStandardMaterial({
                 vertexColors: true,
                 roughness: 0.85,
@@ -1474,6 +3287,7 @@
                 wireframe: false
             });
 
+            // Create the primary accepted terrain mesh.
             const terrainMesh = new THREE.Mesh(
                 terrainGeometry,
                 terrainMaterial
@@ -1482,6 +3296,11 @@
             // TERRAIN GAP DIAGNOSTIC — VISUALIZATION ONLY
             // Do not fill rejected triangles or alter the authoritative terrain.
 
+            // TERRAIN GAP DIAGNOSTIC — VISUALIZATION ONLY
+            // Do not fill rejected triangles or alter the authoritative terrain.
+
+            // Expose accepted and rejected triangle counts and confirm
+            // that the accepted terrain mesh was created.
             window.__terrainGapDiagnostic = {
                 acceptedTriangleCount: acceptedTriangleIndices.length / 3,
                 rejectedTriangleCount: rejectedTriangleDiagnostics.length,
@@ -1491,6 +3310,7 @@
                 engineeringUse: false
             };
 
+            // Log the diagnostic summary for browser-side inspection.
             console.info(
                 "[Survey Terrain] Gap diagnostic:",
                 window.__terrainGapDiagnostic
@@ -1584,7 +3404,10 @@
             // Uses measured survey vertices only; not authoritative terrain.
             const cyanTerrainPositions = [];
 
+            // Collect vertices from rejected triangles that remain unreconstructed.
             for (const candidate of rejectedTriangleDiagnostics) {
+
+                // Exclude triangles already incorporated into accepted terrain.
                 if (reconstructedRejectedTriangleIds.has(candidate.triangleId)) {
                     continue;
                 }
@@ -1594,8 +3417,10 @@
                 const b = terrainPoints[ib];
                 const c = terrainPoints[ic];
 
+                // Skip triangles with missing survey-point references.
                 if (!a || !b || !c) continue;
 
+                // Convert each original survey vertex into world coordinates.
                 for (const point of [a, b, c]) {
                     const worldPoint = toWorld(
                         point.easting,
@@ -1603,6 +3428,7 @@
                         point.rl
                     );
 
+                    // Store the converted coordinates for the overlay geometry.
                     cyanTerrainPositions.push(
                         worldPoint.x,
                         worldPoint.y,
@@ -1611,11 +3437,14 @@
                 }
             }
 
+            // Initialise the overlay mesh reference.
             let cyanTerrainMesh = null;
 
+            // Create the overlay only when rejected-triangle vertices exist.
             if (cyanTerrainPositions.length > 0) {
                 const cyanTerrainGeometry = new THREE.BufferGeometry();
 
+                // Attach the rejected-triangle vertex positions.
                 cyanTerrainGeometry.setAttribute(
                     "position",
                     new THREE.Float32BufferAttribute(
@@ -1624,8 +3453,11 @@
                     )
                 );
 
+                // Calculate normals for the overlay surface.
                 cyanTerrainGeometry.computeVertexNormals();
 
+                // Configure a transparent cyan material so the underlying
+                // accepted terrain and other details remain visible.
                 const cyanTerrainMaterial = new THREE.MeshBasicMaterial({
                     color: 0x00ffff,
                     side: THREE.DoubleSide,
@@ -1637,6 +3469,7 @@
                     polygonOffsetUnits: -2
                 });
 
+                // Create and configure the separate visual overlay mesh.
                 cyanTerrainMesh = new THREE.Mesh(
                     cyanTerrainGeometry,
                     cyanTerrainMaterial
@@ -1647,6 +3480,8 @@
                 cyanTerrainMesh.visible = false;
             }
 
+            // Expose the cyan overlay status and its triangle count.
+            // This overlay is for visual diagnosis only, not engineering use.
             window.__cyanVisualTerrain = {
                 triangleCount: cyanTerrainPositions.length / 9,
                 meshCreated: !!cyanTerrainMesh,
@@ -1662,6 +3497,8 @@
             // coverage edges (typically internal holes or disconnected patches).
             // This is a visual classification only, not an engineering boundary.
 
+            // Count how many accepted triangles use each edge.
+            // Edges appearing once form the accepted terrain boundary.
             for (let i = 0; i < acceptedTriangleIndices.length; i += 3) {
                 const triangle = [
                     acceptedTriangleIndices[i],
@@ -1674,6 +3511,8 @@
                     [triangle[1], triangle[2]],
                     [triangle[2], triangle[0]]
                 ]) {
+                    // Use a consistent key so reversed vertex order
+                    // still identifies the same undirected edge.
                     const key = u < v ? `${u}:${v}` : `${v}:${u}`;
                     const edge = coverageEdgeCounts.get(key);
 
@@ -1689,8 +3528,12 @@
                 }
             }
 
+            // Retain only edges used by exactly one accepted triangle.
             const boundaryEdges = [...coverageEdgeCounts.values()]
                 .filter(edge => edge.count === 1);
+
+            // Build vertex-to-boundary-edge adjacency.
+            // Each edge is registered in both directions to support traversal.
             const boundaryAdjacency = new Map();
             for (let i = 0; i < boundaryEdges.length; i++) {
                 const edge = boundaryEdges[i];
@@ -1707,6 +3550,7 @@
             const boundaryLoops = [];
             const secondaryBoundaryEdgeIds = new Set();
 
+            // Start a graph traversal from every boundary edge not yet visited.
             for (let seed = 0; seed < boundaryEdges.length; seed++) {
                 if (visitedBoundaryEdges.has(seed)) continue;
 
@@ -1714,6 +3558,7 @@
                 const componentVertices = new Set();
                 const stack = [seed];
 
+                // Traverse all boundary edges connected to the current seed.
                 while (stack.length > 0) {
                     const edgeId = stack.pop();
                     if (visitedBoundaryEdges.has(edgeId)) continue;
@@ -1721,10 +3566,12 @@
                     visitedBoundaryEdges.add(edgeId);
                     componentEdges.add(edgeId);
 
+                    // Collect the vertices belonging to this component.
                     const edge = boundaryEdges[edgeId];
                     componentVertices.add(edge.a);
                     componentVertices.add(edge.b);
 
+                    // Follow every boundary edge connected to either endpoint.
                     for (const vertex of [edge.a, edge.b]) {
                         for (const neighbour of boundaryAdjacency.get(vertex) || []) {
                             if (!visitedBoundaryEdges.has(neighbour.edgeId)) {
@@ -1743,6 +3590,8 @@
                         ).length === 2
                     );
 
+                // Components that do not form simple cycles cannot be used
+                // as closed terrain boundary loops. Retain their edges separately.
                 if (!isSimpleCycle) {
                     for (const edgeId of componentEdges) {
                         secondaryBoundaryEdgeIds.add(edgeId);
@@ -1750,6 +3599,7 @@
                     continue;
                 }
 
+                // Start traversing the component from its first edge.
                 const firstEdgeId = componentEdges.values().next().value;
                 const firstEdge = boundaryEdges[firstEdgeId];
                 const startVertex = firstEdge.a;
@@ -1759,6 +3609,8 @@
                 let previousEdgeId = -1;
                 let closed = false;
 
+                // Follow connected boundary edges until the traversal
+                // returns to its starting vertex or cannot continue.
                 for (let step = 0; step < componentEdges.size; step++) {
                     const next = (boundaryAdjacency.get(currentVertex) || []).find(
                         item => componentEdges.has(item.edgeId) &&
@@ -1779,6 +3631,8 @@
                     loopVertices.push(currentVertex);
                 }
 
+                // Reject incomplete traversals and retain their edges
+                // as secondary boundaries.
                 if (!closed || orderedEdgeIds.size !== componentEdges.size) {
                     for (const edgeId of componentEdges) {
                         secondaryBoundaryEdgeIds.add(edgeId);
@@ -1794,6 +3648,8 @@
                     Number.isFinite(origin.easting) &&
                     Number.isFinite(origin.northing);
 
+                // Validate coordinates and calculate the signed polygon area
+                // using the shoelace formula.
                 if (validCoordinates) {
                     for (let i = 0; i < loopVertices.length; i++) {
                         const a = terrainPoints[loopVertices[i]];
@@ -1818,6 +3674,8 @@
                     }
                 }
 
+                // Invalid coordinate data prevents this component
+                // from being accepted as a valid closed loop.
                 if (!validCoordinates) {
                     for (const edgeId of componentEdges) {
                         secondaryBoundaryEdgeIds.add(edgeId);
@@ -1825,6 +3683,7 @@
                     continue;
                 }
 
+                // Store the ordered loop and its absolute horizontal area.
                 boundaryLoops.push({
                     edgeIds: orderedEdgeIds,
                     vertices: loopVertices,
@@ -1837,6 +3696,8 @@
             // for exactly once as either a closed-loop edge or an
             // edge belonging to an invalid/unclosed component.
 
+            // Count how many times each boundary edge appears in valid loops
+            // and secondary boundary components.
             const boundaryEdgeMembership = new Map();
 
             for (let loopIndex = 0;
@@ -1850,6 +3711,7 @@
                 }
             }
 
+            // Include edges belonging to components that were not valid loops.
             for (const edgeId of secondaryBoundaryEdgeIds) {
                 boundaryEdgeMembership.set(
                     edgeId,
@@ -1857,6 +3719,7 @@
                 );
             }
 
+            // Identify boundary edges that were omitted or counted more than once.
             const unaccountedBoundaryEdgeIds = [];
             const multiplyAccountedBoundaryEdgeIds = [];
 
@@ -1873,6 +3736,7 @@
                 }
             }
 
+            // Calculate the number of edges in valid loops and secondary components.
             const closedLoopEdgeCount = boundaryLoops.reduce(
                 (sum, loop) => sum + loop.edgeIds.size,
                 0
@@ -1881,6 +3745,7 @@
             const unclosedOrInvalidEdgeCount =
                 secondaryBoundaryEdgeIds.size;
 
+            // Expose the complete boundary-accounting result.
             window.__boundaryCompletenessDiagnostic = {
                 totalBoundaryEdges: boundaryEdges.length,
                 closedLoopCount: boundaryLoops.length,
@@ -1909,10 +3774,18 @@
                 window.__boundaryCompletenessDiagnostic
             );
 
+            // Log the boundary-edge completeness result.
+            console.info(
+                "[Survey Terrain] Boundary completeness:",
+                window.__boundaryCompletenessDiagnostic
+            );
+
             // TEMPORARY READ-ONLY DIAGNOSTIC:
             // Summarize every accepted-mesh boundary loop and its
             // containment relationship. Does not alter the design.
 
+            // Determine whether a survey coordinate lies inside a polygon
+            // using the ray-casting point-in-polygon method.
             function diagnosticPointInLoop(point, polygonVertices) {
                 let inside = false;
                 const x = point.easting;
@@ -1943,6 +3816,9 @@
                 return inside;
             }
 
+            // Build a summary for each closed boundary loop.
+            // Evaluate its coordinate validity and possible containment
+            // by other loops with larger enclosed areas.
             const boundaryLoopSummary = boundaryLoops.map(
                 (loop, index) => {
                     const uniqueVertices = new Set(loop.vertices);
@@ -1953,6 +3829,7 @@
                             Number.isFinite(p.northing);
                     });
 
+                    // Test larger loops as possible containers.
                     const possibleContainers = boundaryLoops
                         .map((candidate, candidateIndex) => {
                             if (
@@ -1963,6 +3840,8 @@
                                 return null;
                             }
 
+                            // A candidate is considered a possible container
+                            // when all vertices of the current loop lie inside it.
                             const allVerticesInside = loop.vertices.every(
                                 vertex => {
                                     const point = terrainPoints[vertex];
@@ -1981,6 +3860,7 @@
                                 : null;
                         })
                         .filter(Boolean)
+                        // The smallest containing loop is the nearest possible container.
                         .sort((a, b) => a.areaM2 - b.areaM2);
 
                     return {
@@ -2001,6 +3881,7 @@
                 }
             );
 
+            // Expose and log the loop containment report.
             window.__boundaryLoopSummary = boundaryLoopSummary;
 
             console.table(boundaryLoopSummary);
@@ -2010,11 +3891,14 @@
                 boundaryLoopSummary
             );
 
+            // Sort closed loops by enclosed area, largest first.
+            // The largest loop becomes the primary visual perimeter.
             boundaryLoops.sort((a, b) => b.area - a.area);
             const primaryPerimeterEdgeIds = boundaryLoops.length
                 ? boundaryLoops[0].edgeIds
                 : new Set();
 
+            // Expose primary-loop details and inspect a selected vertex sequence.
             window.__boundaryDebug = (() => {
                 const vertices = boundaryLoops[0]?.vertices ?? [];
                 const targets = new Set([2835, 2836, 2838]);
@@ -2035,26 +3919,36 @@
                 };
             })();
 
+            // Classify every boundary edge not belonging to the primary
+            // perimeter as a secondary coverage edge.
             for (let i = 0; i < boundaryEdges.length; i++) {
                 if (!primaryPerimeterEdgeIds.has(i)) {
                     secondaryBoundaryEdgeIds.add(i);
                 }
             }
 
+            // Create separate coordinate buffers for the primary perimeter
+            // and all remaining terrain coverage edges.
             const primaryPerimeterPositions = [];
             const secondaryCoveragePositions = [];
+
+            // Convert every accepted boundary edge into world coordinates
+            // and place it in the appropriate visual boundary buffer.
             for (let i = 0; i < boundaryEdges.length; i++) {
                 const edge = boundaryEdges[i];
                 const a = terrainPoints[edge.a];
                 const b = terrainPoints[edge.b];
                 const va = toWorld(a.easting, a.northing, a.rl);
                 const vb = toWorld(b.easting, b.northing, b.rl);
+
+                // Route primary-loop edges and secondary edges separately.
                 const target = primaryPerimeterEdgeIds.has(i)
                     ? primaryPerimeterPositions
                     : secondaryCoveragePositions;
                 target.push(va.x, va.y, va.z, vb.x, vb.y, vb.z);
             }
 
+            // Reusable helper for creating visual boundary line segments.
             function makeBoundaryLine(positions, color, opacity, name, renderOrder) {
                 const geometry = new THREE.BufferGeometry();
                 geometry.setAttribute(
@@ -2073,6 +3967,7 @@
                 return lines;
             }
 
+            // Create the red primary perimeter guide.
             const primaryPerimeterGuide = makeBoundaryLine(
                 primaryPerimeterPositions,
                 0xff3333, // Red outer boundary; alignment centreline remains orange.
@@ -2080,6 +3975,8 @@
                 "Primary terrain coverage perimeter (visual estimate)",
                 11
             );
+
+            // Create the yellow secondary coverage guide.
             const secondaryCoverageGuide = makeBoundaryLine(
                 secondaryCoveragePositions,
                 0xf4d35e,
@@ -2088,11 +3985,9 @@
                 10
             );
 
-            // Detect candidate interior coverage gaps from accepted-mesh topology,
-            // not from rejected triangles alone. A closed boundary loop enclosed
-            // by the primary perimeter is highlighted as a candidate uncovered
-            // region. This is a visual diagnostic: nested/disconnected coverage
-            // islands can resemble holes and must be reviewed before conclusions.
+            // Section 16.42: Point-in-polygon test for boundary containment.
+            // Uses the ray-casting method in survey Easting/Northing coordinates.
+            // This determines whether a boundary vertex lies inside another loop.
             function pointInSurveyPolygon(point, polygonVertices) {
                 let inside = false;
                 const x = point.easting;
@@ -2112,9 +4007,10 @@
 
             const outerLoop = boundaryLoops[0] ?? null;
 
-            // Identify nested boundary loops conservatively.
-            // A loop is considered enclosed only when all its vertices lie
-            // inside a larger loop. Its parent is the smallest enclosing loop.
+            // Section 16.43: Determine the parent boundary of each loop.
+            // A loop is enclosed only when all its vertices lie inside a larger loop.
+            // When multiple enclosing loops exist, select the smallest enclosing parent.
+            // This establishes the nesting relationship between terrain boundaries.
             const boundaryLoopParents = boundaryLoops.map(() => -1);
 
             for (let i = 0; i < boundaryLoops.length; i++) {
@@ -2156,9 +4052,11 @@
                 boundaryLoopParents[i] = parentIndex;
             }
 
-            // Apply nesting parity:
-            // depth 0 = outer boundary, depth 1 = candidate gap,
-            // depth 2 = enclosed terrain island, depth 3 = nested candidate gap.
+            // Section 16.44: Classify nested boundaries using containment depth.
+            // Even nesting depth represents an outer boundary or enclosed terrain island.
+            // Odd nesting depth represents a candidate interior coverage gap.
+            // Invalid parent cycles are excluded from the classification.
+            // These candidates are diagnostic only; they do not establish missing terrain elevations.
             const candidateInteriorGapLoops = [];
             window.__candidateGapVertexDiagnostics = [];
 
@@ -2190,6 +4088,10 @@
                 }
             }
 
+            // Section 16.45: Build visual markers for candidate interior gaps.
+            // Each candidate receives a flat pink fill positioned near its mean terrain elevation.
+            // Cyan outline segments trace the candidate boundary.
+            // These are visual indicators only, not reconstructed terrain surfaces.
             const gapFillMeshes = [];
             const gapOutlinePositions = [];
 
@@ -2242,6 +4144,11 @@
                 }
             }
 
+            // Section 16.46: Publish candidate-gap evidence and coverage summary.
+            // Records each candidate's area and boundary vertex coordinates.
+            // Exposes the results through window.__candidateGapVertexDiagnostics
+            // and window.__terrainCoverageGaps for inspection.
+            // The diagnostic explicitly avoids inferring terrain elevations inside gaps.
             window.__candidateGapVertexDiagnostics = candidateInteriorGapLoops.map((loop, index) => ({
                 id: index + 1,
                 areaM2: loop.area,
@@ -2396,6 +4303,10 @@
                 });
             }
 
+            // Section 16.47: Assemble terrain coverage and diagnostic layers.
+            // Adds the primary perimeter, secondary boundaries, cyan terrain,
+            // candidate-gap fills and outlines to the terrain group.
+            // The group is then added to the main Three.js scene.
             terrainLayer.add(primaryPerimeterGuide);
             terrainLayer.add(secondaryCoverageGuide);
 
@@ -2428,6 +4339,11 @@
             if (candidateGapOutline.visible) terrainLayer.add(candidateGapOutline);
             scene.add(terrainLayer);
 
+
+            // Section 16.48: Log the candidate interior-gap assessment
+            // and terrain coverage summary for browser-console inspection.
+            // These summaries report visual topology diagnostics, not
+            // an authoritative engineering boundary or terrain reconstruction.
             console.info("[Survey Terrain] Candidate interior coverage gaps:",
                 window.__terrainCoverageGaps);
 
@@ -2440,7 +4356,9 @@
                 meaning: "Red is the largest closed accepted-mesh boundary loop (visual estimate); yellow shows secondary/open coverage edges; magenta fill with cyan outline marks candidate interior gaps from accepted-mesh topology. Gap fills are diagnostic only; no terrain is extrapolated."
             });
 
-            // Terrain layer on/off control.
+            // Section 16.49: Terrain visibility control.
+            // Toggles the complete terrain group, including its coverage guides
+            // and diagnostic overlays, without removing the underlying objects.
             const terrainToggle = document.getElementById(
                 "survey-map-toggle-terrain"
             );
@@ -2457,7 +4375,9 @@
             });
         }
 
-        // Keep surveyed points visible above the terrain.
+        // Section 16.50: Add the surveyed-point layer independently.
+        // Survey points remain a separate scene object, with their own visibility
+        // control, so they can be viewed independently of the terrain layer.
         const surveyLayer = new THREE.Points(surveyGeometry, surveyMaterial);
         scene.add(surveyLayer);
 
@@ -2556,7 +4476,10 @@
 
         let cleanRoadCenterPoints = null;
 
-        // Helper to project any (Easting, Northing) point onto the road centerline
+        // Section 17.1: Road centreline projection helper.
+        // Finds the closest position on the imported alignment to a supplied
+        // Easting/Northing coordinate. Also interpolates RL and calculates heading.
+        // Used later to position culvert markers relative to the road.
         function getRoadCenterlineProjection(easting, northing) {
             const alignList = (cleanRoadCenterPoints && cleanRoadCenterPoints.length > 1)
                 ? cleanRoadCenterPoints
@@ -2612,8 +4535,10 @@
             };
         }
 
-        /// Imported road alignment: continuous 7 m visual road surface.
-        // Display geometry only; does not change engineering data.
+        // Section 17.2: Generate the visual road from imported alignment data.
+        // Orders alignment points by chainage and prepares road geometry,
+        // outer boundaries and centreline using the surveyed coordinates.
+        // This is display geometry, not a modification of engineering inputs.
         if (validAlignment.length > 1) {
             const orderedAlignment = [...validAlignment].sort((a, b) => {
                 const ca = Number(a.Chainage);
@@ -2634,6 +4559,11 @@
             const rightRoadBoundaryPositions = [];
             const centerlinePositions = [];
 
+
+            // Section 17.3: Determine the elevation used for each alignment point.
+            // Prefer the alignment's ExistingRL when valid.
+            // Otherwise, use the RL of the nearest valid survey point.
+            // Fall back to baseRL when no survey point is available.
             const getAlignmentRL = (p) => {
                 if (
                     p.ExistingRL != null &&
@@ -2666,7 +4596,9 @@
                 rl: getAlignmentRL(p)
             }));
 
-            // Add intermediate points to reduce visible gaps between road segments.
+            // Section 17.4: Densify the road centreline.
+            // Insert interpolated Easting, Northing and RL points between
+            // original alignment points to reduce visible gaps in the road surface.
             const roadCenters = [];
 
             for (let i = 0; i < originalRoadCenters.length - 1; i++) {
@@ -2691,6 +4623,10 @@
 
             roadCenters.push(originalRoadCenters[originalRoadCenters.length - 1]);
 
+            // Section 17.5: Compare alignment elevations against the datum RL.
+            // Count points above, below and within the datum tolerance.
+            // Calculate minimum and maximum elevation differences and update
+            // the corresponding UI values and diagnostic log.
             const roadElevationDifferences = originalRoadCenters.map(p => ({
                 rl: p.rl,
                 difference: p.rl - datumRL
@@ -2737,7 +4673,9 @@
                 aboveDatum: aboveDatumCount
             });
 
-            // Remove consecutive duplicate points that can cause zero-width segments.
+            // Section 17.6: Remove consecutive duplicate centreline positions.
+            // Calculate local direction and perpendicular offsets to construct
+            // the left and right road edges, centreline and triangle indices.
             const cleanCenters = roadCenters.filter((p, i, arr) => {
                 if (i === 0) return true;
 
@@ -2812,7 +4750,10 @@
                 }
             });
 
-            // Road surface.
+            // Section 17.7: Build the 3D road surface and its supporting geometry.
+            // Create indexed triangles, assign elevation-relative colours,
+            // generate side skirts for visual thickness, and assemble the
+            // road surface, alignment line and red outer-boundary guides.
             const roadGeometry = new THREE.BufferGeometry();
 
             roadGeometry.setAttribute(
@@ -2984,6 +4925,10 @@
             rightRoadBoundary.renderOrder = 20;
             alignmentLayer.add(rightRoadBoundary);
 
+            // Section 17.8: Place chainage milestones along the alignment.
+            // Select milestone positions using the configured interval,
+            // then create a 3D post and chainage label at each selected position.
+
             // =========================================================
             // Place 3D Milestones Every 500m along the Alignment
             // =========================================================
@@ -3024,7 +4969,9 @@
 
             alignmentLayer.add(chainageGroup);
 
-            // Road alignment layer on/off control.
+            // Section 17.9: Road alignment visibility control.
+            // Toggles the road surface, side skirts, centreline, boundaries
+            // and chainage milestones together.
             const alignmentToggle = document.getElementById(
                 "survey-map-toggle-alignment"
             );
@@ -3041,7 +4988,10 @@
             });
         }
 
-        // Detected culvert groups: locate markers using SurveyPointNos.
+        // Section 17.10: Resolve culvert locations from surveyed point numbers.
+        // Match each culvert's SurveyPointNos against valid survey records.
+        // Calculate the average Easting, Northing and RL of its matched points.
+        // Store the resulting position and source information for visualization.
         const culvertPoints = [];
         const culvertMarkerData = [];
 
@@ -3109,6 +5059,10 @@
 
             scene.add(markers);
 
+            // Section 17.11: Create visual markers for detected culverts.
+            // Project each culvert position onto the road centreline.
+            // Build a vertical pole and diamond beacon at the projected location.
+            // Confirmation status determines the marker colour.
             // =========================================================
             // 3D Glowing Culvert Beacons & Location Badges
             // =========================================================
@@ -3152,6 +5106,10 @@
 
             scene.add(culvertPinGroup);
 
+            // Section 17.12: Identify the active project and obtain culvert solid data.
+            // Read the project ID from the page or URL.
+            // Check sessionStorage first, then use the temporary test-data fallback
+            // when no cached solid model is available.
             // ─────────────────────────────────────────────────────────────────
             // 3D Culvert Solid Model Placement (Test Implementation)
             // ─────────────────────────────────────────────────────────────────
@@ -3178,12 +5136,15 @@
                 currentSolidData = window.CULVERT_TEST_SOLID_DATA;
             }
 
-            // Master group for all 3D culvert solids
+            // Section 17.13: Create the parent group for all culvert solid models.
+            // This group provides a common scene object for rendering,
+            // visibility control and replacement of existing models.
             const culvertSolidsGroup = new THREE.Group();
             culvertSolidsGroup.name = "All_Culvert_3D_Solids";
             scene.add(culvertSolidsGroup);
 
-            // Helper to get alignment tangent direction at a given chainage
+            // Section 17.14: Determine road direction at a specified chainage.
+            // Uses consecutive alignment points to calculate the road heading angle.
             function getAlignmentDirectionAtChainage(chainage) {
                 if (!validAlignment || validAlignment.length < 2) return 0;
                 let p1 = validAlignment[0];
@@ -3202,7 +5163,12 @@
                 return Math.atan2(dE, dN); // Road heading angle
             }
 
-            // Function to build Three.js meshes from a solid definition
+            // Section 17.15: Convert imported culvert solid definitions into Three.js geometry.
+            // Establish a local origin using road and culvert reference geometry.
+            // Convert solid faces into triangle geometry, including special
+            // triangulation handling for PipeBaseArea polygons.
+            // Assign layer-specific materials and dark edge outlines.
+            // Preserve the source layer information in mesh.userData.
             function buildCulvertSolidMeshGroup(sourceData) {
                 const data = sourceData || currentSolidData || window.CULVERT_TEST_SOLID_DATA;
                 const group = new THREE.Group();
@@ -3360,7 +5326,11 @@
                 return group;
             }
 
-            // Function to render / re-render culvert solids across all detected culverts
+            // Section 17.16: Place or replace 3D culvert models.
+            // Dispose of previously rendered geometry and materials.
+            // Build one model for each detected culvert, maintain unit scale,
+            // position it at the road projection and orient it along the road heading.
+            // Refresh the CAD layers drawer after rendering.
             function renderCulvertSolids(solidData) {
                 // Clear existing culvert models
                 while (culvertSolidsGroup.children.length > 0) {
@@ -3408,6 +5378,10 @@
                 updateCulvertLayersDrawer(solidData);
             }
 
+            // Section 17.17: Build the culvert-parts layer controls.
+            // Count parts by source layer, display their colours and counts,
+            // and provide individual visibility checkboxes.
+            // All and None controls toggle visibility across the culvert models.
             function updateCulvertLayersDrawer(solidData) {
                 const layersDrawer = document.getElementById("survey-cad-layers-drawer");
                 if (!layersDrawer) return;
@@ -3503,7 +5477,10 @@
                 });
             }
 
-            // Initial render of culverts if data is available
+            // Section 17.18: Load and render the available culvert solid model.
+            // Render cached or test data first when valid.
+            // Then request the project's saved solid model from MongoDB.
+            // A successfully retrieved model replaces the current rendered model.
             if (currentSolidData && culvertMarkerData.length) {
                 renderCulvertSolids(currentSolidData);
                 console.info("[CulvertCAD] Initial 3D Culvert Solids rendered at detected culvert locations:", culvertMarkerData.length);
@@ -3546,7 +5523,10 @@
                 });
             }
 
-            // Wire Import Culvert Button & File Input
+            // Section 17.19: Import a culvert HTML model.
+            // Parse the selected file through CulvertHtmlReader,
+            // update the active model, save it in sessionStorage
+            // and persist it to MongoDB when a valid project ID exists.
             async function handleCulvertHtmlFile(file) {
                 if (!window.CulvertHtmlReader) {
                     console.error("[CulvertCAD] CulvertHtmlReader is not loaded.");
@@ -3599,7 +5579,9 @@
                 });
             }
 
-            // Canvas drag and drop for Culvert HTML
+            // Section 17.20: Support drag-and-drop import of culvert HTML files.
+            // Accept HTML files dropped onto the map container
+            // and process them through the same import handler.
             const mapContainerEl = document.getElementById("survey-map-container") || document.getElementById("survey-map-canvas");
             if (mapContainerEl) {
                 mapContainerEl.addEventListener("dragenter", (e) => {
@@ -3628,7 +5610,8 @@
                 });
             }
 
-            // Temporary labels for identifying culvert locations during terrain diagnostics.
+            // Section 17.21: Prepare temporary culvert identification labels
+            // and the specification information panel used by the map interface.
             const culvertLabels = new THREE.Group();
             culvertLabels.name = "Temporary culvert location labels";
 
@@ -3685,6 +5668,10 @@
 
             let selectedCulvertIndex = -1;
 
+            // Section 17.22: Display the selected culvert's information.
+            // Build specification rows covering identification, review status,
+            // survey location, chainage, ground level and associated elevations.
+            // Generate the information panel dynamically and provide a close control.
             const showCulvertInfo = (index, event) => {
                 const markerData = culvertMarkerData[index];
                 if (!markerData) return;
@@ -3822,6 +5809,11 @@
                 infoBox.style.display = "block";
             };
 
+            // Section 17.23: Detect which culvert the user points to.
+            // Convert pointer coordinates into normalized device coordinates.
+            // Use Three.js raycasting to test the 3D pins first,
+            // then check the culvert point markers.
+            // Return the corresponding culvert index or -1 when none is hit.
             const findCulvertAtPointer = (event) => {
                 if (typeof culvertSolidsGroup !== "undefined" && !culvertSolidsGroup.visible) {
                     return -1;
@@ -3848,7 +5840,11 @@
                 return hits.length ? hits[0].index : -1;
             };
 
-            // Change cursor to pointer when hovering over culvert pins
+            // Section 17.24: Handle pointer interaction with culvert markers.
+            // Change the cursor on hover and distinguish a deliberate click
+            // from camera movement using the pointer-down and click positions.
+            // Select the culvert only when the pointer movement stays within
+            // the existing 5-pixel threshold.
             renderer.domElement.addEventListener("pointermove", (event) => {
                 const index = findCulvertAtPointer(event);
                 renderer.domElement.style.cursor = (index !== -1) ? "pointer" : "default";
@@ -3869,8 +5865,10 @@
                 }
             });
 
-            // Show card ONLY when explicitly clicked
-            // Smooth Camera Glide Function
+            // Section 17.25: Animate the camera towards a selected culvert.
+            // Interpolate both the camera position and OrbitControls target
+            // using a cubic ease-in-out transition.
+            // Cancel any previous glide before starting another.
             let cameraGlideAnimation = null;
             function glideCameraTo(targetPos, viewDistance = 20) {
                 if (!controls) return;
@@ -3910,6 +5908,11 @@
                 if (cameraGlideAnimation) cancelAnimationFrame(cameraGlideAnimation);
                 cameraGlideAnimation = requestAnimationFrame(updateGlide);
             }
+
+            // Section 17.26: Provide sequential and direct culvert navigation.
+            // Populate the dropdown with culvert numbers and chainages.
+            // Allow previous, next and direct selection, update the information
+            // panel, and optionally move the camera to the selected location.
 
             // =========================================================
             // Sequential Culvert Stepper & Direct Jump Dropdown
@@ -3978,6 +5981,10 @@
             }
         }
 
+        // Section 17.27: Calculate the initial camera target and viewing distance.
+        // Use the survey coordinate and elevation ranges to establish
+        // a suitable centre point and initial viewing scale.
+
         const span = Math.max(maxE - minE, maxN - minN, 10);
         const target = new THREE.Vector3(
             0,
@@ -3986,6 +5993,12 @@
         );
 
         const initialDistance = span * 0.50;
+
+
+        // Section 17.28: Configure predefined camera views.
+        // Calculate viewing distance from the survey's horizontal and vertical
+        // extents and camera field of view.
+        // Support top, north-oriented and 3D perspective views.
 
         const setCameraView = (view) => {
             const width = canvas.clientWidth || 800;
@@ -4053,6 +6066,10 @@
         );
         camera.lookAt(target);
 
+        // Section 17.29: Initialize interactive map camera controls.
+        // Configure damping, zoom, panning and rotation.
+        // Set mouse-button assignments and camera distance limits.
+
         let controls = null;
 
         if (THREE.OrbitControls) {
@@ -4086,6 +6103,10 @@
             controls.update();
         }
 
+        // Section 17.30: Keep the renderer and camera projection synchronized
+        // with the available canvas dimensions.
+        // Ignore resize operations when the canvas has no usable dimensions.
+
         const resize = () => {
             const width = canvas.clientWidth;
             const height = canvas.clientHeight;
@@ -4096,6 +6117,11 @@
             camera.aspect = width / height;
             camera.updateProjectionMatrix();
         };
+
+        // Section 17.31: Handle full-screen map operation.
+        // Enter or exit browser full-screen mode and update the button label.
+        // Recalculate the Three.js renderer dimensions and refresh the
+        // Leaflet map when the full-screen state changes.
 
         // Full-screen survey map workspace
         const mapContainer = document.getElementById("survey-map-container");
@@ -4135,7 +6161,10 @@
             });
         });
 
-        // Survey map navigation buttons
+        // Section 17.32: Connect map navigation and layer-panel controls.
+        // Provide recenter, top, 3D and north-up views.
+        // Maintain active-button states and support opening, closing
+        // and collapsing the CAD layers drawer and its individual groups.
         const topViewBtn = document.getElementById("survey-map-top-view");
         const threeDViewBtn = document.getElementById("survey-map-3d-view");
         const northUpBtn = document.getElementById("survey-map-north-up");
@@ -4205,6 +6234,12 @@
                 arrow.classList.toggle("bi-chevron-right", isCollapsed);
             }
         });
+
+        // Section 17.33: Start the rendering lifecycle.
+        // Register window resizing, perform the initial resize,
+        // continuously update camera controls and render the scene.
+        // Update the displayed survey, alignment and culvert counts
+        // after initialization.
 
         window.addEventListener("resize", resize);
         resize();
